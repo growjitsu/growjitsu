@@ -1,0 +1,8 @@
+{
+  "name": "Remix: ArenaComp - Jiu-Jitsu Platform",
+  "description": "A professional platform for Jiu-Jitsu championships, training management, and technical education.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
