@@ -18,7 +18,9 @@ export const authService = {
    * Registers a new user in Supabase Auth and creates records in 'usuarios' and 'atletas' tables.
    */
   async signUp(data: SignUpData) {
-    // 1. Criar no Auth
+    console.log('Iniciando processo de cadastro para:', data.email, 'Tipo:', data.userType);
+    
+    // 1. Criar usuário no Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -30,28 +32,35 @@ export const authService = {
       }
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Falha ao criar usuário');
+    if (authError) {
+      console.error('Erro no Supabase Auth:', authError);
+      throw authError;
+    }
+    
+    if (!authData.user) throw new Error('Usuário criado no Auth mas sem dados de retorno.');
 
     const userId = authData.user.id;
+    console.log('Usuário Auth criado com ID:', userId);
 
-    // 2. Inserir na tabela usuarios com os valores EXATOS
+    // 2. Inserir manualmente na tabela usuarios
+    // Nota: Se houver erro aqui, é provável que exista um Trigger no banco conflitando.
     const { error: profileError } = await supabase
       .from('usuarios')
       .insert({
         id: userId,
         nome: data.name,
         email: data.email,
-        tipo_usuario: data.userType, // 'athlete' ou 'organizer'
-        perfil_ativo: data.userType, // Inicializa igual ao tipo
+        tipo_usuario: data.userType,
+        perfil_ativo: data.userType, // Garante que inicia com o perfil correto
       });
 
     if (profileError) {
-      console.error('Erro ao criar perfil:', profileError);
-      throw profileError;
+      console.error('ERRO CRÍTICO NO BANCO (Tabela usuarios):', profileError);
+      // Se o erro for "duplicate key", significa que o trigger handle_new_user ainda existe no banco.
+      throw new Error(`Erro ao salvar perfil: ${profileError.message}`);
     }
 
-    // 3. Se for atleta, cria registro na tabela atletas
+    // 3. Registro na tabela atletas se necessário
     if (data.userType === 'athlete') {
       const { error: athleteError } = await supabase.from('atletas').insert({
         usuario_id: userId,
@@ -59,7 +68,7 @@ export const authService = {
         faixa: data.belt || 'Branca',
         peso: data.weight || 0,
       });
-      if (athleteError) console.error('Erro ao criar registro de atleta:', athleteError);
+      if (athleteError) console.error('Aviso: Erro ao criar registro complementar de atleta:', athleteError);
     }
 
     return authData;
