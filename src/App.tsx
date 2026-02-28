@@ -1,4 +1,4 @@
-import { LayoutDashboard, Trophy, BookOpen, Users, Settings, LogOut, Menu, X, CreditCard, Sun, Moon, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, Trophy, BookOpen, Users, Settings, LogOut, Menu, X, CreditCard, Sun, Moon, ShieldCheck, User as UserIcon, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Scoreboard from './components/Scoreboard';
@@ -7,16 +7,33 @@ import TechniqueLibrary from './components/Techniques';
 import AthleteDashboard from './components/AthleteDashboard';
 import CoordinatorDashboard from './components/CoordinatorDashboard';
 import LandingPage from './components/LandingPage';
-import { UserType } from './types';
+import { UserType, UserProfile } from './types';
 import { supabase, isSupabaseConfigured } from './services/supabase';
+import { authService } from './services/authService';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
-  const [userType, setUserType] = useState<UserType>('athlete');
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [isSwitching, setIsSwitching] = useState(false);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setProfile(data);
+    } catch (err) {
+      console.error('Erro ao buscar perfil:', err);
+    }
+  };
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -28,7 +45,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
-        setUserType(session.user.user_metadata?.user_type || 'athlete');
+        fetchProfile(session.user.id);
       }
       setIsInitializing(false);
     }).catch(err => {
@@ -40,9 +57,10 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsLoggedIn(true);
-        setUserType(session.user.user_metadata?.user_type || 'athlete');
+        fetchProfile(session.user.id);
       } else {
         setIsLoggedIn(false);
+        setProfile(null);
       }
     });
 
@@ -50,8 +68,23 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await authService.signOut();
     setIsLoggedIn(false);
+    setProfile(null);
+  };
+
+  const handleSwitchProfile = async (newProfile: UserType) => {
+    if (!profile || profile.tipo_usuario !== 'coordenador' || isSwitching) return;
+    
+    setIsSwitching(true);
+    try {
+      await authService.switchProfile(profile.id, newProfile);
+      await fetchProfile(profile.id);
+    } catch (err) {
+      console.error('Erro ao alternar perfil:', err);
+    } finally {
+      setIsSwitching(false);
+    }
   };
 
   if (isInitializing) {
@@ -62,12 +95,13 @@ export default function App() {
     );
   }
 
-  if (!isLoggedIn) {
-    return <LandingPage onLogin={(type) => {
-      setIsLoggedIn(true);
-      if (type) setUserType(type as UserType);
+  if (!isLoggedIn || !profile) {
+    return <LandingPage onLogin={() => {
+      // Profile will be fetched by the onAuthStateChange listener
     }} />;
   }
+
+  const userType = profile.perfil_ativo;
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -95,20 +129,30 @@ export default function App() {
                 <h1 className="text-2xl font-black font-display tracking-tighter text-[var(--text-main)]">ARENA<span className="text-bjj-blue">COMP</span></h1>
               </div>
 
-              <div className="mb-8 p-1 bg-[var(--border-ui)] rounded-xl flex">
-                <button 
-                  onClick={() => setUserType('athlete')}
-                  className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${userType === 'athlete' ? 'bg-[var(--bg-card)] text-bjj-blue shadow-sm' : 'text-[var(--text-muted)]'}`}
-                >
-                  <UserIcon size={14} /> Atleta
-                </button>
-                <button 
-                  onClick={() => setUserType('coordinator')}
-                  className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${userType === 'coordinator' ? 'bg-[var(--bg-card)] text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
-                >
-                  <ShieldCheck size={14} /> Coordenador
-                </button>
-              </div>
+              {/* Profile Switcher - Only for Coordinators */}
+              {profile.tipo_usuario === 'coordenador' && (
+                <div className="mb-8 p-1 bg-[var(--border-ui)] rounded-xl flex relative">
+                  {isSwitching && (
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] rounded-xl flex items-center justify-center z-10">
+                      <RefreshCw size={16} className="animate-spin text-bjj-blue" />
+                    </div>
+                  )}
+                  <button 
+                    onClick={() => handleSwitchProfile('atleta')}
+                    disabled={isSwitching}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${userType === 'atleta' ? 'bg-[var(--bg-card)] text-bjj-blue shadow-sm' : 'text-[var(--text-muted)]'}`}
+                  >
+                    <UserIcon size={14} /> Atleta
+                  </button>
+                  <button 
+                    onClick={() => handleSwitchProfile('coordenador')}
+                    disabled={isSwitching}
+                    className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${userType === 'coordenador' ? 'bg-[var(--bg-card)] text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
+                  >
+                    <ShieldCheck size={14} /> Coordenador
+                  </button>
+                </div>
+              )}
 
               <nav className="space-y-2">
                 {menuItems.map((item) => (
@@ -117,7 +161,7 @@ export default function App() {
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                       activeTab === item.id 
-                        ? (userType === 'athlete' ? 'bg-bjj-blue' : 'bg-bjj-purple') + ' text-white shadow-lg' 
+                        ? (userType === 'atleta' ? 'bg-bjj-blue' : 'bg-bjj-purple') + ' text-white shadow-lg' 
                         : 'text-[var(--text-muted)] hover:bg-[var(--border-ui)] hover:text-[var(--text-main)]'
                     }`}
                   >
@@ -129,11 +173,11 @@ export default function App() {
             </div>
 
             <div className="mt-auto p-8 space-y-4">
-              <div className={`glass-panel p-4 border-2 ${userType === 'athlete' ? 'bg-bjj-blue/5 border-bjj-blue/20' : 'bg-bjj-purple/5 border-bjj-purple/20'}`}>
-                <p className={`text-xs font-bold uppercase mb-1 ${userType === 'athlete' ? 'text-bjj-blue' : 'text-bjj-purple'}`}>
-                  {userType === 'athlete' ? 'Perfil Atleta' : 'Perfil Coordenador'}
+              <div className={`glass-panel p-4 border-2 ${userType === 'atleta' ? 'bg-bjj-blue/5 border-bjj-blue/20' : 'bg-bjj-purple/5 border-bjj-purple/20'}`}>
+                <p className={`text-xs font-bold uppercase mb-1 ${userType === 'atleta' ? 'text-bjj-blue' : 'text-bjj-purple'}`}>
+                  {userType === 'atleta' ? 'Perfil Atleta' : 'Perfil Coordenador'}
                 </p>
-                <p className="text-xs text-[var(--text-muted)]">Acesso total liberado.</p>
+                <p className="text-xs text-[var(--text-muted)]">Acesso real ao banco de dados.</p>
               </div>
               <button 
                 onClick={() => setIsDarkMode(!isDarkMode)}
@@ -181,15 +225,15 @@ export default function App() {
 
             <div className="text-right hidden md:block">
               <p className="text-sm font-bold text-[var(--text-main)]">
-                {userType === 'athlete' ? 'Ricardo Almeida' : 'Mestre Hélio'}
+                {profile.nome}
               </p>
               <p className="text-xs text-[var(--text-muted)]">
-                {userType === 'athlete' ? 'Faixa Azul • Juvenil' : 'Coordenador Master'}
+                {userType === 'atleta' ? 'Atleta Competidor' : 'Coordenador Oficial'}
               </p>
             </div>
-            <div className={`w-10 h-10 rounded-full bg-[var(--border-ui)] border-2 p-0.5 ${userType === 'athlete' ? 'border-bjj-blue' : 'border-bjj-purple'}`}>
+            <div className={`w-10 h-10 rounded-full bg-[var(--border-ui)] border-2 p-0.5 ${userType === 'atleta' ? 'border-bjj-blue' : 'border-bjj-purple'}`}>
               <img 
-                src={`https://picsum.photos/seed/${userType}/100/100`} 
+                src={profile.foto_url || `https://picsum.photos/seed/${profile.id}/100/100`} 
                 className="w-full h-full rounded-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -209,7 +253,7 @@ export default function App() {
               className="h-full"
             >
               {activeTab === 'dashboard' && (
-                userType === 'athlete' ? <AthleteDashboard /> : <CoordinatorDashboard />
+                userType === 'atleta' ? <AthleteDashboard /> : <CoordinatorDashboard />
               )}
               {activeTab === 'techniques' && <TechniqueLibrary />}
               {activeTab === 'championships' && <ChampionshipModule />}

@@ -24,8 +24,8 @@ export const authService = {
       password: data.password,
       options: {
         data: {
-          name: data.name,
-          user_type: data.userType,
+          nome: data.name,
+          tipo_usuario: data.userType,
         }
       }
     });
@@ -43,17 +43,16 @@ export const authService = {
         nome: data.name,
         email: data.email,
         tipo_usuario: data.userType,
+        perfil_ativo: data.userType, // Initial active profile is the same as user type
       });
 
     if (profileError) {
       console.error('Erro ao criar perfil:', profileError);
-      // Note: In a production app, you might want to delete the auth user if profile fails
-      // or handle it with a database trigger (recommended).
       throw profileError;
     }
 
     // 3. If user is an athlete, insert into 'atletas' table
-    if (data.userType === 'athlete') {
+    if (data.userType === 'atleta') {
       const { error: athleteError } = await supabase
         .from('atletas')
         .insert({
@@ -88,7 +87,7 @@ export const authService = {
     // Fetch profile to confirm user type
     const { data: profile, error: profileError } = await supabase
       .from('usuarios')
-      .select('tipo_usuario')
+      .select('tipo_usuario, perfil_ativo')
       .eq('id', authData.user.id)
       .single();
 
@@ -96,14 +95,29 @@ export const authService = {
       console.warn('Perfil não encontrado, usando meta-dados do Auth:', profileError);
       return {
         user: authData.user,
-        userType: authData.user.user_metadata?.user_type as UserType || 'athlete'
+        userType: authData.user.user_metadata?.tipo_usuario as UserType || 'atleta',
+        activeProfile: authData.user.user_metadata?.tipo_usuario as UserType || 'atleta'
       };
     }
 
     return {
       user: authData.user,
-      userType: profile.tipo_usuario as UserType
+      userType: profile.tipo_usuario as UserType,
+      activeProfile: profile.perfil_ativo as UserType
     };
+  },
+
+  /**
+   * Switches the active profile for coordinators.
+   */
+  async switchProfile(userId: string, newProfile: UserType) {
+    const { error } = await supabase
+      .from('usuarios')
+      .update({ perfil_ativo: newProfile })
+      .eq('id', userId);
+
+    if (error) throw error;
+    return true;
   },
 
   /**
