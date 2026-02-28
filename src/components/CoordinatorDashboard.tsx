@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Users, Plus, Filter, Search, ChevronRight, Download, Calendar, MapPin, Loader2, Clock } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Trophy, Users, Plus, Filter, Search, ChevronRight, Download, Calendar, MapPin, Loader2, Clock, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../services/supabase';
 import { Championship } from '../types';
 
 export default function CoordinatorDashboard() {
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [newChampionship, setNewChampionship] = useState({
+    name: '',
+    date: '',
+    location: ''
+  });
   const [stats, setStats] = useState({
     totalAthletes: 0,
     activeChamps: 0,
@@ -56,6 +63,61 @@ export default function CoordinatorDashboard() {
     }
   };
 
+  const handleCreateChampionship = async (e: any) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sessão não encontrada');
+
+      const { error } = await supabase.from('campeonatos').insert({
+        name: newChampionship.name,
+        date: newChampionship.date,
+        location: newChampionship.location,
+        created_by: session.user.id,
+        status: 'open'
+      });
+
+      if (error) throw error;
+
+      setIsModalOpen(false);
+      setNewChampionship({ name: '', date: '', location: '' });
+      await fetchData();
+    } catch (err: any) {
+      alert(`Erro ao criar campeonato: ${err.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleExportData = () => {
+    if (myEvents.length === 0) {
+      alert('Nenhum campeonato para exportar.');
+      return;
+    }
+
+    const headers = ['ID', 'Nome', 'Data', 'Localização', 'Status'];
+    const csvRows = [
+      headers.join(','),
+      ...myEvents.map(event => [
+        event.id,
+        `"${event.name}"`,
+        event.date,
+        `"${event.location}"`,
+        event.status
+      ].join(','))
+    ];
+
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `campeonatos_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -76,11 +138,17 @@ export default function CoordinatorDashboard() {
           <p className="text-[var(--text-muted)]">Gestão de eventos, atletas e categorias automáticas.</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-outline">
+          <button 
+            onClick={handleExportData}
+            className="btn-outline flex items-center gap-2"
+          >
             <Download size={18} />
             Exportar Dados
           </button>
-          <button className="btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple flex items-center gap-2"
+          >
             <Plus size={18} />
             Novo Campeonato
           </button>
@@ -118,10 +186,10 @@ export default function CoordinatorDashboard() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
                 <input 
                   placeholder="Buscar atleta..." 
-                  className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-lg py-2 pl-10 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-bjj-purple"
+                  className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-lg py-2 pl-10 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-bjj-purple text-[var(--text-main)] dark:text-white dark:placeholder-zinc-400"
                 />
               </div>
-              <button className="p-2 border border-[var(--border-ui)] rounded-lg hover:bg-[var(--border-ui)] transition-colors">
+              <button className="p-2 border border-[var(--border-ui)] rounded-lg hover:bg-[var(--border-ui)] transition-colors dark:bg-zinc-800 dark:border-zinc-700 dark:text-white hover:dark:bg-zinc-700">
                 <Filter size={18} />
               </button>
             </div>
@@ -191,6 +259,82 @@ export default function CoordinatorDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Modal Novo Campeonato */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-[var(--border-ui)] flex justify-between items-center">
+                <h3 className="text-xl font-bold text-[var(--text-main)]">Novo Campeonato</h3>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2 hover:bg-[var(--border-ui)] rounded-full transition-colors text-[var(--text-muted)]"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <form onSubmit={handleCreateChampionship} className="p-6 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Nome do Evento</label>
+                  <input 
+                    required
+                    value={newChampionship.name}
+                    onChange={e => setNewChampionship(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                    placeholder="Ex: Copa ArenaComp Primavera"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Data do Evento</label>
+                  <input 
+                    required
+                    type="date"
+                    value={newChampionship.date}
+                    onChange={e => setNewChampionship(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Localização</label>
+                  <input 
+                    required
+                    value={newChampionship.location}
+                    onChange={e => setNewChampionship(prev => ({ ...prev, location: e.target.value }))}
+                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                    placeholder="Ex: São Paulo, SP"
+                  />
+                </div>
+                
+                <div className="pt-4 flex gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 btn-outline"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSaving}
+                    className="flex-1 btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : 'Criar Evento'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
