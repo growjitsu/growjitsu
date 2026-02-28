@@ -30,43 +30,56 @@ export const authService = {
       }
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('Falha ao criar usuário');
+    if (authError) {
+      console.error('Erro no Supabase Auth:', authError.message);
+      throw authError;
+    }
+    
+    if (!authData.user) {
+      throw new Error('Falha ao criar usuário no Auth: Usuário não retornado.');
+    }
 
     const userId = authData.user.id;
 
-    // 2. Insert into 'usuarios' table (Profiles)
-    const { error: profileError } = await supabase
-      .from('usuarios')
-      .insert({
-        id: userId,
-        nome: data.name,
-        email: data.email,
-        tipo_usuario: data.userType,
-        perfil_ativo: data.userType, // Initial active profile is the same as user type
-      });
+    try {
+      // 2. Insert into 'usuarios' table (Profiles)
+      const { error: profileError } = await supabase
+        .from('usuarios')
+        .upsert({
+          id: userId,
+          nome: data.name,
+          email: data.email,
+          tipo_usuario: data.userType,
+          perfil_ativo: data.userType,
+        }, { onConflict: 'id' });
 
-    if (profileError) {
-      console.error('Erro ao criar perfil:', profileError);
-      throw profileError;
-    }
-
-    // 3. If user is an athlete, insert into 'atletas' table
-    if (data.userType === 'atleta') {
-      const { error: athleteError } = await supabase
-        .from('atletas')
-        .insert({
-          usuario_id: userId,
-          genero: data.gender || 'Masculino',
-          data_nascimento: data.birthDate || new Date().toISOString().split('T')[0],
-          faixa: data.belt || 'Branca',
-          peso: data.weight || 0,
-        });
-
-      if (athleteError) {
-        console.error('Erro ao criar registro de atleta:', athleteError);
-        throw athleteError;
+      if (profileError) {
+        console.error('Erro ao salvar perfil (usuarios):', profileError.message, profileError.details);
+        throw new Error(`Erro no banco de dados (perfil): ${profileError.message}`);
       }
+
+      // 3. If user is an athlete, insert into 'atletas' table
+      if (data.userType === 'atleta') {
+        const { error: athleteError } = await supabase
+          .from('atletas')
+          .upsert({
+            usuario_id: userId,
+            genero: data.gender || 'Masculino',
+            data_nascimento: data.birthDate || new Date().toISOString().split('T')[0],
+            faixa: data.belt || 'Branca',
+            peso: data.weight || 0,
+          }, { onConflict: 'usuario_id' });
+
+        if (athleteError) {
+          console.error('Erro ao salvar dados de atleta:', athleteError.message, athleteError.details);
+          throw new Error(`Erro no banco de dados (atleta): ${athleteError.message}`);
+        }
+      }
+    } catch (dbErr: any) {
+      // Se falhar a inserção no banco, o usuário já foi criado no Auth.
+      // Em produção, você poderia tentar deletar o usuário do Auth aqui se necessário.
+      console.error('Falha crítica na persistência de dados:', dbErr);
+      throw dbErr;
     }
 
     return authData;
