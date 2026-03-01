@@ -6,6 +6,7 @@ import ChampionshipModule from './components/Championships';
 import TechniqueLibrary from './components/Techniques';
 import AthleteDashboard from './components/AthleteDashboard';
 import CoordinatorDashboard from './components/CoordinatorDashboard';
+import MyEvents from './components/MyEvents';
 import LandingPage from './components/LandingPage';
 import AthleteProfileForm from './components/AthleteProfileForm';
 import { UserType, UserProfile, AthleteProfile } from './types';
@@ -144,10 +145,15 @@ export default function App() {
   const userType = profile.perfil_ativo;
   const isAthleteProfileIncomplete = userType === 'atleta' && (!athleteProfile || !athleteProfile.perfil_completo);
 
-  const menuItems = [
+  const menuItems = userType === 'atleta' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'techniques', label: 'Técnicas', icon: BookOpen },
     { id: 'championships', label: 'Campeonatos', icon: Trophy },
+    { id: 'scoreboard', label: 'Placar', icon: CreditCard },
+  ] : [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'my-events', label: 'Meus Eventos', icon: Trophy },
+    { id: 'techniques', label: 'Técnicas', icon: BookOpen },
     { id: 'scoreboard', label: 'Placar', icon: CreditCard },
   ];
 
@@ -326,6 +332,7 @@ export default function App() {
               {activeTab === 'dashboard' && (
                 userType === 'atleta' ? <AthleteDashboard onPhotoUpdate={() => fetchAthleteProfile(profile.id)} /> : <CoordinatorDashboard />
               )}
+              {activeTab === 'my-events' && <MyEvents />}
               {activeTab === 'techniques' && <TechniqueLibrary />}
               {activeTab === 'championships' && <ChampionshipModule />}
               {activeTab === 'scoreboard' && <Scoreboard />}

@@ -24,20 +24,47 @@ export default function CoordinatorDashboard() {
       if (!session) return;
 
       // 1. Fetch Stats
-      const { count: athletesCount } = await supabase.from('atletas').select('*', { count: 'exact', head: true });
-      const { count: activeChampsCount } = await supabase.from('campeonatos').select('*', { count: 'exact', head: true }).eq('status', 'open');
-      const { count: pendingRegsCount } = await supabase.from('inscricoes').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+      const { data: myChamps } = await supabase.from('campeonatos').select('id').eq('created_by', session.user.id);
+      const champIds = myChamps?.map(c => c.id) || [];
+
+      let athletesCount = 0;
+      let pendingRegsCount = 0;
+
+      if (champIds.length > 0) {
+        const { data: uniqueAthletes } = await supabase
+          .from('inscricoes')
+          .select('atleta_id')
+          .in('championship_id', champIds);
+        
+        const uniqueIds = new Set(uniqueAthletes?.map(a => a.atleta_id));
+        athletesCount = uniqueIds.size;
+
+        const { count: pendingCount } = await supabase
+          .from('inscricoes')
+          .select('*', { count: 'exact', head: true })
+          .in('championship_id', champIds)
+          .eq('status', 'pending');
+        
+        pendingRegsCount = pendingCount || 0;
+      }
+
+      const { count: activeChampsCount } = await supabase
+        .from('campeonatos')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', session.user.id)
+        .eq('status', 'open');
 
       setStats({
-        totalAthletes: athletesCount || 0,
+        totalAthletes: athletesCount,
         activeChamps: activeChampsCount || 0,
-        pendingRegs: pendingRegsCount || 0
+        pendingRegs: pendingRegsCount
       });
 
       // 2. Fetch Recent Registrations
       const { data: regs } = await supabase
         .from('inscricoes')
         .select('*, atletas(*, usuarios(nome, foto_url)), campeonatos(name)')
+        .in('championship_id', champIds)
         .order('created_at', { ascending: false })
         .limit(5);
       

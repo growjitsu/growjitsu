@@ -45,7 +45,12 @@ export default function EventRequestWizard({ onClose, onSuccess }: EventRequestW
     fiscalCidade: '',
     fiscalEstado: '',
     fiscalComplemento: '',
-    documentacaoUrl: ''
+    documentacaoUrl: '',
+    // Event Data (Step 4)
+    eventoNome: '',
+    eventoData: '',
+    eventoHorario: '',
+    eventoLocal: ''
   });
 
   const handleCEPBlur = async () => {
@@ -74,14 +79,15 @@ export default function EventRequestWizard({ onClose, onSuccess }: EventRequestW
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (step < 3) return;
+    if (step < 4) return;
 
     setIsSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Sessão não encontrada');
 
-      const { error } = await supabase.from('pedidos_evento').insert({
+      // 1. Create Event Request (pedidos_evento)
+      const { data: pedido, error: pedidoError } = await supabase.from('pedidos_evento').insert({
         coordenador_id: session.user.id,
         modalidade: formData.modalidade === 'Outros' ? formData.modalidadeOutros : formData.modalidade,
         modalidade_outros: formData.modalidade === 'Outros' ? formData.modalidadeOutros : null,
@@ -102,9 +108,22 @@ export default function EventRequestWizard({ onClose, onSuccess }: EventRequestW
         fiscal_estado: formData.fiscalEstado,
         fiscal_complemento: formData.fiscalComplemento,
         status: 'analise'
+      }).select().single();
+
+      if (pedidoError) throw pedidoError;
+
+      // 2. Create the Event itself (eventos)
+      const { error: eventoError } = await supabase.from('eventos').insert({
+        coordenador_id: session.user.id,
+        nome: formData.eventoNome,
+        data: formData.eventoData,
+        horario_inicio: formData.eventoHorario,
+        local: formData.eventoLocal,
+        status: 'rascunho'
       });
 
-      if (error) throw error;
+      if (eventoError) throw eventoError;
+
       onSuccess();
     } catch (err: any) {
       alert(`Erro ao enviar pedido: ${err.message}`);
@@ -138,9 +157,9 @@ export default function EventRequestWizard({ onClose, onSuccess }: EventRequestW
             </div>
             <div>
               <h2 className="text-lg font-black font-display text-[var(--text-main)]">
-                {step === 1 ? 'Modalidade do Evento' : step === 2 ? 'Informações e Regras' : 'Formulário de Pedido'}
+                {step === 1 ? 'Modalidade do Evento' : step === 2 ? 'Informações e Regras' : step === 3 ? 'Dados do Responsável' : 'Dados do Evento'}
               </h2>
-              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">Etapa {step} de 3</p>
+              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">Etapa {step} de 4</p>
             </div>
           </div>
           <button 
@@ -512,11 +531,81 @@ export default function EventRequestWizard({ onClose, onSuccess }: EventRequestW
                   <div className="pt-10 flex gap-4">
                     <button type="button" onClick={prevStep} className="btn-outline px-10">Voltar</button>
                     <button 
+                      type="button"
+                      onClick={nextStep}
+                      className="flex-1 btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple py-4 text-lg font-black flex items-center justify-center gap-2"
+                    >
+                      Próximo: Dados do Evento <ChevronRight size={20} />
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+
+            {step === 4 && (
+              <motion.div 
+                key="step4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-10"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black font-display text-[var(--text-main)]">Configuração do Evento</h3>
+                  <p className="text-sm text-[var(--text-muted)]">Agora defina os detalhes básicos do seu campeonato.</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Nome do Evento</label>
+                      <input 
+                        required
+                        value={formData.eventoNome}
+                        onChange={e => setFormData(prev => ({ ...prev, eventoNome: e.target.value }))}
+                        className="w-full bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-xl py-4 px-6 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                        placeholder="Ex: Copa Arena Comp de Jiu Jitsu"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Data do Evento</label>
+                      <input 
+                        required
+                        type="date"
+                        value={formData.eventoData}
+                        onChange={e => setFormData(prev => ({ ...prev, eventoData: e.target.value }))}
+                        className="w-full bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-xl py-4 px-6 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Horário de Início</label>
+                      <input 
+                        required
+                        type="time"
+                        value={formData.eventoHorario}
+                        onChange={e => setFormData(prev => ({ ...prev, eventoHorario: e.target.value }))}
+                        className="w-full bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-xl py-4 px-6 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Local (Opcional)</label>
+                      <input 
+                        value={formData.eventoLocal}
+                        onChange={e => setFormData(prev => ({ ...prev, eventoLocal: e.target.value }))}
+                        className="w-full bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-xl py-4 px-6 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
+                        placeholder="Ex: Ginásio Municipal de Esportes"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-10 flex gap-4">
+                    <button type="button" onClick={prevStep} className="btn-outline px-10">Voltar</button>
+                    <button 
                       type="submit" 
                       disabled={isSubmitting}
                       className="flex-1 btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple py-4 text-lg font-black flex items-center justify-center gap-2"
                     >
-                      {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : 'Enviar Pedido de Evento'}
+                      {isSubmitting ? <Loader2 className="animate-spin" size={24} /> : 'Finalizar e Criar Evento'}
                     </button>
                   </div>
                 </form>
