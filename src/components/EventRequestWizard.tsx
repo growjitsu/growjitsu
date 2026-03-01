@@ -86,8 +86,14 @@ export default function EventRequestWizard({ onClose, onSuccess }: EventRequestW
 
     setIsSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Sessão não encontrada');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        console.error('Erro de sessão:', sessionError);
+        throw new Error('Sessão expirada ou não encontrada. Por favor, faça login novamente.');
+      }
+
+      console.log('Sessão ativa para usuário:', session.user.id);
 
       let logoUrl = '';
       if (logoFile) {

@@ -3,7 +3,7 @@
 -- 1. Eventos (Campeonatos Oficiais)
 CREATE TABLE IF NOT EXISTS eventos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  coordenador_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+  coordenador_id UUID REFERENCES usuarios(id) ON DELETE CASCADE DEFAULT auth.uid(),
   nome TEXT NOT NULL,
   data DATE NOT NULL,
   horario_inicio TIME NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS eventos (
 -- 2. Pedidos de Evento (Solicitações de análise)
 CREATE TABLE IF NOT EXISTS pedidos_evento (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  coordenador_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+  coordenador_id UUID REFERENCES usuarios(id) ON DELETE CASCADE DEFAULT auth.uid(),
   modalidade TEXT NOT NULL,
   modalidade_outros TEXT,
   responsavel_nome TEXT NOT NULL,
@@ -87,6 +87,26 @@ CREATE TABLE IF NOT EXISTS resultados (
 
 -- RLS POLICIES
 
+-- 0. Security Functions & Triggers (Força o dono do registro no INSERT)
+CREATE OR REPLACE FUNCTION public.force_item_owner()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.coordenador_id := auth.uid();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Gatilhos para garantir que o coordenador_id seja sempre o auth.uid()
+DROP TRIGGER IF EXISTS tr_force_owner_eventos ON eventos;
+CREATE TRIGGER tr_force_owner_eventos
+  BEFORE INSERT ON eventos
+  FOR EACH ROW EXECUTE FUNCTION public.force_item_owner();
+
+DROP TRIGGER IF EXISTS tr_force_owner_pedidos ON pedidos_evento;
+CREATE TRIGGER tr_force_owner_pedidos
+  BEFORE INSERT ON pedidos_evento
+  FOR EACH ROW EXECUTE FUNCTION public.force_item_owner();
+
 -- Enable RLS
 ALTER TABLE eventos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pedidos_evento ENABLE ROW LEVEL SECURITY;
@@ -103,7 +123,7 @@ DROP POLICY IF EXISTS "Eventos_Delete_Owner" ON eventos;
 CREATE POLICY "Eventos_Select_Public" ON eventos 
     FOR SELECT USING (true);
 
--- Apenas o coordenador dono pode inserir
+-- Apenas o coordenador dono pode inserir (Validado via WITH CHECK e Trigger)
 CREATE POLICY "Eventos_Insert_Owner" ON eventos 
     FOR INSERT TO authenticated 
     WITH CHECK (auth.uid() = coordenador_id);
@@ -122,8 +142,6 @@ CREATE POLICY "Eventos_Delete_Owner" ON eventos
 DROP POLICY IF EXISTS "Pedidos_Select_Owner" ON pedidos_evento;
 DROP POLICY IF EXISTS "Pedidos_Insert_Owner" ON pedidos_evento;
 DROP POLICY IF EXISTS "Pedidos_Update_Owner" ON pedidos_evento;
-DROP POLICY IF EXISTS "Coordenadores veem seus pedidos" ON pedidos_evento;
-DROP POLICY IF EXISTS "Coordenadores criam seus pedidos" ON pedidos_evento;
 
 -- Coordenadores gerenciam apenas seus próprios pedidos
 CREATE POLICY "Pedidos_Select_Owner" ON pedidos_evento 
@@ -140,10 +158,10 @@ CREATE POLICY "Pedidos_Update_Owner" ON pedidos_evento
 
 
 -- 3. Lutas e Resultados Policies
-DROP POLICY IF EXISTS "Lutas visíveis por todos" ON lutas;
-DROP POLICY IF EXISTS "Coordenadores gerenciam lutas" ON lutas;
-DROP POLICY IF EXISTS "Resultados visíveis por todos" ON resultados;
-DROP POLICY IF EXISTS "Coordenadores gerenciam resultados" ON resultados;
+DROP POLICY IF EXISTS "Lutas_Select_Public" ON lutas;
+DROP POLICY IF EXISTS "Lutas_Manage_Owner" ON lutas;
+DROP POLICY IF EXISTS "Resultados_Select_Public" ON resultados;
+DROP POLICY IF EXISTS "Resultados_Manage_Owner" ON resultados;
 
 CREATE POLICY "Lutas_Select_Public" ON lutas FOR SELECT USING (true);
 CREATE POLICY "Lutas_Manage_Owner" ON lutas FOR ALL USING (
