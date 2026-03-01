@@ -7,7 +7,8 @@ import TechniqueLibrary from './components/Techniques';
 import AthleteDashboard from './components/AthleteDashboard';
 import CoordinatorDashboard from './components/CoordinatorDashboard';
 import LandingPage from './components/LandingPage';
-import { UserType, UserProfile } from './types';
+import AthleteProfileForm from './components/AthleteProfileForm';
+import { UserType, UserProfile, AthleteProfile } from './types';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { authService } from './services/authService';
 
@@ -17,8 +18,28 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [athleteProfile, setAthleteProfile] = useState<AthleteProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [checkingAthlete, setCheckingAthlete] = useState(false);
+
+  const fetchAthleteProfile = async (userId: string) => {
+    try {
+      setCheckingAthlete(true);
+      const { data, error } = await supabase
+        .from('atletas')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') throw error;
+      setAthleteProfile(data);
+    } catch (err) {
+      console.error('Erro ao buscar perfil do atleta:', err);
+    } finally {
+      setCheckingAthlete(false);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -30,6 +51,10 @@ export default function App() {
       
       if (error) throw error;
       setProfile(data);
+      
+      if (data.perfil_ativo === 'atleta') {
+        await fetchAthleteProfile(userId);
+      }
     } catch (err) {
       console.error('Erro ao buscar perfil:', err);
     }
@@ -102,6 +127,7 @@ export default function App() {
   }
 
   const userType = profile.perfil_ativo;
+  const isAthleteProfileIncomplete = userType === 'atleta' && (!athleteProfile || !athleteProfile.perfil_completo);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -109,6 +135,35 @@ export default function App() {
     { id: 'championships', label: 'Campeonatos', icon: Trophy },
     { id: 'scoreboard', label: 'Placar', icon: CreditCard },
   ];
+
+  if (isAthleteProfileIncomplete) {
+    return (
+      <div className={`flex h-screen overflow-hidden ${isDarkMode ? 'dark' : ''}`}>
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-app)]">
+          <header className="h-20 border-b border-[var(--border-ui)] flex items-center justify-between px-8 bg-[var(--bg-app)]/50 backdrop-blur-sm z-40">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-bjj-blue rounded-lg flex items-center justify-center">
+                <Trophy className="text-white" size={18} />
+              </div>
+              <h1 className="text-xl font-black font-display tracking-tighter text-[var(--text-main)]">ARENA<span className="text-bjj-blue">COMP</span></h1>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 text-red-500 hover:bg-red-500/10 rounded-xl transition-colors font-bold text-sm"
+            >
+              <LogOut size={18} /> Sair
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto p-8">
+            <AthleteProfileForm 
+              userId={profile.id} 
+              onComplete={() => fetchAthleteProfile(profile.id)} 
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex h-screen overflow-hidden ${isDarkMode ? 'dark' : ''}`}>

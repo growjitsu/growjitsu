@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { User, Trophy, Calendar, MapPin, Scale, Award, Camera, Edit3, CheckCircle, Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { User, Trophy, Calendar, MapPin, Scale, Award, Camera, Edit3, CheckCircle, Loader2, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { getAutomaticCategorization } from '../services/categorization';
-import { AthleteProfile, Gender, Belt, Championship, UserProfile } from '../types';
+import { AthleteProfile, Championship, UserProfile } from '../types';
 import { supabase } from '../services/supabase';
+import AthleteProfileForm from './AthleteProfileForm';
 
 export default function AthleteDashboard() {
   const [loading, setLoading] = useState(true);
@@ -11,6 +12,7 @@ export default function AthleteDashboard() {
   const [athleteData, setAthleteData] = useState<AthleteProfile | null>(null);
   const [championships, setChampionships] = useState<Championship[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   
   const [stats, setStats] = useState({
     competitiveAge: 0,
@@ -38,7 +40,7 @@ export default function AthleteDashboard() {
       const { data: athlete } = await supabase
         .from('atletas')
         .select('*')
-        .eq('usuario_id', session.user.id)
+        .eq('id', session.user.id)
         .single();
       
       if (athlete) {
@@ -101,7 +103,7 @@ export default function AthleteDashboard() {
                 <Camera size={16} />
               </button>
             </div>
-            <h2 className="text-2xl font-black font-display">{profile?.nome}</h2>
+            <h2 className="text-2xl font-black font-display">{athleteData?.nome_completo || profile?.nome}</h2>
             <p className="text-bjj-blue font-bold uppercase text-xs tracking-widest mt-1">Atleta Competidor</p>
             
             <div className="w-full h-[1px] bg-[var(--border-ui)] my-6" />
@@ -109,11 +111,15 @@ export default function AthleteDashboard() {
             <div className="w-full space-y-4 text-left">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-[var(--text-muted)] font-bold uppercase">Faixa</span>
-                <span className="px-3 py-1 bg-blue-600 text-white text-xs font-black rounded uppercase">{athleteData?.faixa || 'Branca'}</span>
+                <span className="px-3 py-1 bg-blue-600 text-white text-xs font-black rounded uppercase">{athleteData?.graduacao || 'Branca'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-[var(--text-muted)] font-bold uppercase">Peso</span>
                 <span className="font-bold text-[var(--text-main)]">{athleteData?.peso || 0} kg</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-[var(--text-muted)] font-bold uppercase">Equipe</span>
+                <span className="font-bold text-[var(--text-main)]">{athleteData?.equipe || 'N/A'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-[var(--text-muted)] font-bold uppercase">Nascimento</span>
@@ -123,7 +129,10 @@ export default function AthleteDashboard() {
               </div>
             </div>
 
-            <button className="btn-outline w-full mt-8 text-sm">
+            <button 
+              onClick={() => setIsEditingProfile(true)}
+              className="btn-outline w-full mt-8 text-sm"
+            >
               <Edit3 size={16} />
               Editar Perfil
             </button>
@@ -202,6 +211,33 @@ export default function AthleteDashboard() {
           </div>
         </div>
       </div>
+      {/* Profile Edit Modal */}
+      <AnimatePresence>
+        {isEditingProfile && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative"
+            >
+              <button 
+                onClick={() => setIsEditingProfile(false)}
+                className="absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] z-10"
+              >
+                <X size={24} />
+              </button>
+              <AthleteProfileForm 
+                userId={profile?.id || ''} 
+                onComplete={() => {
+                  setIsEditingProfile(false);
+                  fetchData();
+                }} 
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -16,13 +16,14 @@ export interface UserProfile {
 
 export interface AthleteProfile {
   id: string;
-  user_id: string;
-  gender: Gender;
-  birth_date: string;
-  belt: Belt;
-  weight: number;
-  age_category: string;
-  weight_category: string;
+  nome_completo: string;
+  genero: Gender;
+  graduacao: string;
+  data_nascimento: string;
+  peso: number;
+  equipe: string;
+  perfil_completo: boolean;
+  atualizado_em: string;
 }
 
 export interface Championship {
