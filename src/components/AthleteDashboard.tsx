@@ -10,6 +10,9 @@ export default function AthleteDashboard() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [athleteData, setAthleteData] = useState<AthleteProfile | null>(null);
+  const [signedPhotoUrl, setSignedPhotoUrl] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [championships, setChampionships] = useState<Championship[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -49,6 +52,17 @@ export default function AthleteDashboard() {
         setAthleteData(athlete);
         const result = getAutomaticCategorization(athlete.data_nascimento, athlete.genero, athlete.peso_kg);
         setStats(result);
+
+        // Fetch Signed URL if photo exists
+        if (athlete.foto_url) {
+          const { data: signedData } = await supabase.storage
+            .from('atletas-perfil')
+            .createSignedUrl(athlete.foto_url, 3600);
+          
+          if (signedData) {
+            setSignedPhotoUrl(signedData.signedUrl);
+          }
+        }
       }
 
       // 3. Fetch Championships
@@ -79,58 +93,84 @@ export default function AthleteDashboard() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Validação básica
-    if (file.size > 2 * 1024 * 1024) {
-      alert('A imagem deve ter no máximo 2MB.');
+    // 1. Validação de Tipo
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Formato inválido. Use JPG, PNG ou WebP.');
       return;
     }
 
-    await handleImageUpload(file);
+    // 2. Validação de Tamanho (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB.');
+      return;
+    }
+
+    // 3. Gerar Preview Local
+    setPreviewFile(file);
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
   };
 
-  const handleImageUpload = async (file: File) => {
+  const cancelPreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewFile(null);
+    setPreviewUrl(null);
+  };
+
+  const handleImageUpload = async () => {
+    if (!previewFile) return;
+
     try {
       setUploading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Sessão expirada. Faça login novamente.');
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
-      const filePath = fileName; // O bucket já isola por nome
+      // Estrutura: {user_id}/foto-perfil.jpg
+      const filePath = `${session.user.id}/foto-perfil.jpg`;
 
-      // 1. Upload para o Storage (Bucket 'avatars')
+      // 1. Upload para o Storage (Bucket Privado)
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
+        .from('atletas-perfil')
+        .upload(filePath, previewFile, {
           upsert: true,
-          contentType: file.type
+          contentType: previewFile.type
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          throw new Error('Erro de configuração: O bucket "atletas-perfil" não existe.');
+        }
+        throw uploadError;
+      }
 
-      // 2. Obter URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      // 2. Gerar Signed URL imediata
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from('atletas-perfil')
+        .createSignedUrl(filePath, 3600);
 
-      // 3. Atualizar tabela de usuários
+      if (signedError) throw signedError;
+
+      // 3. Atualizar tabela de atletas
       const { error: updateError } = await supabase
-        .from('usuarios')
-        .update({ foto_url: publicUrl })
-        .eq('id', session.user.id);
+        .from('atletas')
+        .update({ foto_url: filePath })
+        .eq('usuario_id', session.user.id);
 
       if (updateError) throw updateError;
 
-      // 4. Atualizar estado local
-      setProfile(prev => prev ? { ...prev, foto_url: publicUrl } : null);
+      // 4. Limpar preview e atualizar estados
+      setSignedPhotoUrl(signedData.signedUrl);
+      setAthleteData(prev => prev ? { ...prev, foto_url: filePath } : null);
+      cancelPreview();
       
     } catch (err: any) {
       console.error('Erro no upload:', err);
-      alert('Não foi possível atualizar sua foto. Verifique o tamanho e tente novamente.');
+      alert(err.message || 'Erro ao atualizar foto de perfil.');
     } finally {
       setUploading(false);
     }
@@ -169,18 +209,40 @@ export default function AthleteDashboard() {
                   </div>
                 )}
                 <img 
-                  src={profile?.foto_url || `https://picsum.photos/seed/${profile?.id}/200/200`} 
+                  src={previewUrl || signedPhotoUrl || `https://picsum.photos/seed/${profile?.id}/200/200`} 
                   className="w-full h-full rounded-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <button 
-                onClick={handleImageClick}
-                disabled={uploading}
-                className="absolute bottom-4 right-0 p-2 bg-bjj-blue text-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
-              >
-                <Camera size={16} />
-              </button>
+              
+              {previewUrl ? (
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                  <button 
+                    onClick={handleImageUpload}
+                    disabled={uploading}
+                    className="p-2 bg-emerald-500 text-white rounded-full shadow-lg hover:bg-emerald-600 transition-colors"
+                    title="Salvar Foto"
+                  >
+                    {uploading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
+                  </button>
+                  <button 
+                    onClick={cancelPreview}
+                    disabled={uploading}
+                    className="p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                    title="Cancelar"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleImageClick}
+                  disabled={uploading}
+                  className="absolute bottom-4 right-0 p-2 bg-bjj-blue text-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  <Camera size={16} />
+                </button>
+              )}
             </div>
             <h2 className="text-2xl font-black font-display text-[var(--text-main)]">{athleteData?.nome_completo || profile?.nome}</h2>
             <p className="text-bjj-blue font-bold uppercase text-xs tracking-widest mt-1">Atleta Competidor</p>

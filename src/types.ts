@@ -23,6 +23,7 @@ export interface AthleteProfile {
   peso_kg: number;
   equipe: string;
   perfil_completo: boolean;
+  foto_url?: string;
   atualizado_em: string;
 }
 
