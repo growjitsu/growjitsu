@@ -23,6 +23,10 @@ BEGIN
         ALTER TABLE atletas ADD COLUMN genero TEXT;
     END IF;
 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atletas' AND column_name='graduacao') THEN
+        ALTER TABLE atletas ADD COLUMN graduacao TEXT;
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atletas' AND column_name='peso_kg') THEN
         ALTER TABLE atletas ADD COLUMN peso_kg NUMERIC;
     END IF;
