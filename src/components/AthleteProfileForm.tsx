@@ -21,7 +21,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
     genero: 'Masculino',
     graduacao: 'Branca',
     data_nascimento: '',
-    peso: 0,
+    peso_kg: 0,
     equipe: '',
     perfil_completo: false
   });
@@ -69,7 +69,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
       setError('A Data de Nascimento é obrigatória.');
       return;
     }
-    if (!profile.peso || profile.peso <= 0) {
+    if (!profile.peso_kg || profile.peso_kg <= 0) {
       setError('O Peso deve ser um número positivo.');
       return;
     }
@@ -230,8 +230,8 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                 <input
                   type="number"
                   step="0.1"
-                  value={profile.peso || ''}
-                  onChange={(e) => setProfile({ ...profile, peso: parseFloat(e.target.value) })}
+                  value={profile.peso_kg || ''}
+                  onChange={(e) => setProfile({ ...profile, peso_kg: parseFloat(e.target.value) })}
                   className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all"
                   placeholder="0.0"
                 />

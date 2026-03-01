@@ -20,7 +20,7 @@ export interface AthleteProfile {
   genero: Gender;
   graduacao: string;
   data_nascimento: string;
-  peso: number;
+  peso_kg: number;
   equipe: string;
   perfil_completo: boolean;
   atualizado_em: string;

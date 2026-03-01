@@ -45,7 +45,7 @@ export default function AthleteDashboard() {
       
       if (athlete) {
         setAthleteData(athlete);
-        const result = getAutomaticCategorization(athlete.data_nascimento, athlete.genero, athlete.peso);
+        const result = getAutomaticCategorization(athlete.data_nascimento, athlete.genero, athlete.peso_kg);
         setStats(result);
       }
 
@@ -115,7 +115,7 @@ export default function AthleteDashboard() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-[var(--text-muted)] font-bold uppercase">Peso</span>
-                <span className="font-bold text-[var(--text-main)]">{athleteData?.peso || 0} kg</span>
+                <span className="font-bold text-[var(--text-main)]">{athleteData?.peso_kg || 0} kg</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-[var(--text-muted)] font-bold uppercase">Equipe</span>
