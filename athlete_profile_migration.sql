@@ -15,6 +15,17 @@ BEGIN
         ALTER TABLE atletas ADD COLUMN nome_completo TEXT;
     END IF;
 
+    -- Relaxar restrições de colunas antigas se existirem
+    DO $$ 
+    BEGIN 
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atletas' AND column_name='faixa') THEN
+            ALTER TABLE atletas ALTER COLUMN faixa DROP NOT NULL;
+        END IF;
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atletas' AND column_name='peso') THEN
+            ALTER TABLE atletas ALTER COLUMN peso DROP NOT NULL;
+        END IF;
+    END $$;
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='atletas' AND column_name='data_nascimento') THEN
         ALTER TABLE atletas ADD COLUMN data_nascimento DATE;
     END IF;
@@ -50,17 +61,17 @@ ALTER TABLE atletas ENABLE ROW LEVEL SECURITY;
 -- Política para atletas verem seu próprio perfil
 DROP POLICY IF EXISTS "Atletas podem ver seu próprio perfil" ON atletas;
 CREATE POLICY "Atletas podem ver seu próprio perfil" ON atletas
-    FOR SELECT USING (auth.uid() = id);
+    FOR SELECT USING (auth.uid() = usuario_id);
 
 -- Política para atletas inserirem seu próprio perfil
 DROP POLICY IF EXISTS "Atletas podem inserir seu próprio perfil" ON atletas;
 CREATE POLICY "Atletas podem inserir seu próprio perfil" ON atletas
-    FOR INSERT WITH CHECK (auth.uid() = id);
+    FOR INSERT WITH CHECK (auth.uid() = usuario_id);
 
 -- Política para atletas atualizarem seu próprio perfil
 DROP POLICY IF EXISTS "Atletas podem atualizar seu próprio perfil" ON atletas;
 CREATE POLICY "Atletas podem atualizar seu próprio perfil" ON atletas
-    FOR UPDATE USING (auth.uid() = id);
+    FOR UPDATE USING (auth.uid() = usuario_id);
 
 -- Função de Trigger para proteção de dados sensíveis
 CREATE OR REPLACE FUNCTION block_athlete_sensitive_fields_update()

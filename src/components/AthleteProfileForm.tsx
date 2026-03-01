@@ -16,7 +16,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<Partial<AthleteProfile>>({
-    id: userId,
+    usuario_id: userId,
     nome_completo: '',
     genero: 'Masculino',
     graduacao: 'Branca',
@@ -36,7 +36,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
       const { data, error } = await supabase
         .from('atletas')
         .select('*')
-        .eq('id', userId)
+        .eq('usuario_id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
@@ -82,6 +82,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
     try {
       const payload = {
         ...profile,
+        usuario_id: userId,
         perfil_completo: true
       };
 

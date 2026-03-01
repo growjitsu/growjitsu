@@ -40,7 +40,7 @@ export default function AthleteDashboard() {
       const { data: athlete } = await supabase
         .from('atletas')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('usuario_id', session.user.id)
         .single();
       
       if (athlete) {

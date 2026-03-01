@@ -15,7 +15,7 @@ export interface UserProfile {
 }
 
 export interface AthleteProfile {
-  id: string;
+  usuario_id: string;
   nome_completo: string;
   genero: Gender;
   graduacao: string;

@@ -66,8 +66,8 @@ export const authService = {
             usuario_id: userId,
             genero: data.gender || 'Masculino',
             data_nascimento: data.birthDate || new Date().toISOString().split('T')[0],
-            faixa: data.belt || 'Branca',
-            peso: data.weight || 0,
+            graduacao: data.belt || 'Branca',
+            peso_kg: data.weight || 0,
           }, { onConflict: 'usuario_id' });
 
         if (athleteError) {
