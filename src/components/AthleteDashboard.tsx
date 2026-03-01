@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { User, Trophy, Calendar, MapPin, Scale, Award, Camera, Edit3, CheckCircle, Loader2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getAutomaticCategorization } from '../services/categorization';
@@ -13,6 +13,8 @@ export default function AthleteDashboard() {
   const [championships, setChampionships] = useState<Championship[]>([]);
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [stats, setStats] = useState({
     competitiveAge: 0,
@@ -73,6 +75,67 @@ export default function AthleteDashboard() {
     }
   };
 
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validação básica
+    if (file.size > 2 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 2MB.');
+      return;
+    }
+
+    await handleImageUpload(file);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    try {
+      setUploading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Sessão expirada. Faça login novamente.');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+      const filePath = fileName; // O bucket já isola por nome
+
+      // 1. Upload para o Storage (Bucket 'avatars')
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          upsert: true,
+          contentType: file.type
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Obter URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // 3. Atualizar tabela de usuários
+      const { error: updateError } = await supabase
+        .from('usuarios')
+        .update({ foto_url: publicUrl })
+        .eq('id', session.user.id);
+
+      if (updateError) throw updateError;
+
+      // 4. Atualizar estado local
+      setProfile(prev => prev ? { ...prev, foto_url: publicUrl } : null);
+      
+    } catch (err: any) {
+      console.error('Erro no upload:', err);
+      alert('Não foi possível atualizar sua foto. Verifique o tamanho e tente novamente.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -92,18 +155,34 @@ export default function AthleteDashboard() {
         <div className="w-full md:w-80 space-y-6">
           <div className="card-surface p-6 flex flex-col items-center text-center">
             <div className="relative group">
-              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-bjj-blue p-1 mb-4">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+                accept="image/*"
+              />
+              <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-bjj-blue p-1 mb-4 relative">
+                {uploading && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10 rounded-full">
+                    <Loader2 className="w-6 h-6 animate-spin text-white" />
+                  </div>
+                )}
                 <img 
                   src={profile?.foto_url || `https://picsum.photos/seed/${profile?.id}/200/200`} 
                   className="w-full h-full rounded-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <button className="absolute bottom-4 right-0 p-2 bg-bjj-blue text-white rounded-full shadow-lg hover:scale-110 transition-transform">
+              <button 
+                onClick={handleImageClick}
+                disabled={uploading}
+                className="absolute bottom-4 right-0 p-2 bg-bjj-blue text-white rounded-full shadow-lg hover:scale-110 transition-transform disabled:opacity-50 disabled:hover:scale-100"
+              >
                 <Camera size={16} />
               </button>
             </div>
-            <h2 className="text-2xl font-black font-display">{athleteData?.nome_completo || profile?.nome}</h2>
+            <h2 className="text-2xl font-black font-display text-[var(--text-main)]">{athleteData?.nome_completo || profile?.nome}</h2>
             <p className="text-bjj-blue font-bold uppercase text-xs tracking-widest mt-1">Atleta Competidor</p>
             
             <div className="w-full h-[1px] bg-[var(--border-ui)] my-6" />
