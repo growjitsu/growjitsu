@@ -40,10 +40,26 @@ CREATE TABLE IF NOT EXISTS pedidos_evento (
 );
 
 -- 3. Inscrições (Relacionando Atletas a Eventos)
--- Nota: Já existe uma tabela 'inscricoes', mas vamos garantir que ela suporte o novo fluxo operacional
+CREATE TABLE IF NOT EXISTS inscricoes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  atleta_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+  evento_id UUID REFERENCES eventos(id) ON DELETE CASCADE,
+  categoria TEXT,
+  peso TEXT,
+  faixa TEXT,
+  idade TEXT,
+  final_category TEXT, -- Categoria formatada (ex: Adulto / Marrom / Pesado)
+  status TEXT DEFAULT 'pendente',
+  peso_confirmado BOOLEAN DEFAULT FALSE,
+  status_operacional TEXT CHECK (status_operacional IN ('inscrito', 'peso_ok', 'aquecimento', 'pronto', 'lutando', 'finalizado')) DEFAULT 'inscrito',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Garantir que as colunas existam caso a tabela já existisse sem elas
 ALTER TABLE inscricoes ADD COLUMN IF NOT EXISTS evento_id UUID REFERENCES eventos(id) ON DELETE CASCADE;
 ALTER TABLE inscricoes ADD COLUMN IF NOT EXISTS peso_confirmado BOOLEAN DEFAULT FALSE;
 ALTER TABLE inscricoes ADD COLUMN IF NOT EXISTS status_operacional TEXT CHECK (status_operacional IN ('inscrito', 'peso_ok', 'aquecimento', 'pronto', 'lutando', 'finalizado')) DEFAULT 'inscrito';
+ALTER TABLE inscricoes ADD COLUMN IF NOT EXISTS final_category TEXT;
 
 -- 3. Lutas (Matches)
 CREATE TABLE IF NOT EXISTS lutas (
@@ -71,27 +87,60 @@ CREATE TABLE IF NOT EXISTS resultados (
 
 -- RLS POLICIES
 
+-- Enable RLS
 ALTER TABLE eventos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pedidos_evento ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lutas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE resultados ENABLE ROW LEVEL SECURITY;
 
--- Eventos são visíveis por todos
-CREATE POLICY "Eventos visíveis por todos" ON eventos FOR SELECT USING (true);
-CREATE POLICY "Coordenadores gerenciam seus eventos" ON eventos FOR ALL USING (auth.uid() = coordenador_id);
+-- 1. Eventos Policies
+DROP POLICY IF EXISTS "Eventos visíveis por todos" ON eventos;
+DROP POLICY IF EXISTS "Coordenadores gerenciam seus eventos" ON eventos;
 
--- Pedidos de Evento
-ALTER TABLE pedidos_evento ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Coordenadores veem seus pedidos" ON pedidos_evento FOR SELECT USING (auth.uid() = coordenador_id);
-CREATE POLICY "Coordenadores criam seus pedidos" ON pedidos_evento FOR INSERT WITH CHECK (auth.uid() = coordenador_id);
+-- Qualquer pessoa pode ver eventos
+CREATE POLICY "Eventos_Select_Public" ON eventos 
+    FOR SELECT USING (true);
 
--- Lutas e Resultados
-CREATE POLICY "Lutas visíveis por todos" ON lutas FOR SELECT USING (true);
-CREATE POLICY "Coordenadores gerenciam lutas" ON lutas FOR ALL USING (
+-- Apenas o coordenador dono pode inserir
+CREATE POLICY "Eventos_Insert_Owner" ON eventos 
+    FOR INSERT WITH CHECK (auth.uid() = coordenador_id);
+
+-- Apenas o coordenador dono pode atualizar ou deletar
+CREATE POLICY "Eventos_Update_Owner" ON eventos 
+    FOR UPDATE USING (auth.uid() = coordenador_id);
+
+CREATE POLICY "Eventos_Delete_Owner" ON eventos 
+    FOR DELETE USING (auth.uid() = coordenador_id);
+
+
+-- 2. Pedidos de Evento Policies
+DROP POLICY IF EXISTS "Coordenadores veem seus pedidos" ON pedidos_evento;
+DROP POLICY IF EXISTS "Coordenadores criam seus pedidos" ON pedidos_evento;
+
+-- Coordenadores gerenciam apenas seus próprios pedidos
+CREATE POLICY "Pedidos_Select_Owner" ON pedidos_evento 
+    FOR SELECT USING (auth.uid() = coordenador_id);
+
+CREATE POLICY "Pedidos_Insert_Owner" ON pedidos_evento 
+    FOR INSERT WITH CHECK (auth.uid() = coordenador_id);
+
+CREATE POLICY "Pedidos_Update_Owner" ON pedidos_evento 
+    FOR UPDATE USING (auth.uid() = coordenador_id);
+
+
+-- 3. Lutas e Resultados Policies
+DROP POLICY IF EXISTS "Lutas visíveis por todos" ON lutas;
+DROP POLICY IF EXISTS "Coordenadores gerenciam lutas" ON lutas;
+DROP POLICY IF EXISTS "Resultados visíveis por todos" ON resultados;
+DROP POLICY IF EXISTS "Coordenadores gerenciam resultados" ON resultados;
+
+CREATE POLICY "Lutas_Select_Public" ON lutas FOR SELECT USING (true);
+CREATE POLICY "Lutas_Manage_Owner" ON lutas FOR ALL USING (
   EXISTS (SELECT 1 FROM eventos WHERE eventos.id = lutas.evento_id AND eventos.coordenador_id = auth.uid())
 );
 
-CREATE POLICY "Resultados visíveis por todos" ON resultados FOR SELECT USING (true);
-CREATE POLICY "Coordenadores gerenciam resultados" ON resultados FOR ALL USING (
+CREATE POLICY "Resultados_Select_Public" ON resultados FOR SELECT USING (true);
+CREATE POLICY "Resultados_Manage_Owner" ON resultados FOR ALL USING (
   EXISTS (
     SELECT 1 FROM lutas 
     JOIN eventos ON eventos.id = lutas.evento_id 
