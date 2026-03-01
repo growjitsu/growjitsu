@@ -82,8 +82,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
     try {
       const payload = {
         ...profile,
-        perfil_completo: true,
-        atualizado_em: new Date().toISOString()
+        perfil_completo: true
       };
 
       const { error: upsertError } = await supabase
