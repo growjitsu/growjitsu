@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Users, Plus, Filter, Search, ChevronRight, Download, Calendar, MapPin, Loader2, Clock, X } from 'lucide-react';
+import { Trophy, Users, Plus, Filter, Search, ChevronRight, Download, Calendar, MapPin, Loader2, Clock, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../services/supabase';
 import { Championship } from '../types';
+import EventRequestWizard from './EventRequestWizard';
 
 export default function CoordinatorDashboard() {
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [newChampionship, setNewChampionship] = useState({
-    name: '',
-    date: '',
-    location: ''
-  });
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [stats, setStats] = useState({
     totalAthletes: 0,
     activeChamps: 0,
@@ -60,33 +56,6 @@ export default function CoordinatorDashboard() {
       console.error('Erro ao carregar dados do coordenador:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCreateChampionship = async (e: any) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Sessão não encontrada');
-
-      const { error } = await supabase.from('campeonatos').insert({
-        name: newChampionship.name,
-        date: newChampionship.date,
-        location: newChampionship.location,
-        created_by: session.user.id,
-        status: 'open'
-      });
-
-      if (error) throw error;
-
-      setIsModalOpen(false);
-      setNewChampionship({ name: '', date: '', location: '' });
-      await fetchData();
-    } catch (err: any) {
-      alert(`Erro ao criar campeonato: ${err.message}`);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -146,7 +115,7 @@ export default function CoordinatorDashboard() {
             Exportar Dados
           </button>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsWizardOpen(true)}
             className="btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple flex items-center gap-2"
           >
             <Plus size={18} />
@@ -260,77 +229,43 @@ export default function CoordinatorDashboard() {
         </div>
       </div>
 
-      {/* Modal Novo Campeonato */}
+      {/* Multi-step Wizard */}
+      {isWizardOpen && (
+        <EventRequestWizard 
+          onClose={() => setIsWizardOpen(false)} 
+          onSuccess={() => {
+            setIsWizardOpen(false);
+            setShowSuccess(true);
+            fetchData();
+          }} 
+        />
+      )}
+
+      {/* Success Message */}
       <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        {showSuccess && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-3xl p-10 max-w-sm w-full text-center space-y-6 shadow-2xl"
             >
-              <div className="p-6 border-b border-[var(--border-ui)] flex justify-between items-center">
-                <h3 className="text-xl font-bold text-[var(--text-main)]">Novo Campeonato</h3>
-                <button 
-                  onClick={() => setIsModalOpen(false)}
-                  className="p-2 hover:bg-[var(--border-ui)] rounded-full transition-colors text-[var(--text-muted)]"
-                >
-                  <X size={20} />
-                </button>
+              <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 mx-auto">
+                <CheckCircle2 size={48} />
               </div>
-              
-              <form onSubmit={handleCreateChampionship} className="p-6 space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Nome do Evento</label>
-                  <input 
-                    required
-                    value={newChampionship.name}
-                    onChange={e => setNewChampionship(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
-                    placeholder="Ex: Copa ArenaComp Primavera"
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Data do Evento</label>
-                  <input 
-                    required
-                    type="date"
-                    value={newChampionship.date}
-                    onChange={e => setNewChampionship(prev => ({ ...prev, date: e.target.value }))}
-                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
-                  />
-                </div>
-                
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase text-[var(--text-muted)]">Localização</label>
-                  <input 
-                    required
-                    value={newChampionship.location}
-                    onChange={e => setNewChampionship(prev => ({ ...prev, location: e.target.value }))}
-                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:ring-2 focus:ring-bjj-purple/50 outline-none transition-all"
-                    placeholder="Ex: São Paulo, SP"
-                  />
-                </div>
-                
-                <div className="pt-4 flex gap-3">
-                  <button 
-                    type="button"
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 btn-outline"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex-1 btn-primary bg-bjj-purple hover:bg-bjj-purple/90 border-bjj-purple flex items-center justify-center gap-2"
-                  >
-                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : 'Criar Evento'}
-                  </button>
-                </div>
-              </form>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black font-display text-[var(--text-main)]">Pedido Enviado!</h3>
+                <p className="text-[var(--text-muted)] text-sm leading-relaxed">
+                  Sua solicitação de evento foi recebida com sucesso. Nossa equipe comercial entrará em contato em breve.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowSuccess(false)}
+                className="w-full btn-primary bg-emerald-500 hover:bg-emerald-600 border-emerald-500 py-3 font-black"
+              >
+                Entendido
+              </button>
             </motion.div>
           </div>
         )}
