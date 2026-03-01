@@ -19,6 +19,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile | null>(null);
+  const [headerSignedUrl, setHeaderSignedUrl] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSwitching, setIsSwitching] = useState(false);
   const [checkingAthlete, setCheckingAthlete] = useState(false);
@@ -34,6 +35,20 @@ export default function App() {
       
       if (error && error.code !== 'PGRST116') throw error;
       setAthleteProfile(data);
+
+      // Generate Signed URL for Header if photo exists
+      if (data?.foto_url) {
+        const { data: signedData } = await supabase.storage
+          .from('atletas-perfil')
+          .createSignedUrl(data.foto_url, 3600);
+        
+        if (signedData) {
+          // Add timestamp to bypass browser cache
+          setHeaderSignedUrl(`${signedData.signedUrl}&t=${Date.now()}`);
+        }
+      } else {
+        setHeaderSignedUrl(null);
+      }
     } catch (err) {
       console.error('Erro ao buscar perfil do atleta:', err);
     } finally {
@@ -288,9 +303,10 @@ export default function App() {
             </div>
             <div className={`w-10 h-10 rounded-full bg-[var(--border-ui)] border-2 p-0.5 ${userType === 'atleta' ? 'border-bjj-blue' : 'border-bjj-purple'}`}>
               <img 
-                src={profile.foto_url || `https://picsum.photos/seed/${profile.id}/100/100`} 
+                src={headerSignedUrl || profile.foto_url || `https://picsum.photos/seed/${profile.id}/100/100`} 
                 className="w-full h-full rounded-full object-cover"
                 referrerPolicy="no-referrer"
+                key={headerSignedUrl || 'default'}
               />
             </div>
           </div>
@@ -308,7 +324,7 @@ export default function App() {
               className="h-full"
             >
               {activeTab === 'dashboard' && (
-                userType === 'atleta' ? <AthleteDashboard /> : <CoordinatorDashboard />
+                userType === 'atleta' ? <AthleteDashboard onPhotoUpdate={() => fetchAthleteProfile(profile.id)} /> : <CoordinatorDashboard />
               )}
               {activeTab === 'techniques' && <TechniqueLibrary />}
               {activeTab === 'championships' && <ChampionshipModule />}

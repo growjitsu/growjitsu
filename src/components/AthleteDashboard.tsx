@@ -6,7 +6,7 @@ import { AthleteProfile, Championship, UserProfile } from '../types';
 import { supabase } from '../services/supabase';
 import AthleteProfileForm from './AthleteProfileForm';
 
-export default function AthleteDashboard() {
+export default function AthleteDashboard({ onPhotoUpdate }: { onPhotoUpdate?: () => void }) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [athleteData, setAthleteData] = useState<AthleteProfile | null>(null);
@@ -60,7 +60,7 @@ export default function AthleteDashboard() {
             .createSignedUrl(athlete.foto_url, 3600);
           
           if (signedData) {
-            setSignedPhotoUrl(signedData.signedUrl);
+            setSignedPhotoUrl(`${signedData.signedUrl}&t=${Date.now()}`);
           }
         }
       }
@@ -164,9 +164,12 @@ export default function AthleteDashboard() {
       if (updateError) throw updateError;
 
       // 4. Limpar preview e atualizar estados
-      setSignedPhotoUrl(signedData.signedUrl);
+      setSignedPhotoUrl(`${signedData.signedUrl}&t=${Date.now()}`);
       setAthleteData(prev => prev ? { ...prev, foto_url: filePath } : null);
       cancelPreview();
+      
+      // Notify parent to update header
+      if (onPhotoUpdate) onPhotoUpdate();
       
     } catch (err: any) {
       console.error('Erro no upload:', err);
