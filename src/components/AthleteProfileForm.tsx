@@ -83,15 +83,21 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
       const payload = {
         ...profile,
         usuario_id: userId,
-        perfil_completo: true
+        perfil_completo: true,
+        atualizado_em: new Date().toISOString()
       };
 
+      // 1. Salvar no Supabase
       const { error: upsertError } = await supabase
         .from('atletas')
         .upsert(payload);
 
       if (upsertError) throw upsertError;
 
+      // 2. Pequeno delay para garantir que o banco processou (opcional mas seguro para RLS/Cache)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // 3. Notificar sucesso e disparar callback de conclusão
       onComplete();
     } catch (err: any) {
       console.error('Erro ao salvar perfil:', err);

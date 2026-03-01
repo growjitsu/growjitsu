@@ -29,7 +29,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('atletas')
         .select('*')
-        .eq('id', userId)
+        .eq('usuario_id', userId)
         .single();
       
       if (error && error.code !== 'PGRST116') throw error;
