@@ -205,61 +205,61 @@ function EditEventModal({ event, onClose, onUpdate }: { event: Evento, onClose: 
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Nome do Evento</label>
+            <label className="label-standard">Nome do Evento</label>
             <input 
               required 
               value={formData.nome}
               onChange={e => setFormData(prev => ({ ...prev, nome: e.target.value }))}
-              className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" 
+              className="input-standard text-sm" 
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Data</label>
+              <label className="label-standard">Data</label>
               <input 
                 required 
                 type="date"
                 value={formData.data}
                 onChange={e => setFormData(prev => ({ ...prev, data: e.target.value }))}
-                className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" 
+                className="input-standard text-sm" 
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Horário</label>
+              <label className="label-standard">Horário</label>
               <input 
                 required 
                 type="time"
                 value={formData.horario_inicio}
                 onChange={e => setFormData(prev => ({ ...prev, horario_inicio: e.target.value }))}
-                className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" 
+                className="input-standard text-sm" 
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Cidade</label>
+              <label className="label-standard">Cidade</label>
               <input 
                 value={formData.cidade}
                 onChange={e => setFormData(prev => ({ ...prev, cidade: e.target.value }))}
-                className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" 
+                className="input-standard text-sm" 
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">UF</label>
+              <label className="label-standard">UF</label>
               <input 
                 value={formData.uf}
                 onChange={e => setFormData(prev => ({ ...prev, uf: e.target.value }))}
-                className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" 
+                className="input-standard text-sm" 
                 maxLength={2}
               />
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Status</label>
+            <label className="label-standard">Status</label>
             <select 
               value={formData.status}
               onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-              className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]"
+              className="input-standard text-sm"
             >
               <option value="rascunho">Rascunho</option>
               <option value="aberto">Aberto (Inscrições)</option>
@@ -382,28 +382,28 @@ function EventOperational({ event, onBack, onEdit, onStartLuta }: {
             </div>
           </div>
         </div>
-        <div className="flex bg-[var(--border-ui)] p-1 rounded-xl overflow-x-auto max-w-full">
+        <div className="flex bg-[var(--bg-surface)] p-1 rounded-xl overflow-x-auto max-w-full border border-[var(--border-ui)]">
           <button 
             onClick={() => setActiveTab('weight')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'weight' ? 'bg-white text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'weight' ? 'bg-[var(--bg-card)] text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
           >
             <Scale size={14} /> Pesagem
           </button>
           <button 
             onClick={() => setActiveTab('warmup')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'warmup' ? 'bg-white text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'warmup' ? 'bg-[var(--bg-card)] text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
           >
             <Clock size={14} /> Aquecimento
           </button>
           <button 
             onClick={() => setActiveTab('marshal')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'marshal' ? 'bg-white text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'marshal' ? 'bg-[var(--bg-card)] text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
           >
             <Users size={14} /> Mesário
           </button>
           <button 
             onClick={() => setActiveTab('brackets')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'brackets' ? 'bg-white text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'brackets' ? 'bg-[var(--bg-card)] text-bjj-purple shadow-sm' : 'text-[var(--text-muted)]'}`}
           >
             <Trophy size={14} /> Chaves
           </button>
@@ -578,13 +578,13 @@ function EventOperational({ event, onBack, onEdit, onStartLuta }: {
                 className="p-6 space-y-4"
               >
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Nome da Categoria</label>
-                  <input required name="nome" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" placeholder="Ex: Adulto Marrom Meio-Pesado" />
+                  <label className="label-standard">Nome da Categoria</label>
+                  <input required name="nome" className="input-standard text-sm" placeholder="Ex: Adulto Marrom Meio-Pesado" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Faixa</label>
-                    <select name="faixa" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]">
+                    <label className="label-standard">Faixa</label>
+                    <select name="faixa" className="input-standard text-sm">
                       <option value="Branca">Branca</option>
                       <option value="Azul">Azul</option>
                       <option value="Roxa">Roxa</option>
@@ -593,8 +593,8 @@ function EventOperational({ event, onBack, onEdit, onStartLuta }: {
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Sexo</label>
-                    <select name="sexo" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]">
+                    <label className="label-standard">Sexo</label>
+                    <select name="sexo" className="input-standard text-sm">
                       <option value="M">Masculino</option>
                       <option value="F">Feminino</option>
                       <option value="Unissex">Unissex</option>
@@ -602,8 +602,8 @@ function EventOperational({ event, onBack, onEdit, onStartLuta }: {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Peso Máximo (kg)</label>
-                  <input type="number" step="0.1" name="peso_max" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" placeholder="Ex: 88.3" />
+                  <label className="label-standard">Peso Máximo (kg)</label>
+                  <input type="number" step="0.1" name="peso_max" className="input-standard text-sm" placeholder="Ex: 88.3" />
                 </div>
                 <button type="submit" className="w-full btn-primary py-4 font-black mt-4">Criar Categoria</button>
               </form>

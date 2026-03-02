@@ -2,6 +2,7 @@ import { LayoutDashboard, Trophy, BookOpen, Users, Settings, LogOut, Menu, X, Cr
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { useTheme } from './context/ThemeContext';
 import Scoreboard from './components/Scoreboard';
 import ChampionshipModule from './components/Championships';
 import TechniqueLibrary from './components/Techniques';
@@ -17,10 +18,10 @@ import { supabase, isSupabaseConfigured } from './services/supabase';
 import { authService } from './services/authService';
 
 export default function App() {
+  const { theme, toggleTheme } = useTheme();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [athleteProfile, setAthleteProfile] = useState<AthleteProfile | null>(null);
   const [headerSignedUrl, setHeaderSignedUrl] = useState<string | null>(null);
@@ -175,7 +176,7 @@ export default function App() {
 
   if (isAthleteProfileIncomplete) {
     return (
-      <div className={`flex h-screen overflow-hidden ${isDarkMode ? 'dark' : ''}`}>
+      <div className="flex h-screen overflow-hidden">
         <main className="flex-1 flex flex-col overflow-hidden relative bg-[var(--bg-app)]">
           <header className="h-20 border-b border-[var(--border-ui)] flex items-center justify-between px-8 bg-[var(--bg-app)]/50 backdrop-blur-sm z-40">
             <div className="flex items-center gap-3">
@@ -205,7 +206,7 @@ export default function App() {
   const isRegistrationPage = location.pathname.includes('/inscricao');
 
   return (
-    <div className={`flex h-screen overflow-hidden ${isDarkMode ? 'dark' : ''}`}>
+    <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       {!isRegistrationPage && (
         <AnimatePresence mode="wait">
@@ -297,11 +298,11 @@ export default function App() {
                   <p className="text-xs text-[var(--text-muted)]">Acesso real ao banco de dados.</p>
                 </div>
                 <button 
-                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  onClick={toggleTheme}
                   className="w-full flex items-center gap-3 px-4 py-3 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
                 >
-                  <Settings size={20} />
-                  <span className="font-semibold">{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>
+                  {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                  <span className="font-semibold">{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
                 </button>
                 <button 
                   onClick={handleLogout}
@@ -330,13 +331,13 @@ export default function App() {
 
             <div className="flex items-center gap-4">
               <button 
-                onClick={() => setIsDarkMode(!isDarkMode)}
+                onClick={toggleTheme}
                 className="p-2.5 hover:bg-[var(--border-ui)] rounded-xl transition-all text-[var(--text-main)] flex items-center gap-2 border border-[var(--border-ui)]"
-                title={isDarkMode ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
+                title={theme === 'dark' ? 'Ativar Modo Claro' : 'Ativar Modo Escuro'}
               >
-                {isDarkMode ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} className="text-bjj-blue" />}
+                {theme === 'dark' ? <Sun size={20} className="text-amber-500" /> : <Moon size={20} className="text-bjj-blue" />}
                 <span className="text-xs font-bold uppercase hidden sm:block">
-                  {isDarkMode ? 'Claro' : 'Escuro'}
+                  {theme === 'dark' ? 'Claro' : 'Escuro'}
                 </span>
               </button>
 

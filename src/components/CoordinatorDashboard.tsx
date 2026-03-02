@@ -186,10 +186,10 @@ export default function CoordinatorDashboard({ onEventClick }: CoordinatorDashbo
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={16} />
                 <input 
                   placeholder="Buscar atleta..." 
-                  className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-lg py-2 pl-10 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-bjj-purple text-[var(--text-main)] dark:text-white dark:placeholder-zinc-400"
+                  className="input-standard pl-10 py-2 text-xs"
                 />
               </div>
-              <button className="p-2 border border-[var(--border-ui)] rounded-lg hover:bg-[var(--border-ui)] transition-colors dark:bg-zinc-800 dark:border-zinc-700 dark:text-white hover:dark:bg-zinc-700">
+              <button className="p-2 border border-[var(--border-ui)] rounded-lg hover:bg-[var(--border-ui)] transition-colors text-[var(--text-main)]">
                 <Filter size={18} />
               </button>
             </div>

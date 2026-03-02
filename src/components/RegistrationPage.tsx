@@ -188,7 +188,7 @@ export default function RegistrationPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-[var(--bg-card)] rounded-3xl shadow-2xl overflow-hidden border border-[var(--border-ui)]"
         >
-          <div className="p-8 border-b border-[var(--border-ui)] bg-bjj-blue/5">
+          <div className="p-8 border-b border-[var(--border-ui)] bg-[var(--bg-surface)]">
             <div className="flex items-start justify-between">
               <div className="space-y-2">
                 <h1 className="text-3xl font-black font-display text-[var(--text-main)] tracking-tight uppercase">Inscrição Oficial</h1>
@@ -212,7 +212,7 @@ export default function RegistrationPage() {
           </div>
 
           {documento && (
-            <div className="px-8 py-4 bg-zinc-900/50 border-b border-[var(--border-ui)]">
+            <div className="px-8 py-4 bg-[var(--bg-surface)] border-b border-[var(--border-ui)]">
               <details className="group">
                 <summary className="flex items-center justify-between cursor-pointer list-none">
                   <span className="text-[10px] font-black uppercase tracking-widest text-bjj-blue">Ver Edital e Regras do Evento</span>
@@ -245,23 +245,23 @@ export default function RegistrationPage() {
           <form onSubmit={handleRegister} className="p-8 space-y-6">
             {!confirmationStep ? (
               <div className="space-y-6">
-                <div className="p-6 bg-bjj-blue/5 border border-bjj-blue/20 rounded-2xl space-y-4">
+                <div className="p-6 bg-[var(--bg-surface)] border border-[var(--border-ui)] rounded-2xl space-y-4">
                   <h3 className="text-sm font-black uppercase text-bjj-blue tracking-widest">Confirme seus Dados Cadastrais</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Nome</p>
+                      <p className="label-standard mb-1">Nome</p>
                       <p className="font-bold text-[var(--text-main)]">{athleteProfile?.nome_completo}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Equipe</p>
+                      <p className="label-standard mb-1">Equipe</p>
                       <p className="font-bold text-[var(--text-main)]">{athleteProfile?.equipe}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Peso</p>
+                      <p className="label-standard mb-1">Peso</p>
                       <p className="font-bold text-[var(--text-main)]">{athleteProfile?.peso_kg} kg</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Faixa</p>
+                      <p className="label-standard mb-1">Faixa</p>
                       <p className="font-bold text-[var(--text-main)]">{athleteProfile?.graduacao}</p>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ export default function RegistrationPage() {
                     <h3 className="text-sm font-black uppercase text-emerald-500 tracking-widest">Categoria Identificada</h3>
                     {activeLote && (
                       <div className="text-right">
-                        <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Valor Inscrição</p>
+                        <p className="label-standard mb-1">Valor Inscrição</p>
                         <p className="text-lg font-black text-emerald-500">R$ {activeLote.valor_peso.toFixed(2)}</p>
                       </div>
                     )}
@@ -285,7 +285,7 @@ export default function RegistrationPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Tempo de Luta</p>
+                      <p className="label-standard mb-1">Tempo de Luta</p>
                       <p className="text-lg font-black text-emerald-500">{(determinedCategory as any)?.tempo_luta_minutos || 5}:00 min</p>
                     </div>
                   </div>

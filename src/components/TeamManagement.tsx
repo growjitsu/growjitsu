@@ -167,7 +167,7 @@ export default function TeamManagement() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={14} />
                     <input 
-                      className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-lg py-1.5 pl-9 pr-4 text-xs outline-none focus:border-emerald-500" 
+                      className="input-standard pl-9 py-1.5 text-xs" 
                       placeholder="Buscar atleta..."
                     />
                   </div>
@@ -233,19 +233,19 @@ export default function TeamManagement() {
               </div>
               <form onSubmit={handleAddTeam} className="p-8 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Nome da Equipe</label>
+                  <label className="label-standard">Nome da Equipe</label>
                   <input 
                     required 
                     name="nome" 
-                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-emerald-500 outline-none transition-colors" 
+                    className="input-standard py-4 px-6" 
                     placeholder="Ex: GRACIE BARRA" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Filiação / Matriz</label>
+                  <label className="label-standard">Filiação / Matriz</label>
                   <input 
                     name="filiacao" 
-                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-emerald-500 outline-none transition-colors" 
+                    className="input-standard py-4 px-6" 
                     placeholder="Ex: GB BRASIL" 
                   />
                 </div>

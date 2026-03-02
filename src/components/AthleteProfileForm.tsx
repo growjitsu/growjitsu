@@ -171,7 +171,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Nome Completo */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-2">
+              <label className="label-standard">
                 Nome Completo (Igual ao Documento)
               </label>
               <div className="relative">
@@ -181,7 +181,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                   value={profile.nome_completo}
                   onChange={(e) => setProfile({ ...profile, nome_completo: e.target.value })}
                   disabled={isLocked}
-                  className={`w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`input-standard pl-12 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                   placeholder="Seu nome oficial"
                 />
               </div>
@@ -194,7 +194,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
 
             {/* Gênero */}
             <div>
-              <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-2">
+              <label className="label-standard">
                 Gênero
               </label>
               <div className="relative">
@@ -202,7 +202,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                 <select
                   value={profile.genero}
                   onChange={(e) => setProfile({ ...profile, genero: e.target.value as Gender })}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all"
+                  className="input-standard pl-12"
                 >
                   <option value="Masculino">Masculino</option>
                   <option value="Feminino">Feminino</option>
@@ -212,7 +212,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
 
             {/* Data de Nascimento */}
             <div>
-              <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-2">
+              <label className="label-standard">
                 Data de Nascimento
               </label>
               <div className="relative">
@@ -222,20 +222,20 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                   value={profile.data_nascimento}
                   onChange={(e) => setProfile({ ...profile, data_nascimento: e.target.value })}
                   disabled={isLocked}
-                  className={`w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`input-standard pl-12 ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                 />
               </div>
             </div>
 
             {/* Graduação */}
             <div>
-              <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-2">
+              <label className="label-standard">
                 Graduação (Faixa)
               </label>
               <select
                 value={profile.graduacao}
                 onChange={(e) => setProfile({ ...profile, graduacao: e.target.value })}
-                className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all"
+                className="input-standard"
               >
                 {BELTS.map(belt => (
                   <option key={belt} value={belt}>{belt}</option>
@@ -245,7 +245,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
 
             {/* Peso */}
             <div>
-              <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-2">
+              <label className="label-standard">
                 Peso (kg)
               </label>
               <div className="relative">
@@ -255,7 +255,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                   step="0.1"
                   value={profile.peso_kg || ''}
                   onChange={(e) => setProfile({ ...profile, peso_kg: parseFloat(e.target.value) })}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all"
+                  className="input-standard pl-12"
                   placeholder="0.0"
                 />
               </div>
@@ -263,7 +263,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
 
             {/* Equipe */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold uppercase text-[var(--text-muted)] mb-2">
+              <label className="label-standard">
                 Equipe / Academia Oficial
               </label>
               <div className="relative">
@@ -278,7 +278,7 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                       equipe: team?.nome || ''
                     });
                   }}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 pl-12 pr-4 text-[var(--text-main)] focus:border-bjj-blue outline-none transition-all"
+                  className="input-standard pl-12"
                 >
                   <option value="">Selecione sua equipe...</option>
                   {teams.map(team => (

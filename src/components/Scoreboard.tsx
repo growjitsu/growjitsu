@@ -188,26 +188,26 @@ export default function Scoreboard({ lutaId, athleteAName = "Atleta 1", athleteB
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-xl w-full space-y-8"
+              className="bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-3xl p-8 max-w-xl w-full space-y-8 shadow-2xl"
             >
               <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black font-display text-white">Finalizar Luta</h3>
-                <button onClick={() => setIsFinishing(false)} className="text-zinc-500 hover:text-white"><X size={24}/></button>
+                <h3 className="text-2xl font-black font-display text-[var(--text-main)] uppercase">Finalizar Luta</h3>
+                <button onClick={() => setIsFinishing(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"><X size={24}/></button>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="text-xs font-black uppercase text-zinc-500">Vencedor</label>
+                  <label className="label-standard">Vencedor</label>
                   <div className="grid grid-cols-2 gap-4">
                     <button 
                       onClick={() => setWinner('A')}
-                      className={`p-4 rounded-xl border-2 font-bold transition-all ${winner === 'A' ? 'border-bjj-blue bg-bjj-blue/20 text-bjj-blue' : 'border-zinc-800 text-zinc-500'}`}
+                      className={`p-4 rounded-xl border-2 font-bold transition-all ${winner === 'A' ? 'border-bjj-blue bg-bjj-blue/10 text-bjj-blue' : 'border-[var(--border-ui)] text-[var(--text-muted)] hover:border-bjj-blue/50'}`}
                     >
                       {athleteAName}
                     </button>
                     <button 
                       onClick={() => setWinner('B')}
-                      className={`p-4 rounded-xl border-2 font-bold transition-all ${winner === 'B' ? 'border-zinc-200 bg-white/10 text-white' : 'border-zinc-800 text-zinc-500'}`}
+                      className={`p-4 rounded-xl border-2 font-bold transition-all ${winner === 'B' ? 'border-[var(--text-main)] bg-[var(--text-main)]/10 text-[var(--text-main)]' : 'border-[var(--border-ui)] text-[var(--text-muted)] hover:border-[var(--text-main)]/50'}`}
                     >
                       {athleteBName}
                     </button>
@@ -215,13 +215,13 @@ export default function Scoreboard({ lutaId, athleteAName = "Atleta 1", athleteB
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-xs font-black uppercase text-zinc-500">Motivo da Vitória</label>
+                  <label className="label-standard">Motivo da Vitória</label>
                   <div className="grid grid-cols-2 gap-2">
                     {['finalizacao', 'pontos', 'decisao', 'desclassificacao', 'outros'].map(m => (
                       <button 
                         key={m}
                         onClick={() => setReason(m)}
-                        className={`p-3 rounded-lg border text-xs font-bold uppercase transition-all ${reason === m ? 'border-bjj-purple bg-bjj-purple/20 text-bjj-purple' : 'border-zinc-800 text-zinc-500'}`}
+                        className={`p-3 rounded-lg border text-xs font-bold uppercase transition-all ${reason === m ? 'border-bjj-purple bg-bjj-purple/10 text-bjj-purple' : 'border-[var(--border-ui)] text-[var(--text-muted)] hover:border-bjj-purple/50'}`}
                       >
                         {m}
                       </button>
@@ -234,7 +234,7 @@ export default function Scoreboard({ lutaId, athleteAName = "Atleta 1", athleteB
                     placeholder="Descreva o motivo..."
                     value={otherReason}
                     onChange={e => setOtherReason(e.target.value)}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-4 text-white outline-none focus:ring-2 focus:ring-bjj-purple"
+                    className="input-standard"
                   />
                 )}
               </div>

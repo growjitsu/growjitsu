@@ -160,47 +160,47 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Nome do Evento</label>
+                <label className="label-standard">Nome do Evento</label>
                 <input 
                   value={formData.nome}
                   onChange={e => setFormData({...formData, nome: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                   placeholder="Ex: COPA ARENA JIU-JITSU"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Nº Edição</label>
+                <label className="label-standard">Nº Edição</label>
                 <input 
                   type="number"
                   value={formData.edicao}
                   onChange={e => setFormData({...formData, edicao: parseInt(e.target.value)})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Data do Evento</label>
+                <label className="label-standard">Data do Evento</label>
                 <input 
                   type="date"
                   value={formData.data}
                   onChange={e => setFormData({...formData, data: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Horário de Início</label>
+                <label className="label-standard">Horário de Início</label>
                 <input 
                   type="time"
                   value={formData.horario_inicio}
                   onChange={e => setFormData({...formData, horario_inicio: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Modalidade</label>
+                <label className="label-standard">Modalidade</label>
                 <select 
                   value={formData.modalidade}
                   onChange={e => setFormData({...formData, modalidade: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none"
+                  className="input-standard"
                 >
                   <option value="GI">GI (Com Kimono)</option>
                   <option value="NO-GI">NO-GI (Sem Kimono)</option>
@@ -208,11 +208,11 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Tipo de Peso</label>
+                <label className="label-standard">Tipo de Peso</label>
                 <select 
                   value={formData.tipo_peso}
                   onChange={e => setFormData({...formData, tipo_peso: e.target.value as any})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none"
+                  className="input-standard"
                 >
                   <option value="com_kimono">Com Kimono</option>
                   <option value="sem_kimono">Sem Kimono</option>
@@ -227,52 +227,52 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
             <h3 className="text-sm font-black uppercase text-bjj-purple tracking-widest">Endereço e Organização</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">CEP</label>
+                <label className="label-standard">CEP</label>
                 <input 
                   value={formData.cep}
                   onChange={e => setFormData({...formData, cep: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="md:col-span-2 space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Endereço Completo</label>
+                <label className="label-standard">Endereço Completo</label>
                 <input 
                   value={formData.endereco}
                   onChange={e => setFormData({...formData, endereco: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Cidade</label>
+                <label className="label-standard">Cidade</label>
                 <input 
                   value={formData.cidade}
                   onChange={e => setFormData({...formData, cidade: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">UF</label>
+                <label className="label-standard">UF</label>
                 <input 
                   value={formData.uf}
                   onChange={e => setFormData({...formData, uf: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                   maxLength={2}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Razão Social</label>
+                <label className="label-standard">Razão Social</label>
                 <input 
                   value={formData.razao_social}
                   onChange={e => setFormData({...formData, razao_social: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase text-[var(--text-muted)] tracking-widest">Email de Contato</label>
+                <label className="label-standard">Email de Contato</label>
                 <input 
                   value={formData.email_contato}
                   onChange={e => setFormData({...formData, email_contato: e.target.value})}
-                  className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-2xl py-4 px-6 text-[var(--text-main)] focus:border-bjj-purple outline-none" 
+                  className="input-standard" 
                 />
               </div>
             </div>
@@ -298,7 +298,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                   type="number"
                   value={formData.cancelamento_automatico_dias}
                   onChange={e => setFormData({...formData, cancelamento_automatico_dias: parseInt(e.target.value)})}
-                  className="w-20 bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-lg py-1 px-3 text-center"
+                  className="w-20 input-standard py-1 px-3 text-center"
                 />
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                 </button>
               </div>
               {lotes.map((lote, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-[var(--border-ui)] rounded-2xl bg-[var(--bg-app)]">
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border border-[var(--border-ui)] rounded-2xl bg-[var(--bg-surface)]">
                   <input 
                     value={lote.nome}
                     onChange={e => {
@@ -322,7 +322,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                       newLotes[idx].nome = e.target.value;
                       setLotes(newLotes);
                     }}
-                    className="bg-transparent font-bold outline-none"
+                    className="bg-transparent font-bold outline-none text-[var(--text-main)]"
                     placeholder="Nome do Lote"
                   />
                   <input 
@@ -333,7 +333,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                       newLotes[idx].data_limite = e.target.value;
                       setLotes(newLotes);
                     }}
-                    className="bg-transparent outline-none text-xs"
+                    className="bg-transparent outline-none text-xs text-[var(--text-main)]"
                   />
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-[var(--text-muted)]">Peso:</span>
@@ -345,7 +345,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                         newLotes[idx].valor_peso = parseFloat(e.target.value);
                         setLotes(newLotes);
                       }}
-                      className="w-full bg-transparent outline-none font-bold"
+                      className="w-full bg-transparent outline-none font-bold text-[var(--text-main)]"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -358,7 +358,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                         newLotes[idx].valor_peso_absoluto = parseFloat(e.target.value);
                         setLotes(newLotes);
                       }}
-                      className="w-full bg-transparent outline-none font-bold"
+                      className="w-full bg-transparent outline-none font-bold text-[var(--text-main)]"
                     />
                   </div>
                 </div>
@@ -412,11 +412,11 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                   <input type="checkbox" checked={absoluto.ativo_feminino} onChange={e => setAbsoluto({...absoluto, ativo_feminino: e.target.checked})} className="w-5 h-5 accent-bjj-purple" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Premiação</label>
+                  <label className="label-standard">Premiação</label>
                   <textarea 
                     value={absoluto.premiacao_texto}
                     onChange={e => setAbsoluto({...absoluto, premiacao_texto: e.target.value})}
-                    className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl p-3 text-xs outline-none"
+                    className="input-standard min-h-[100px] text-xs"
                     placeholder="Descreva a premiação..."
                   />
                 </div>
