@@ -59,6 +59,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
     aceita_cartao: true,
     cancelamento_automatico_dias: 15,
     abertura_checagem_geral: '',
+    regra_abertura_checagem: 'IMEDIATO',
   });
 
   const [lotes, setLotes] = useState([
@@ -98,6 +99,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
         .from('eventos')
         .insert({
           ...formData,
+          abertura_checagem_geral: formData.abertura_checagem_geral || null,
           coordenador_id: session.user.id,
           status: 'rascunho'
         })
@@ -300,6 +302,28 @@ export default function CreateEventWizard({ onClose, onSuccess }: CreateEventWiz
                   onChange={e => setFormData({...formData, cancelamento_automatico_dias: parseInt(e.target.value)})}
                   className="w-20 input-standard py-1 px-3 text-center"
                 />
+              </div>
+
+              <div className="pt-4 border-t border-[var(--border-ui)] space-y-4">
+                <h4 className="text-xs font-black uppercase text-bjj-purple tracking-widest">Abertura da Checagem Geral</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, regra_abertura_checagem: 'IMEDIATO'})}
+                    className={`p-4 border-2 rounded-2xl text-left transition-all ${formData.regra_abertura_checagem === 'IMEDIATO' ? 'border-bjj-purple bg-bjj-purple/5' : 'border-[var(--border-ui)] hover:border-bjj-purple/30'}`}
+                  >
+                    <p className="font-bold text-sm text-[var(--text-main)]">Imediato</p>
+                    <p className="text-[10px] text-[var(--text-muted)] uppercase">Junto com o início das inscrições</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, regra_abertura_checagem: 'QUARTA_ANTECEDENTE'})}
+                    className={`p-4 border-2 rounded-2xl text-left transition-all ${formData.regra_abertura_checagem === 'QUARTA_ANTECEDENTE' ? 'border-bjj-purple bg-bjj-purple/5' : 'border-[var(--border-ui)] hover:border-bjj-purple/30'}`}
+                  >
+                    <p className="font-bold text-sm text-[var(--text-main)]">Quarta-feira Antecedente</p>
+                    <p className="text-[10px] text-[var(--text-muted)] uppercase">Apenas na última quarta antes do evento</p>
+                  </button>
+                </div>
               </div>
             </div>
 

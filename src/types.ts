@@ -61,6 +61,7 @@ export interface Evento {
   aceita_cartao: boolean;
   cancelamento_automatico_dias: number;
   abertura_checagem_geral?: string;
+  regra_abertura_checagem?: string;
   status: 'rascunho' | 'aberto' | 'fechado' | 'em_andamento' | 'finalizado';
   logo_url?: string;
   created_at: string;

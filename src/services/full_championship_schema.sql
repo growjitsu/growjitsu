@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS eventos (
   aceita_cartao BOOLEAN DEFAULT TRUE,
   cancelamento_automatico_dias INTEGER DEFAULT 15,
   abertura_checagem_geral TIMESTAMPTZ,
+  regra_abertura_checagem TEXT DEFAULT 'IMEDIATO', -- 'IMEDIATO' ou 'QUARTA_ANTECEDENTE'
   
   -- Status
   status event_status DEFAULT 'rascunho',
