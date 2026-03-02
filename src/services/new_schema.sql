@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS categorias_evento (
 CREATE TABLE IF NOT EXISTS inscricoes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   evento_id UUID REFERENCES eventos(id) ON DELETE CASCADE,
-  atleta_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+  atleta_id UUID REFERENCES usuarios(id) ON DELETE CASCADE DEFAULT auth.uid() NOT NULL,
   categoria_id UUID REFERENCES categorias_evento(id) ON DELETE CASCADE,
   nome_atleta TEXT NOT NULL,
   equipe TEXT NOT NULL,
@@ -228,6 +228,20 @@ CREATE TRIGGER tr_force_owner_pedidos
   BEFORE INSERT ON pedidos_evento
   FOR EACH ROW EXECUTE FUNCTION public.force_item_owner();
 
+-- Gatilho para inscricoes (atleta_id)
+CREATE OR REPLACE FUNCTION public.force_atleta_owner()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.atleta_id := auth.uid();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_force_owner_inscricoes ON inscricoes;
+CREATE TRIGGER tr_force_owner_inscricoes
+  BEFORE INSERT ON inscricoes
+  FOR EACH ROW EXECUTE FUNCTION public.force_atleta_owner();
+
 -- Enable RLS
 ALTER TABLE eventos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pedidos_evento ENABLE ROW LEVEL SECURITY;
@@ -287,7 +301,18 @@ DROP POLICY IF EXISTS "Inscricoes_Insert_Auth" ON inscricoes;
 DROP POLICY IF EXISTS "Inscricoes_Manage_Coordinator" ON inscricoes;
 
 CREATE POLICY "Inscricoes_Select_Owner" ON inscricoes FOR SELECT TO authenticated USING (auth.uid() = atleta_id);
-CREATE POLICY "Inscricoes_Insert_Auth" ON inscricoes FOR INSERT TO authenticated WITH CHECK (auth.uid() = atleta_id);
+
+CREATE POLICY "Inscricoes_Insert_Auth" ON inscricoes 
+FOR INSERT 
+TO authenticated 
+WITH CHECK (
+  auth.uid() = atleta_id AND
+  EXISTS (
+    SELECT 1 FROM eventos 
+    WHERE eventos.id = evento_id AND eventos.status = 'aberto'
+  )
+);
+
 CREATE POLICY "Inscricoes_Manage_Coordinator" ON inscricoes FOR ALL TO authenticated USING (
   EXISTS (SELECT 1 FROM eventos WHERE eventos.id = inscricoes.evento_id AND eventos.coordenador_id = auth.uid())
 );

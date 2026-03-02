@@ -49,20 +49,34 @@ export default function ChampionshipModule() {
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedEvent) return;
+    console.log('Iniciando processo de inscrição...');
+    
+    if (!selectedEvent) {
+      console.error('Nenhum evento selecionado');
+      return;
+    }
 
     setIsRegistering(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Usuário não autenticado');
+      if (!session) {
+        console.error('Sessão não encontrada');
+        throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
+      }
+
+      console.log('Usuário autenticado:', session.user.id);
 
       const formData = new FormData(e.currentTarget);
       const catId = formData.get('categoria_id') as string;
       const category = categories.find(c => c.id === catId);
 
+      if (!catId) {
+        throw new Error('Por favor, selecione uma categoria.');
+      }
+
       const registrationData = {
         evento_id: selectedEvent.id,
-        atleta_id: session.user.id,
+        // atleta_id será preenchido pelo banco via trigger/default
         categoria_id: catId,
         nome_atleta: formData.get('nome_atleta') as string,
         equipe: formData.get('equipe') as string,
@@ -72,18 +86,26 @@ export default function ChampionshipModule() {
         status_operacional: 'inscrito'
       };
 
-      const { error } = await supabase.from('inscricoes').insert(registrationData);
+      console.log('Enviando dados de inscrição:', registrationData);
+
+      const { data, error } = await supabase.from('inscricoes').insert(registrationData).select();
       
       if (error) {
+        console.error('Erro no Supabase INSERT:', error);
         if (error.code === '23505') {
           throw new Error('Você já está inscrito nesta categoria para este evento.');
+        }
+        if (error.message.includes('row-level security policy')) {
+          throw new Error('Erro de permissão: Verifique se o evento ainda está aberto para inscrições.');
         }
         throw error;
       }
 
+      console.log('Inscrição realizada com sucesso:', data);
       alert('Inscrição realizada com sucesso!');
       setShowRegistration(false);
     } catch (err: any) {
+      console.error('Erro capturado no handleRegister:', err);
       alert(err.message);
     } finally {
       setIsRegistering(false);
