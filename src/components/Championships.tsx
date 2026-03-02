@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Trophy, Users, Calendar, MapPin, ChevronRight, Plus, Loader2, X, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../services/supabase';
+import { useRouter } from '../hooks/useRouter';
 import { Evento, CategoriaEvento } from '../types';
 
 export default function ChampionshipModule() {
   const [championships, setChampionships] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEvent, setSelectedEvent] = useState<Evento | null>(null);
-  const [categories, setCategories] = useState<CategoriaEvento[]>([]);
-  const [showRegistration, setShowRegistration] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
+  const router = useRouter();
 
   const fetchChampionships = async () => {
     setLoading(true);
@@ -30,87 +28,9 @@ export default function ChampionshipModule() {
     }
   };
 
-  const fetchCategories = async (eventoId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('categorias_evento')
-        .select('*')
-        .eq('evento_id', eventoId);
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (err) {
-      console.error('Erro ao buscar categorias:', err);
-    }
-  };
-
   useEffect(() => {
     fetchChampionships();
   }, []);
-
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log('Iniciando processo de inscrição...');
-    
-    if (!selectedEvent) {
-      console.error('Nenhum evento selecionado');
-      return;
-    }
-
-    setIsRegistering(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.error('Sessão não encontrada');
-        throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
-      }
-
-      console.log('Usuário autenticado:', session.user.id);
-
-      const formData = new FormData(e.currentTarget);
-      const catId = formData.get('categoria_id') as string;
-      const category = categories.find(c => c.id === catId);
-
-      if (!catId) {
-        throw new Error('Por favor, selecione uma categoria.');
-      }
-
-      const registrationData = {
-        evento_id: selectedEvent.id,
-        // atleta_id será preenchido pelo banco via trigger/default
-        categoria_id: catId,
-        nome_atleta: formData.get('nome_atleta') as string,
-        equipe: formData.get('equipe') as string,
-        faixa: category?.faixa || 'Branca',
-        peso_atual: Number(formData.get('peso_atual')),
-        status_pagamento: 'pendente',
-        status_operacional: 'inscrito'
-      };
-
-      console.log('Enviando dados de inscrição:', registrationData);
-
-      const { data, error } = await supabase.from('inscricoes').insert(registrationData).select();
-      
-      if (error) {
-        console.error('Erro no Supabase INSERT:', error);
-        if (error.code === '23505') {
-          throw new Error('Você já está inscrito nesta categoria para este evento.');
-        }
-        if (error.message.includes('row-level security policy')) {
-          throw new Error('Erro de permissão: Verifique se o evento ainda está aberto para inscrições.');
-        }
-        throw error;
-      }
-
-      console.log('Inscrição realizada com sucesso:', data);
-      alert('Inscrição realizada com sucesso!');
-      setShowRegistration(false);
-    } catch (err: any) {
-      console.error('Erro capturado no handleRegister:', err);
-      alert(err.message);
-    } finally {
-      setIsRegistering(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -161,9 +81,8 @@ export default function ChampionshipModule() {
                 <div className="flex items-center gap-4">
                   <button 
                     onClick={() => {
-                      setSelectedEvent(event);
-                      fetchCategories(event.id);
-                      setShowRegistration(true);
+                      console.log(`[Championships] Navegando para inscrição do evento: ${event.id}`);
+                      router.push(`/eventos/${event.id}/inscricao`);
                     }}
                     className="btn-primary py-2 px-6 text-xs font-black"
                   >
@@ -179,74 +98,6 @@ export default function ChampionshipModule() {
           </div>
         )}
       </div>
-
-      {/* Registration Modal */}
-      <AnimatePresence>
-        {showRegistration && selectedEvent && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[var(--bg-card)] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="p-6 border-b border-[var(--border-ui)] flex justify-between items-center bg-bjj-blue/5">
-                <div>
-                  <h3 className="text-xl font-black font-display text-[var(--text-main)]">Inscrição no Evento</h3>
-                  <p className="text-xs text-bjj-blue font-bold uppercase">{selectedEvent.nome}</p>
-                </div>
-                <button onClick={() => setShowRegistration(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)]">
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <form onSubmit={handleRegister} className="p-6 space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Nome Completo</label>
-                  <input required name="nome_atleta" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" placeholder="Seu nome oficial de competição" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Equipe</label>
-                    <input required name="equipe" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" placeholder="Sua academia" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Peso Atual (kg)</label>
-                    <input required type="number" step="0.1" name="peso_atual" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]" placeholder="Ex: 82.5" />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Selecione sua Categoria</label>
-                  <select required name="categoria_id" className="w-full bg-[var(--bg-app)] border border-[var(--border-ui)] rounded-xl py-3 px-4 text-sm text-[var(--text-main)]">
-                    <option value="">Escolha uma categoria...</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.nome} ({cat.faixa} | {cat.sexo} | {cat.peso_max ? `Até ${cat.peso_max}kg` : 'Absoluto'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
-                  <p className="text-[10px] text-amber-500 font-bold uppercase mb-1">Aviso Importante</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">Ao se inscrever, você confirma que está apto fisicamente para competir e concorda com as regras do evento.</p>
-                </div>
-
-                <button 
-                  disabled={isRegistering}
-                  type="submit" 
-                  className="w-full btn-primary py-4 font-black mt-4 flex items-center justify-center gap-2"
-                >
-                  {isRegistering ? <Loader2 className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
-                  {isRegistering ? 'Processando...' : 'Confirmar Inscrição'}
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

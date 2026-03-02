@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getAutomaticCategorization } from '../services/categorization';
 import { AthleteProfile, Evento, UserProfile, Inscricao } from '../types';
 import { supabase } from '../services/supabase';
+import { useRouter } from '../hooks/useRouter';
 import AthleteProfileForm from './AthleteProfileForm';
 
 export default function AthleteDashboard({ onPhotoUpdate }: { onPhotoUpdate?: () => void }) {
@@ -25,6 +26,8 @@ export default function AthleteDashboard({ onPhotoUpdate }: { onPhotoUpdate?: ()
     weightCategory: '',
     fullCategory: ''
   });
+
+  const router = useRouter();
 
   const fetchData = async () => {
     setLoading(true);
@@ -319,6 +322,10 @@ export default function AthleteDashboard({ onPhotoUpdate }: { onPhotoUpdate?: ()
                   date={new Date(champ.data).toLocaleDateString('pt-BR')} 
                   location={champ.local}
                   status={champ.status === 'aberto' ? 'Inscrições Abertas' : 'Encerrado'}
+                  onRegister={() => {
+                    console.log(`[Dashboard] Clicou em inscrever no evento: ${champ.id}`);
+                    router.push(`/eventos/${champ.id}/inscricao`);
+                  }}
                 />
               ))
             ) : (
@@ -386,7 +393,7 @@ export default function AthleteDashboard({ onPhotoUpdate }: { onPhotoUpdate?: ()
   );
 }
 
-function ChampionshipCard({ name, date, location, status }: any) {
+function ChampionshipCard({ name, date, location, status, onRegister }: any) {
   return (
     <motion.div 
       whileHover={{ y: -4 }}
@@ -408,7 +415,15 @@ function ChampionshipCard({ name, date, location, status }: any) {
         <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-full tracking-widest">
           {status}
         </span>
-        <button className="btn-primary py-2 px-8 text-sm">Inscrever-se</button>
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            onRegister?.();
+          }}
+          className="btn-primary py-2 px-8 text-sm"
+        >
+          Inscrever-se
+        </button>
       </div>
     </motion.div>
   );
