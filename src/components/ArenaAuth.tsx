@@ -25,15 +25,25 @@ export const ArenaAuth: React.FC = () => {
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
         if (user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              username: username.toLowerCase(),
-              full_name: fullName,
-              role: 'athlete'
-            });
-          if (profileError) throw profileError;
+          try {
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .insert({
+                id: user.id,
+                username: username.toLowerCase(),
+                full_name: fullName,
+                role: 'athlete',
+                perfil_publico: true,
+                permitir_seguidores: true
+              });
+            if (profileError) {
+              console.error('Error creating profile during signup:', profileError);
+              // We don't throw here to allow the user to at least be signed up
+              // The ArenaProfileView will try to auto-create it later if missing
+            }
+          } catch (pErr) {
+            console.error('Exception creating profile during signup:', pErr);
+          }
         }
       }
     } catch (err: any) {

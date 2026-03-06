@@ -19,16 +19,36 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
   const [saving, setSaving] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     setIsEditing(forceEdit || false);
     fetchProfileData();
   }, [userId, forceEdit]);
 
   const fetchProfileData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Get current session user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        // If not authenticated and no userId provided, we can't show a profile
+        if (!userId) {
+          setLoading(false);
+          return;
+        }
+      }
+
       const targetId = userId || user?.id;
-      if (!targetId) return;
+      
+      if (!targetId) {
+        console.warn('No targetId found for profile view');
+        setLoading(false);
+        return;
+      }
 
       setIsOwnProfile(user?.id === targetId);
 
@@ -41,6 +61,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       
       // Auto-create profile if it doesn't exist and it's the own profile
       if (profileError && profileError.code === 'PGRST116' && user?.id === targetId) {
+        console.log('Profile not found, creating one for user:', targetId);
         const baseUsername = user.email?.split('@')[0] || `user_${targetId.slice(0, 5)}`;
         const newProfile = {
           id: targetId,
@@ -50,6 +71,8 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
           arena_score: 0,
           wins: 0,
           losses: 0,
+          perfil_publico: true,
+          permitir_seguidores: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -60,9 +83,15 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
           .select()
           .single();
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('Error creating profile:', createError);
+          setError(`Erro ao criar perfil: ${createError.message}`);
+          throw createError;
+        }
         profileData = createdProfile;
       } else if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        setError(`Erro ao buscar perfil: ${profileError.message}`);
         throw profileError;
       }
 
@@ -137,7 +166,37 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
   };
 
   if (loading) return <div className="flex justify-center py-24"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary)]" /></div>;
-  if (!profile) return <div className="text-center py-24 text-[var(--text-muted)]">Perfil não encontrado</div>;
+  
+  if (!profile) {
+    return (
+      <div className="text-center py-24 space-y-6">
+        <div className="flex justify-center">
+          <div className="w-20 h-20 bg-[var(--primary)]/10 rounded-full flex items-center justify-center text-[var(--primary)]">
+            <User size={40} />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black uppercase italic text-[var(--text-main)]">Perfil não encontrado</h2>
+          <p className="text-[var(--text-muted)] text-sm max-w-xs mx-auto">
+            {error || 'Não conseguimos localizar os dados do seu perfil de atleta.'}
+          </p>
+        </div>
+        <div className="flex flex-col items-center space-y-4">
+          <button 
+            onClick={() => fetchProfileData()}
+            className="px-8 py-3 bg-[var(--primary)] text-white rounded-xl font-black uppercase tracking-widest text-xs hover:bg-[var(--primary-highlight)] transition-all"
+          >
+            Tentar Novamente
+          </button>
+          {isOwnProfile && (
+            <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">
+              Verifique se sua conta foi criada corretamente.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const winRate = profile.wins + profile.losses > 0 
     ? Math.round((profile.wins / (profile.wins + profile.losses)) * 100) 
