@@ -40,13 +40,13 @@ export const ArenaSearch: React.FC = () => {
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       {/* Search Bar */}
       <form onSubmit={handleSearch} className="relative">
-        <SearchIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500" size={20} />
+        <SearchIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar atletas, academias ou modalidades..."
-          className="w-full bg-zinc-900 border border-white/10 rounded-full py-4 pl-16 pr-6 text-zinc-100 focus:border-emerald-500 outline-none transition-all shadow-2xl"
+          className="w-full bg-[var(--surface)] border border-[var(--border-ui)] rounded-full py-4 pl-16 pr-6 text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all shadow-2xl transition-colors duration-300"
         />
       </form>
 
@@ -54,27 +54,27 @@ export const ArenaSearch: React.FC = () => {
       <div className="space-y-12">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary)]" />
           </div>
         ) : (
           <>
             {/* Athletes */}
             {results.athletes.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 px-4">Atletas</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] px-4">Atletas</h3>
                 <div className="grid gap-4">
                   {results.athletes.map((athlete) => (
-                    <div key={athlete.id} className="bg-zinc-900/30 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
+                    <div key={athlete.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex items-center justify-between hover:bg-[var(--primary)]/5 transition-colors cursor-pointer group transition-colors duration-300">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-full bg-zinc-800 overflow-hidden">
+                        <div className="w-12 h-12 rounded-full bg-[var(--bg)] overflow-hidden">
                           {athlete.avatar_url && <img src={athlete.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
                         </div>
                         <div>
-                          <h4 className="font-bold text-sm text-zinc-100">{athlete.full_name}</h4>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{athlete.modality} • {athlete.city}, {athlete.state}</p>
+                          <h4 className="font-bold text-sm text-[var(--text-main)]">{athlete.full_name}</h4>
+                          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">{athlete.modality} • {athlete.city}, {athlete.state}</p>
                         </div>
                       </div>
-                      <ChevronRight size={18} className="text-zinc-700 group-hover:text-emerald-500 transition-colors" />
+                      <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors" />
                     </div>
                   ))}
                 </div>
@@ -84,20 +84,20 @@ export const ArenaSearch: React.FC = () => {
             {/* Gyms */}
             {results.gyms.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-500 px-4">Academias</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] px-4">Academias</h3>
                 <div className="grid gap-4">
                   {results.gyms.map((gym) => (
-                    <div key={gym.id} className="bg-zinc-900/30 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group">
+                    <div key={gym.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex items-center justify-between hover:bg-[var(--primary)]/5 transition-colors cursor-pointer group transition-colors duration-300">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-xl bg-zinc-800 overflow-hidden flex items-center justify-center">
-                          {gym.logo_url ? <img src={gym.logo_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <Dumbbell size={24} className="text-zinc-600" />}
+                        <div className="w-12 h-12 rounded-xl bg-[var(--bg)] overflow-hidden flex items-center justify-center">
+                          {gym.logo_url ? <img src={gym.logo_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <Dumbbell size={24} className="text-[var(--text-muted)]" />}
                         </div>
                         <div>
-                          <h4 className="font-bold text-sm text-zinc-100">{gym.name}</h4>
-                          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{gym.city}, {gym.state}</p>
+                          <h4 className="font-bold text-sm text-[var(--text-main)]">{gym.name}</h4>
+                          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">{gym.city}, {gym.state}</p>
                         </div>
                       </div>
-                      <ChevronRight size={18} className="text-zinc-700 group-hover:text-emerald-500 transition-colors" />
+                      <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors" />
                     </div>
                   ))}
                 </div>
@@ -106,8 +106,8 @@ export const ArenaSearch: React.FC = () => {
 
             {query && results.athletes.length === 0 && results.gyms.length === 0 && !loading && (
               <div className="text-center py-12 space-y-2">
-                <p className="text-zinc-500 font-bold">Nenhum resultado encontrado para "{query}"</p>
-                <p className="text-[10px] text-zinc-600 uppercase tracking-widest">Tente buscar por nome, cidade ou modalidade</p>
+                <p className="text-[var(--text-muted)] font-bold">Nenhum resultado encontrado para "{query}"</p>
+                <p className="text-[10px] text-[var(--text-muted)]/60 uppercase tracking-widest">Tente buscar por nome, cidade ou modalidade</p>
               </div>
             )}
           </>

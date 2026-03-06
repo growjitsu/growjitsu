@@ -67,8 +67,8 @@ export default function App() {
 
   if (isInitializing) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-black">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="h-screen w-full flex items-center justify-center bg-[var(--bg)]">
+        <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -83,13 +83,13 @@ export default function App() {
       case 'rankings': return <ArenaRankings />;
       case 'search': return <ArenaSearch />;
       case 'profile': return <ArenaProfileView />;
-      case 'gyms': return <div className="flex items-center justify-center h-screen text-zinc-500 uppercase font-black tracking-widest">Módulo de Academias em Breve</div>;
+      case 'gyms': return <div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>;
       default: return <ArenaFeed />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20 md:pb-0 md:pl-20">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text-main)] pb-20 md:pb-0 md:pl-20 transition-colors duration-300">
       <ArenaNavbar activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <main className="max-w-7xl mx-auto">
@@ -107,18 +107,18 @@ export default function App() {
       </main>
 
       {/* Header (Desktop Only) */}
-      <header className="hidden md:flex fixed top-0 right-0 left-20 h-16 bg-black/50 backdrop-blur-xl border-b border-white/5 items-center justify-between px-8 z-40">
+      <header className="hidden md:flex fixed top-0 right-0 left-20 h-16 bg-[var(--bg)]/50 backdrop-blur-xl border-b border-[var(--border-ui)] items-center justify-between px-8 z-40 transition-colors duration-300">
         <div className="flex items-center space-x-2">
-          <span className="text-xs font-black uppercase tracking-widest text-zinc-500">Arena</span>
-          <span className="text-xs font-black uppercase tracking-widest text-emerald-500">{activeTab}</span>
+          <span className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Arena</span>
+          <span className="text-xs font-black uppercase tracking-widest text-[var(--primary)]">{activeTab}</span>
         </div>
         
         <div className="flex items-center space-x-4">
           <div className="text-right">
-            <p className="text-xs font-bold text-white">{profile?.full_name}</p>
-            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Score: {Math.round(profile?.arena_score || 0)}</p>
+            <p className="text-xs font-bold text-[var(--text-main)]">{profile?.full_name}</p>
+            <p className="text-[10px] font-black text-[var(--primary)] uppercase tracking-widest">Score: {Math.round(profile?.arena_score || 0)}</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 overflow-hidden">
+          <div className="w-10 h-10 rounded-full bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden">
             {profile?.avatar_url && <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
           </div>
         </div>
