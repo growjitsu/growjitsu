@@ -61,14 +61,17 @@ export const ArenaAuth: React.FC = () => {
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 bg-[var(--primary)] rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_50px_rgba(37,99,235,0.3)]"
+            className="w-24 h-24 bg-gradient-to-br from-[var(--primary)] to-blue-700 rounded-[2rem] mx-auto flex items-center justify-center shadow-[0_20px_50px_rgba(37,99,235,0.3)] border-4 border-white/10"
           >
-            <Trophy size={40} className="text-white" />
+            <Trophy size={48} className="text-white" />
           </motion.div>
-          <h1 className="text-4xl font-black uppercase tracking-tighter text-[var(--text-main)] italic">
-            Arena <span className="text-[var(--primary)]">Comp</span>
-          </h1>
-          <p className="text-[var(--text-muted)] text-xs uppercase tracking-[0.3em] font-bold">A maior rede social esportiva do Brasil</p>
+          <div className="space-y-1">
+            <h1 className="text-5xl font-black uppercase tracking-tighter text-[var(--text-main)] italic leading-none">
+              Arena <span className="text-[var(--primary)]">Comp</span>
+            </h1>
+            <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-[0.4em] font-black">Official Platform</p>
+          </div>
+          <p className="text-[var(--text-muted)] text-xs font-medium max-w-[280px] mx-auto leading-relaxed">A maior rede social de atletas de esportes de combate do Brasil</p>
         </div>
 
         {/* Form */}

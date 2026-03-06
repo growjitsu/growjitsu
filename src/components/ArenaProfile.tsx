@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaProfile, ArenaResult, ArenaPost } from '../types';
+import { countries, modalities } from '../utils/data';
 
 export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }> = ({ userId, forceEdit }) => {
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
@@ -19,6 +20,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
   const [editData, setEditData] = useState<Partial<ArenaProfile>>({});
   const [saving, setSaving] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -139,23 +141,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: editData.full_name,
-          nickname: editData.nickname,
-          bio: editData.bio,
-          city: editData.city,
-          state: editData.state,
-          country: editData.country,
-          modality: editData.modality,
-          category: editData.category,
-          weight: editData.weight,
-          height: editData.height,
-          graduation: editData.graduation,
-          gym_name: editData.gym_name,
-          professor: editData.professor,
-          instagram_url: editData.instagram_url,
-          youtube_url: editData.youtube_url,
-          tiktok_url: editData.tiktok_url,
-          titles: editData.titles,
+          ...editData,
           updated_at: new Date().toISOString()
         })
         .eq('id', profile.id);
@@ -168,6 +154,49 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       alert('Erro ao atualizar perfil. Verifique se todas as colunas existem no banco de dados.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validation
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Apenas JPG, PNG e WEBP são permitidos.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('O tamanho máximo é 5MB.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update({ profile_photo: base64String })
+          .eq('id', profile?.id);
+
+        if (error) throw error;
+        
+        if (profile) {
+          setProfile({ ...profile, profile_photo: base64String });
+          setEditData({ ...editData, profile_photo: base64String });
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Erro ao fazer upload da foto.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -247,6 +276,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     state CHAR(2),
     country TEXT,
     avatar_url TEXT,
+    profile_photo TEXT,
+    team TEXT,
     bio TEXT,
     instagram_url TEXT,
     youtube_url TEXT,
@@ -377,17 +408,18 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
         
         <div className="absolute -bottom-12 left-8 flex items-end space-x-6">
           <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[var(--surface)] border-4 border-[var(--bg)] overflow-hidden shadow-2xl transition-colors duration-300 relative group">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            {profile.profile_photo || profile.avatar_url ? (
+              <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)] bg-[var(--primary)]/10">
                 <User size={48} />
               </div>
             )}
             {isEditing && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
-                <p className="text-[10px] font-black uppercase text-white">Alterar Foto</p>
-              </div>
+              <label className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity">
+                <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoUpload} disabled={uploading} />
+                <p className="text-[10px] font-black uppercase text-white">{uploading ? 'Enviando...' : 'Alterar Foto'}</p>
+              </label>
             )}
           </div>
           <div className="pb-4">
@@ -483,20 +515,29 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Cidade</label>
-                    <input 
-                      value={editData.city} 
-                      onChange={e => setEditData({...editData, city: e.target.value})}
+                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">País</label>
+                    <select 
+                      value={editData.country || ''} 
+                      onChange={e => setEditData({...editData, country: e.target.value, state: ''})}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
-                    />
+                    >
+                      <option value="">Selecionar País</option>
+                      {countries.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    </select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">País</label>
-                    <input 
-                      value={editData.country} 
-                      onChange={e => setEditData({...editData, country: e.target.value})}
-                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
-                    />
+                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Estado</label>
+                    <select 
+                      value={editData.state || ''} 
+                      onChange={e => setEditData({...editData, state: e.target.value})}
+                      disabled={!editData.country}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)] disabled:opacity-50"
+                    >
+                      <option value="">Selecionar Estado</option>
+                      {countries.find(c => c.name === editData.country)?.states.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>
@@ -506,7 +547,7 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
                 <div className="space-y-3 pt-4 border-t border-[var(--border-ui)]">
                   <div className="flex items-center space-x-3 text-[var(--text-muted)]">
                     <MapPin size={14} />
-                    <span className="text-xs font-bold">{profile.city}{profile.state ? `, ${profile.state}` : ''}{profile.country ? ` • ${profile.country}` : ''}</span>
+                    <span className="text-xs font-bold">{profile.state ? `${profile.state}` : ''}{profile.country ? ` • ${profile.country}` : ''}</span>
                   </div>
                   <div className="flex items-center space-x-3 text-[var(--text-muted)]">
                     <Calendar size={14} />
@@ -581,8 +622,43 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
             <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Informações Esportivas</h3>
             
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2 text-[var(--text-muted)]">
+                  <Trophy size={12} />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Modalidade</span>
+                </div>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <select 
+                      value={modalities.includes(editData.modality || '') ? editData.modality : 'Outros'} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        if (val === 'Outros') {
+                          setEditData({...editData, modality: ''});
+                        } else {
+                          setEditData({...editData, modality: val});
+                        }
+                      }}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                    >
+                      {modalities.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                    {(!modalities.includes(editData.modality || '') || editData.modality === 'Outros') && (
+                      <input 
+                        value={editData.modality === 'Outros' ? '' : editData.modality} 
+                        onChange={e => setEditData({...editData, modality: e.target.value})}
+                        placeholder="Digite sua modalidade"
+                        className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm font-bold text-[var(--text-main)]">{profile.modality || '-'}</p>
+                )}
+              </div>
+
               {[
-                { label: 'Modalidade', value: profile.modality, icon: Trophy, key: 'modality' },
+                { label: 'Equipe / Team', value: profile.team, icon: Award, key: 'team' },
                 { label: 'Categoria', value: profile.category, icon: Target, key: 'category' },
                 { label: 'Peso', value: profile.weight ? `${profile.weight}kg` : '-', icon: Scale, key: 'weight' },
                 { label: 'Altura', value: profile.height ? `${profile.height}m` : '-', icon: Ruler, key: 'height' },

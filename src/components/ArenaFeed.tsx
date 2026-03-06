@@ -105,8 +105,8 @@ export const ArenaFeed: React.FC = () => {
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-[var(--bg)] overflow-hidden">
-                    {post.author?.avatar_url && (
-                      <img src={post.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {(post.author?.profile_photo || post.author?.avatar_url) && (
+                      <img src={post.author.profile_photo || post.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     )}
                   </div>
                   <div>

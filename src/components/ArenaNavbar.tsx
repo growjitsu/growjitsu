@@ -23,7 +23,7 @@ export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTa
     <nav className="fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border-ui)] z-50 md:top-0 md:bottom-auto md:h-screen md:w-20 md:flex-col md:border-r md:border-t-0 transition-colors duration-300">
       <div className="flex justify-around items-center h-16 md:flex-col md:h-full md:py-8">
         <div className="hidden md:block mb-8">
-          <div className="w-10 h-10 bg-[var(--primary)] rounded-lg flex items-center justify-center font-black text-white shadow-lg shadow-blue-500/20">A</div>
+          <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-700 rounded-xl flex items-center justify-center font-black text-white shadow-lg shadow-blue-500/20 border border-white/10 italic">A</div>
         </div>
         
         {tabs.map((tab) => (

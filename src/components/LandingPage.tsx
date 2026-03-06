@@ -93,10 +93,10 @@ export default function LandingPage({ onLogin }: { onLogin: (userType?: string) 
       <header className="fixed top-0 left-0 right-0 h-20 border-b border-[var(--border-ui)] bg-[var(--bg-app)]/80 backdrop-blur-xl z-[100]">
         <div className="max-w-7xl mx-auto h-full px-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-bjj-blue rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Trophy className="text-white" size={24} />
+            <div className="w-10 h-10 bg-gradient-to-br from-bjj-blue to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 border border-white/10">
+              <Trophy className="text-white" size={20} />
             </div>
-            <span className="text-2xl font-black font-display tracking-tighter">ARENA<span className="text-bjj-blue">COMP</span></span>
+            <span className="text-2xl font-black font-display tracking-tighter italic">ARENA<span className="text-bjj-blue">COMP</span></span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -303,13 +303,13 @@ export default function LandingPage({ onLogin }: { onLogin: (userType?: string) 
         <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
           <div className="col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-bjj-blue rounded-lg flex items-center justify-center">
-                <Trophy className="text-white" size={18} />
+              <div className="w-8 h-8 bg-gradient-to-br from-bjj-blue to-blue-700 rounded-lg flex items-center justify-center border border-white/10">
+                <Trophy className="text-white" size={16} />
               </div>
-              <span className="text-xl font-black font-display tracking-tighter">ARENA<span className="text-bjj-blue">COMP</span></span>
+              <span className="text-xl font-black font-display tracking-tighter italic">ARENA<span className="text-bjj-blue">COMP</span></span>
             </div>
             <p className="text-[var(--text-muted)] max-w-sm leading-relaxed">
-              A plataforma definitiva para a evolução do Jiu-Jitsu competitivo. Tecnologia a serviço da tradição.
+              A maior rede social de atletas de esportes de combate do Brasil. Tecnologia a serviço da tradição.
             </p>
           </div>
           <div>

@@ -21,6 +21,8 @@ export interface ArenaProfile {
   state?: string;
   country?: string;
   avatar_url?: string;
+  profile_photo?: string;
+  team?: string;
   bio?: string;
   instagram_url?: string;
   youtube_url?: string;

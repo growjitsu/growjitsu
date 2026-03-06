@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search as SearchIcon, User, Dumbbell, MapPin, ChevronRight } from 'lucide-react';
+import { Search as SearchIcon, User, Dumbbell, MapPin, ChevronRight, Globe } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { ArenaProfile, ArenaGym } from '../types';
 
@@ -14,12 +15,14 @@ export const ArenaSearch: React.FC = () => {
 
     setLoading(true);
     try {
+      const cleanQuery = query.startsWith('@') ? query.slice(1) : query;
+      
       // Search Athletes
       const { data: athletes } = await supabase
         .from('profiles')
         .select('*')
-        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%,modality.ilike.%${query}%`)
-        .limit(10);
+        .or(`username.ilike.%${cleanQuery}%,full_name.ilike.%${cleanQuery}%,modality.ilike.%${cleanQuery}%`)
+        .limit(20);
 
       // Search Gyms
       const { data: gyms } = await supabase
@@ -64,17 +67,37 @@ export const ArenaSearch: React.FC = () => {
                 <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] px-4">Atletas</h3>
                 <div className="grid gap-4">
                   {results.athletes.map((athlete) => (
-                    <div key={athlete.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex items-center justify-between hover:bg-[var(--primary)]/5 transition-colors cursor-pointer group transition-colors duration-300">
+                    <div key={athlete.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex items-center justify-between hover:bg-[var(--primary)]/5 transition-all group transition-colors duration-300">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-full bg-[var(--bg)] overflow-hidden">
-                          {athlete.avatar_url && <img src={athlete.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
+                        <div className="w-16 h-16 rounded-2xl bg-[var(--bg)] overflow-hidden border border-[var(--border-ui)]">
+                          {(athlete.profile_photo || athlete.avatar_url) ? (
+                            <img src={athlete.profile_photo || athlete.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
+                              <User size={24} />
+                            </div>
+                          )}
                         </div>
                         <div>
-                          <h4 className="font-bold text-sm text-[var(--text-main)]">{athlete.full_name}</h4>
-                          <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">{athlete.modality} • {athlete.city}, {athlete.state}</p>
+                          <h4 className="font-black text-base text-[var(--text-main)] uppercase tracking-tighter italic">{athlete.full_name}</h4>
+                          <p className="text-[var(--primary)] font-bold text-xs">@{athlete.username}</p>
+                          <div className="flex items-center space-x-3 mt-1">
+                            <span className="text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest">{athlete.modality}</span>
+                            {athlete.country && (
+                              <div className="flex items-center space-x-1 text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest">
+                                <Globe size={10} />
+                                <span>{athlete.country}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <ChevronRight size={18} className="text-[var(--text-muted)] group-hover:text-[var(--primary)] transition-colors" />
+                      <Link 
+                        to={`/profile/${athlete.id}`}
+                        className="px-4 py-2 bg-[var(--bg)] border border-[var(--border-ui)] rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] hover:bg-[var(--primary)] hover:text-white hover:border-[var(--primary)] transition-all"
+                      >
+                        Ver Perfil
+                      </Link>
                     </div>
                   ))}
                 </div>

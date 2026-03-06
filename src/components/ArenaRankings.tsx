@@ -126,8 +126,8 @@ export const ArenaRankings: React.FC = () => {
                 </div>
                 <div className="col-span-6 md:col-span-7 flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-full bg-[var(--bg)] overflow-hidden flex-shrink-0">
-                    {athlete.avatar_url && (
-                      <img src={athlete.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {(athlete.profile_photo || athlete.avatar_url) && (
+                      <img src={athlete.profile_photo || athlete.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     )}
                   </div>
                   <div>

@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     state CHAR(2),
     country TEXT,
     avatar_url TEXT,
+    profile_photo TEXT,
+    team TEXT,
     bio TEXT,
     instagram_url TEXT,
     youtube_url TEXT,
