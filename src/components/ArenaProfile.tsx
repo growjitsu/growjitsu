@@ -41,9 +41,10 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       
       // Auto-create profile if it doesn't exist and it's the own profile
       if (profileError && profileError.code === 'PGRST116' && user?.id === targetId) {
+        const baseUsername = user.email?.split('@')[0] || `user_${targetId.slice(0, 5)}`;
         const newProfile = {
           id: targetId,
-          username: user.email?.split('@')[0] || `user_${targetId.slice(0, 5)}`,
+          username: `${baseUsername}_${Math.floor(Math.random() * 1000)}`,
           full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Novo Atleta',
           avatar_url: user.user_metadata?.avatar_url || null,
           arena_score: 0,

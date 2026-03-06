@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     tiktok_url TEXT,
     titles TEXT,
     medals INTEGER DEFAULT 0,
+    perfil_publico BOOLEAN DEFAULT TRUE,
+    permitir_seguidores BOOLEAN DEFAULT TRUE,
     arena_score DECIMAL(12,2) DEFAULT 0,
     wins INTEGER DEFAULT 0,
     losses INTEGER DEFAULT 0,

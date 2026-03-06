@@ -25,8 +25,12 @@ export default function App() {
     setShowProfileMenu(false);
     
     // Update active tab based on pathname
-    const path = location.pathname.split('/')[1];
-    if (path === '') setActiveTab('feed');
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    const path = pathParts[0] || 'feed';
+    const subPath = pathParts[1];
+    
+    if (path === 'feed') setActiveTab('feed');
+    else if (path === 'profile' && subPath === 'edit') setActiveTab('profile/edit');
     else if (['rankings', 'search', 'profile', 'settings', 'gyms'].includes(path)) setActiveTab(path);
   }, [location.pathname]);
 
@@ -181,7 +185,7 @@ export default function App() {
       <Route path="/rankings" element={renderLayout(<ArenaRankings />, 'rankings')} />
       <Route path="/search" element={renderLayout(<ArenaSearch />, 'search')} />
       <Route path="/profile" element={renderLayout(<ArenaProfileView />, 'profile')} />
-      <Route path="/profile/edit" element={renderLayout(<ArenaProfileView forceEdit />, 'profile')} />
+      <Route path="/profile/edit" element={renderLayout(<ArenaProfileView forceEdit />, 'profile/edit')} />
       <Route path="/profile/:userId" element={renderLayout(<ArenaProfileView />, 'profile')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />

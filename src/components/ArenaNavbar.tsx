@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Trophy, Search, User, Dumbbell, Sun, Moon } from 'lucide-react';
+import { Home, Trophy, Search, User, Dumbbell, Sun, Moon, Edit3 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 interface ArenaNavbarProps {
@@ -15,7 +15,8 @@ export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTa
     { id: 'rankings', icon: Trophy, label: 'Rankings' },
     { id: 'search', icon: Search, label: 'Busca' },
     { id: 'gyms', icon: Dumbbell, label: 'Academias' },
-    { id: 'profile', icon: User, label: 'Perfil' },
+    { id: 'profile', icon: User, label: 'Meu Perfil' },
+    { id: 'profile/edit', icon: Edit3, label: 'Editar Perfil' },
   ];
 
   return (
