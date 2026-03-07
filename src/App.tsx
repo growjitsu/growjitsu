@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { ArenaNavbar } from './components/ArenaNavbar';
@@ -9,7 +9,14 @@ import { ArenaSearch } from './components/ArenaSearch';
 import { ArenaProfileView } from './components/ArenaProfile';
 import { ArenaSettings } from './components/ArenaSettings';
 import { ArenaAuth } from './components/ArenaAuth';
+import { ArenaNotifications } from './components/ArenaNotifications';
 import { ArenaProfile } from './types';
+import { Bell } from 'lucide-react';
+
+const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
+  const { userId } = useParams();
+  return <ArenaProfileView userId={userId} forceEdit={forceEdit} />;
+};
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -17,6 +24,7 @@ export default function App() {
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -31,7 +39,7 @@ export default function App() {
     
     if (path === 'feed') setActiveTab('feed');
     else if (path === 'profile' && subPath === 'edit') setActiveTab('profile/edit');
-    else if (['rankings', 'search', 'profile', 'settings', 'gyms'].includes(path)) setActiveTab(path);
+    else if (['rankings', 'search', 'profile', 'settings', 'gyms', 'notifications'].includes(path)) setActiveTab(path);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -76,8 +84,24 @@ export default function App() {
       
       if (error) throw error;
       setProfile(data);
+      fetchUnreadNotifications(userId);
     } catch (err) {
       console.error('Erro ao buscar perfil:', err);
+    }
+  };
+
+  const fetchUnreadNotifications = async (userId: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('read', false);
+      
+      if (error) throw error;
+      setUnreadNotifications(count || 0);
+    } catch (err) {
+      console.error('Erro ao buscar notificações:', err);
     }
   };
 
@@ -94,7 +118,12 @@ export default function App() {
     
     return (
       <div className="min-h-screen bg-[var(--bg)] text-[var(--text-main)] pb-20 md:pb-0 md:pl-20 transition-colors duration-300">
-        <ArenaNavbar activeTab={tabId} setActiveTab={(tab) => navigate(`/${tab === 'feed' ? '' : tab}`)} />
+        <ArenaNavbar 
+          activeTab={tabId} 
+          setActiveTab={(tab) => navigate(`/${tab === 'feed' ? '' : tab}`)} 
+          userProfile={profile}
+          unreadNotifications={unreadNotifications}
+        />
         
         <main className="max-w-7xl mx-auto md:pt-16">
           <AnimatePresence mode="wait">
@@ -118,6 +147,19 @@ export default function App() {
           </div>
           
           <div className="flex items-center space-x-4 relative">
+            {/* Notification Bell */}
+            <button 
+              onClick={() => navigate('/notifications')}
+              className="relative p-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+            >
+              <Bell size={20} />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-[var(--bg)]">
+                  {unreadNotifications}
+                </span>
+              )}
+            </button>
+
             <div className="text-right">
               <p className="text-xs font-bold text-[var(--text-main)]">{profile?.full_name}</p>
               <p className="text-[10px] font-black text-[var(--primary)] uppercase tracking-widest">Score: {Math.round(profile?.arena_score || 0)}</p>
@@ -126,8 +168,8 @@ export default function App() {
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="w-10 h-10 rounded-full bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden hover:border-[var(--primary)] transition-all"
             >
-              {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              {profile?.profile_photo || profile?.avatar_url ? (
+                <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
                   <span className="text-xs font-bold">{profile?.full_name?.charAt(0)}</span>
@@ -181,12 +223,13 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <ArenaAuth />} />
-      <Route path="/" element={renderLayout(<ArenaFeed />, 'feed')} />
+      <Route path="/" element={renderLayout(<ArenaFeed userProfile={profile} />, 'feed')} />
       <Route path="/rankings" element={renderLayout(<ArenaRankings />, 'rankings')} />
       <Route path="/search" element={renderLayout(<ArenaSearch />, 'search')} />
-      <Route path="/profile" element={renderLayout(<ArenaProfileView />, 'profile')} />
-      <Route path="/profile/edit" element={renderLayout(<ArenaProfileView forceEdit />, 'profile/edit')} />
-      <Route path="/profile/:userId" element={renderLayout(<ArenaProfileView />, 'profile')} />
+      <Route path="/profile" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/profile/edit" element={renderLayout(<ProfileWrapper forceEdit />, 'profile/edit')} />
+      <Route path="/profile/:userId" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/notifications" element={renderLayout(<ArenaNotifications />, 'notifications')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -20,6 +20,8 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
   const [editData, setEditData] = useState<Partial<ArenaProfile>>({});
   const [saving, setSaving] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
   const [uploading, setUploading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,11 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       }
 
       setIsOwnProfile(user?.id === targetId);
+
+      if (user && user.id !== targetId) {
+        checkIfFollowing(user.id, targetId);
+      }
+      fetchFollowerCount(targetId);
 
       // Fetch Profile
       let { data: profileData, error: profileError } = await supabase
@@ -406,6 +413,75 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
     );
   }
 
+  const fetchFollowerCount = async (targetId: string) => {
+    try {
+      const { count, error } = await supabase
+        .from('followers')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', targetId);
+      
+      if (error) throw error;
+      setFollowerCount(count || 0);
+    } catch (err) {
+      console.error('Error fetching follower count:', err);
+    }
+  };
+
+  const checkIfFollowing = async (followerId: string, followingId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('followers')
+        .select('*')
+        .eq('follower_id', followerId)
+        .eq('following_id', followingId)
+        .maybeSingle();
+      
+      if (error) throw error;
+      setIsFollowing(!!data);
+    } catch (err) {
+      console.error('Error checking follow status:', err);
+    }
+  };
+
+  const handleFollow = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !profile) return;
+
+      if (isFollowing) {
+        const { error } = await supabase
+          .from('followers')
+          .delete()
+          .eq('follower_id', user.id)
+          .eq('following_id', profile.id);
+        
+        if (error) throw error;
+        setIsFollowing(false);
+        setFollowerCount(prev => prev - 1);
+      } else {
+        const { error } = await supabase
+          .from('followers')
+          .insert({
+            follower_id: user.id,
+            following_id: profile.id
+          });
+        
+        if (error) throw error;
+        setIsFollowing(true);
+        setFollowerCount(prev => prev + 1);
+
+        // Create notification
+        await supabase.from('notifications').insert({
+          user_id: profile.id,
+          actor_id: user.id,
+          type: 'follow'
+        });
+      }
+    } catch (err) {
+      console.error('Error toggling follow:', err);
+    }
+  };
+
   const winRate = profile.wins + profile.losses > 0 
     ? Math.round((profile.wins / (profile.wins + profile.losses)) * 100) 
     : 0;
@@ -414,8 +490,17 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       {/* Profile Header */}
       <div className="relative">
-        <div className="h-48 md:h-64 bg-[var(--surface)] rounded-3xl overflow-hidden border border-[var(--border-ui)] transition-colors duration-300">
-          <img src="https://picsum.photos/seed/sport/1200/400" alt="" className="w-full h-full object-cover opacity-50 grayscale" referrerPolicy="no-referrer" />
+        <div className="h-48 md:h-64 bg-[var(--surface)] rounded-3xl overflow-hidden border border-[var(--border-ui)] transition-colors duration-300 relative">
+          {isEditing ? (
+            <div className="w-full h-full flex items-center justify-center bg-[var(--bg)] overflow-hidden">
+              <span className="text-6xl md:text-9xl font-black text-[var(--text-muted)] opacity-5 select-none tracking-tighter italic">
+                ARENACOMP
+              </span>
+            </div>
+          ) : (
+            <img src="https://picsum.photos/seed/sport/1200/400" alt="" className="w-full h-full object-cover opacity-50 grayscale" referrerPolicy="no-referrer" />
+          )}
+          
           {isOwnProfile && !isEditing && (
             <button 
               onClick={() => setIsEditing(true)}
@@ -463,10 +548,28 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
                 <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic">
                   {profile.full_name} {profile.nickname && <span className="text-[var(--text-muted)] text-lg">({profile.nickname})</span>}
                 </h1>
-                <p className="text-[var(--primary)] font-bold text-xs uppercase tracking-widest">@{profile.username} • {profile.modality}</p>
+                <div className="flex items-center space-x-4">
+                  <p className="text-[var(--primary)] font-bold text-xs uppercase tracking-widest">@{profile.username} • {profile.modality}</p>
+                  <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{followerCount} Seguidores</span>
+                </div>
               </>
             )}
           </div>
+          
+          {!isOwnProfile && !isEditing && (
+            <div className="pb-4">
+              <button
+                onClick={handleFollow}
+                className={`px-8 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  isFollowing 
+                    ? 'bg-[var(--surface)] border border-[var(--border-ui)] text-[var(--text-main)] hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/20' 
+                    : 'bg-[var(--primary)] text-white hover:bg-[var(--primary-highlight)] shadow-lg shadow-[var(--primary)]/20'
+                }`}
+              >
+                {isFollowing ? 'Seguindo' : 'Seguir'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -124,6 +124,26 @@ CREATE TABLE IF NOT EXISTS competition_results (
     UNIQUE(competition_id, athlete_id)
 );
 
+-- 3.9 Followers
+CREATE TABLE IF NOT EXISTS followers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    follower_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    following_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(follower_id, following_id)
+);
+
+-- 3.10 Notifications
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    actor_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    type TEXT NOT NULL, -- 'follow', 'like', 'comment', 'post'
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+    read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 4. Arena Score Algorithm Logic
 
 CREATE OR REPLACE FUNCTION calculate_result_points(p_placement INTEGER, p_level event_level)

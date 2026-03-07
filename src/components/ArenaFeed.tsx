@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaPost, ArenaProfile } from '../types';
 
-export const ArenaFeed: React.FC = () => {
+export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
   const [posts, setPosts] = useState<ArenaPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPostContent, setNewPostContent] = useState('');
@@ -39,19 +39,70 @@ export const ArenaFeed: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
+      const { data: post, error } = await supabase
         .from('posts')
         .insert({
           author_id: user.id,
           content: newPostContent,
           type: 'text'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Notify followers
+      const { data: followers } = await supabase
+        .from('followers')
+        .select('follower_id')
+        .eq('following_id', user.id);
+      
+      if (followers && followers.length > 0) {
+        const notifications = followers.map(f => ({
+          user_id: f.follower_id,
+          actor_id: user.id,
+          type: 'post',
+          post_id: post.id
+        }));
+        await supabase.from('notifications').insert(notifications);
+      }
+
       setNewPostContent('');
       fetchPosts();
     } catch (error) {
       console.error('Error creating post:', error);
+    }
+  };
+
+  const handleLike = async (postId: string, authorId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existingLike } = await supabase
+        .from('likes')
+        .select('*')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingLike) {
+        await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id);
+      } else {
+        await supabase.from('likes').insert({ post_id: postId, user_id: user.id });
+        
+        if (user.id !== authorId) {
+          await supabase.from('notifications').insert({
+            user_id: authorId,
+            actor_id: user.id,
+            type: 'like',
+            post_id: postId
+          });
+        }
+      }
+      fetchPosts();
+    } catch (error) {
+      console.error('Error toggling like:', error);
     }
   };
 
@@ -60,7 +111,15 @@ export const ArenaFeed: React.FC = () => {
       {/* Create Post */}
       <div className="bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl p-4 space-y-4 transition-colors duration-300">
         <div className="flex space-x-4">
-          <div className="w-10 h-10 rounded-full bg-[var(--bg)] flex-shrink-0" />
+          <div className="w-10 h-10 rounded-full bg-[var(--bg)] flex-shrink-0 overflow-hidden border border-[var(--border-ui)]">
+            {userProfile?.profile_photo || userProfile?.avatar_url ? (
+              <img src={userProfile.profile_photo || userProfile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[var(--text-muted)]">
+                <User size={20} />
+              </div>
+            )}
+          </div>
           <textarea
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
@@ -134,7 +193,10 @@ export const ArenaFeed: React.FC = () => {
 
               {/* Post Actions */}
               <div className="px-4 py-3 border-t border-[var(--border-ui)] flex items-center space-x-6">
-                <button className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors">
+                <button 
+                  onClick={() => handleLike(post.id, post.author_id)}
+                  className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                >
                   <Heart size={18} />
                   <span className="text-xs font-bold">{post.likes_count}</span>
                 </button>
