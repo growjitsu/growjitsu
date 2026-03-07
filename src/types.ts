@@ -48,6 +48,7 @@ export interface ArenaPost {
   media_urls?: string[];
   likes_count: number;
   comments_count: number;
+  shares_count?: number;
   created_at: string;
   author?: ArenaProfile;
 }

@@ -9,6 +9,7 @@ import { PostModal } from './PostModal';
 export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
   const [posts, setPosts] = useState<ArenaPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -17,7 +18,6 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
 
   useEffect(() => {
-    // Initial fetch
     fetchPosts();
 
     // Real-time subscription
@@ -35,16 +35,110 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
   const fetchPosts = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch following list first
+      const { data: followingData } = await supabase
+        .from('followers')
+        .select('following_id')
+        .eq('follower_id', user.id);
+      
+      const currentFollowingIds = new Set(followingData?.map(f => f.following_id) || []);
+      setFollowingIds(currentFollowingIds);
+
       const { data, error } = await supabase
         .from('posts')
         .select(`
           *,
           author:profiles(*)
-        `)
-        .order('created_at', { ascending: false });
+        `);
 
       if (error) throw error;
-      setPosts(data || []);
+      
+      const allPosts = data || [];
+      
+      // Calculate scores using currentFollowingIds instead of state
+      const scoredPosts = allPosts.map(post => {
+        let score = 0;
+
+        // 1) Following (+50)
+        if (currentFollowingIds.has(post.author_id)) {
+          score += 50;
+        }
+
+        // 2) Modality (+40)
+        if (userProfile?.modality && post.author?.modality === userProfile.modality) {
+          score += 40;
+        }
+
+        // 3) Engagement
+        score += (post.likes_count || 0) * 2;
+        score += (post.comments_count || 0) * 4;
+        score += (post.shares_count || 0) * 6;
+
+        // 4) Recency
+        const now = new Date();
+        const postDate = new Date(post.created_at);
+        const diffHours = (now.getTime() - postDate.getTime()) / (1000 * 60 * 60);
+
+        if (diffHours <= 1) score += 30;
+        else if (diffHours <= 6) score += 20;
+        else if (diffHours <= 24) score += 10;
+
+        // 5) Geography
+        if (userProfile) {
+          if (post.author?.city === userProfile.city) score += 30;
+          else if (post.author?.state === userProfile.state) score += 20;
+          else if (post.author?.country === userProfile.country) score += 10;
+        }
+
+        // 6) Ranking (Mocked based on arena_score)
+        if (post.author?.arena_score) {
+          if (post.author.arena_score > 1000) score += 50;
+          else if (post.author.arena_score > 500) score += 30;
+          else if (post.author.arena_score > 200) score += 20;
+        }
+
+        // 7) Content Type
+        if (post.type === 'video') score += 15;
+        else if (post.type === 'image') score += 10;
+        else if (post.type === 'text') score += 5;
+
+        return { ...post, score };
+      });
+
+      // Mixing Strategy: 70% following, 20% same modality, 10% popular
+      const followingPosts = scoredPosts.filter(p => currentFollowingIds.has(p.author_id))
+        .sort((a, b) => b.score - a.score);
+      
+      const modalityPosts = scoredPosts.filter(p => 
+        !currentFollowingIds.has(p.author_id) && 
+        userProfile?.modality && 
+        p.author?.modality === userProfile.modality
+      ).sort((a, b) => b.score - a.score);
+
+      const popularPosts = scoredPosts.filter(p => 
+        !currentFollowingIds.has(p.author_id) && 
+        (!userProfile?.modality || p.author?.modality !== userProfile.modality)
+      ).sort((a, b) => b.score - a.score);
+
+      // Determine total count to show (e.g., 50 posts)
+      const targetCount = 50;
+      const followingCount = Math.ceil(targetCount * 0.7);
+      const modalityCount = Math.ceil(targetCount * 0.2);
+      const popularCount = Math.ceil(targetCount * 0.1);
+
+      const selectedPosts = [
+        ...followingPosts.slice(0, followingCount),
+        ...modalityPosts.slice(0, modalityCount),
+        ...popularPosts.slice(0, popularCount)
+      ];
+
+      // Final sort by score
+      selectedPosts.sort((a, b) => b.score - a.score);
+
+      setPosts(selectedPosts);
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
