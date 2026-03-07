@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User, Video, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { ArenaPost, ArenaProfile } from '../types';
+import { ArenaPost, ArenaProfile, PostType } from '../types';
 
 export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
   const [posts, setPosts] = useState<ArenaPost[]>([]);
@@ -48,15 +48,76 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
     }
   };
 
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                reject(new Error('Falha na compressão da imagem'));
+              }
+            },
+            'image/jpeg',
+            0.8
+          );
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Image limit: 1MB
-    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
-      alert('Arquivo muito grande: Imagens devem ter no máximo 1MB');
-      e.target.value = '';
-      return;
+    // Cleanup previous preview
+    if (previewUrl) {
+      window.URL.revokeObjectURL(previewUrl);
+    }
+
+    // Image limit: 1MB (before compression check for initial warning, but we compress anyway)
+    if (file.type.startsWith('image/')) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit for raw upload before compression
+        alert('Arquivo original muito grande. Tente uma imagem menor que 5MB.');
+        e.target.value = '';
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setSelectedFile(file);
     }
 
     // Video limit: 3 minutes
@@ -64,17 +125,24 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       const video = document.createElement('video');
       video.preload = 'metadata';
       video.onloadedmetadata = () => {
-        window.URL.revokeObjectURL(video.src);
         if (video.duration > 180) {
-          alert('Arquivo muito grande: Vídeos devem ter no máximo 3 minutos');
+          alert('Vídeo muito longo: Máximo de 3 minutos permitido.');
           setSelectedFile(null);
+          setPreviewUrl(null);
           e.target.value = '';
+        } else {
+          const url = URL.createObjectURL(file);
+          setPreviewUrl(url);
+          setSelectedFile(file);
         }
+        window.URL.revokeObjectURL(video.src);
+      };
+      video.onerror = () => {
+        alert('Erro ao carregar vídeo. Formato não suportado.');
+        e.target.value = '';
       };
       video.src = URL.createObjectURL(file);
     }
-
-    setSelectedFile(file);
   };
 
   const handleCreatePost = async () => {
@@ -92,19 +160,34 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       let mediaType: PostType = 'text';
 
       if (selectedFile) {
+        let fileToUpload: File | Blob = selectedFile;
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
+        // Compress image if it's an image
+        if (selectedFile.type.startsWith('image/')) {
+          try {
+            fileToUpload = await compressImage(selectedFile);
+          } catch (compressErr) {
+            console.error('Compression error:', compressErr);
+            // Fallback to original if compression fails
+          }
+        }
+
         const { error: uploadError } = await supabase.storage
           .from('posts')
-          .upload(filePath, selectedFile, {
+          .upload(filePath, fileToUpload, {
             cacheControl: '3600',
-            upsert: false
+            upsert: false,
+            contentType: selectedFile.type
           });
 
         if (uploadError) {
           console.error('Upload error:', uploadError);
+          if (uploadError.message.includes('Bucket not found')) {
+            throw new Error('Erro crítico: O sistema de armazenamento (bucket "posts") não foi encontrado. Por favor, contate o administrador.');
+          }
           throw new Error('Erro ao enviar arquivo: ' + uploadError.message);
         }
 
@@ -129,7 +212,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
       if (error) {
         console.error('Database error:', error);
-        throw new Error('Erro ao salvar postagem: ' + error.message);
+        throw new Error('Erro ao salvar postagem no banco de dados: ' + error.message);
       }
 
       // Notify followers
@@ -150,15 +233,15 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         }
       } catch (notifyError) {
         console.error('Error sending notifications:', notifyError);
-        // Don't fail the whole post if notifications fail
       }
 
       setNewPostContent('');
       setSelectedFile(null);
+      setPreviewUrl(null);
       fetchPosts();
     } catch (error: any) {
       console.error('Error creating post:', error);
-      alert(error.message || 'Erro desconhecido ao criar postagem');
+      alert(error.message || 'Erro desconhecido ao criar postagem. Verifique sua conexão.');
     } finally {
       setUploading(false);
     }
@@ -217,6 +300,27 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
             className="w-full bg-transparent border-none focus:ring-0 text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none h-20"
           />
         </div>
+
+        {/* Preview Section */}
+        {previewUrl && selectedFile && (
+          <div className="relative rounded-xl overflow-hidden border border-[var(--border-ui)] bg-black/5 max-h-[300px] flex items-center justify-center">
+            {selectedFile.type.startsWith('image/') ? (
+              <img src={previewUrl} alt="Preview" className="max-h-[300px] w-auto object-contain" />
+            ) : (
+              <video src={previewUrl} controls className="max-h-[300px] w-full" />
+            )}
+            <button 
+              onClick={() => {
+                setSelectedFile(null);
+                setPreviewUrl(null);
+              }}
+              className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-rose-500 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col space-y-4 pt-2 border-t border-[var(--border-ui)]">
           <div className="flex flex-wrap gap-4">
             <label className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer group">
