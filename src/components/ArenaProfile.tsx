@@ -501,9 +501,7 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
       <div className="relative">
         <div className="h-48 md:h-64 bg-[var(--surface)] rounded-3xl overflow-hidden border border-[var(--border-ui)] transition-colors duration-300 relative">
           <div className="w-full h-full flex items-center justify-center bg-[var(--bg)] overflow-hidden">
-            <span className="text-6xl md:text-9xl font-black text-[var(--text-muted)] opacity-5 select-none tracking-tighter italic">
-              ARENACOMP
-            </span>
+            {/* Clean background */}
           </div>
           
           {isOwnProfile && !isEditing && (

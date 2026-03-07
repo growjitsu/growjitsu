@@ -54,14 +54,24 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
     // Image limit: 1MB
     if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
-      alert('Imagens devem ter no máximo 1MB');
+      alert('Arquivo muito grande: Imagens devem ter no máximo 1MB');
+      e.target.value = '';
       return;
     }
 
-    // Video limit: 3 minutes (approximate check by size or metadata if possible)
-    // For now, let's just check extension and size as a proxy or just format
-    if (file.type.startsWith('video/') && !file.type.includes('mp4')) {
-      // alert('Recomendamos o formato MP4 para vídeos');
+    // Video limit: 3 minutes
+    if (file.type.startsWith('video/')) {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        if (video.duration > 180) {
+          alert('Arquivo muito grande: Vídeos devem ter no máximo 3 minutos');
+          setSelectedFile(null);
+          e.target.value = '';
+        }
+      };
+      video.src = URL.createObjectURL(file);
     }
 
     setSelectedFile(file);
@@ -73,10 +83,13 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        alert('Você precisa estar logado para postar');
+        return;
+      }
 
       let mediaUrl = null;
-      let mediaType = 'text';
+      let mediaType: PostType = 'text';
 
       if (selectedFile) {
         const fileExt = selectedFile.name.split('.').pop();
@@ -85,9 +98,15 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
         const { error: uploadError } = await supabase.storage
           .from('posts')
-          .upload(filePath, selectedFile);
+          .upload(filePath, selectedFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error('Erro ao enviar arquivo: ' + uploadError.message);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('posts')
@@ -102,35 +121,44 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         .insert({
           author_id: user.id,
           content: newPostContent,
-          type: mediaType === 'text' ? 'text' : mediaType,
+          type: mediaType,
           media_url: mediaUrl
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Erro ao salvar postagem: ' + error.message);
+      }
 
       // Notify followers
-      const { data: followers } = await supabase
-        .from('followers')
-        .select('follower_id')
-        .eq('following_id', user.id);
-      
-      if (followers && followers.length > 0) {
-        const notifications = followers.map(f => ({
-          user_id: f.follower_id,
-          actor_id: user.id,
-          type: 'post',
-          post_id: post.id
-        }));
-        await supabase.from('notifications').insert(notifications);
+      try {
+        const { data: followers } = await supabase
+          .from('followers')
+          .select('follower_id')
+          .eq('following_id', user.id);
+        
+        if (followers && followers.length > 0) {
+          const notifications = followers.map(f => ({
+            user_id: f.follower_id,
+            actor_id: user.id,
+            type: 'post',
+            post_id: post.id
+          }));
+          await supabase.from('notifications').insert(notifications);
+        }
+      } catch (notifyError) {
+        console.error('Error sending notifications:', notifyError);
+        // Don't fail the whole post if notifications fail
       }
 
       setNewPostContent('');
       setSelectedFile(null);
       fetchPosts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating post:', error);
+      alert(error.message || 'Erro desconhecido ao criar postagem');
     } finally {
       setUploading(false);
     }
