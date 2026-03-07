@@ -189,33 +189,46 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
             className="w-full bg-transparent border-none focus:ring-0 text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none h-20"
           />
         </div>
-        <div className="flex justify-between items-center pt-2 border-t border-[var(--border-ui)]">
-          <div className="flex space-x-4">
-            <label className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">
+        <div className="flex flex-col space-y-4 pt-2 border-t border-[var(--border-ui)]">
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer group">
               <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-              <ImageIcon size={20} />
-            </label>
-            <label className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">
-              <input type="file" className="hidden" accept="video/mp4,video/x-m4v,video/*" onChange={handleFileChange} />
-              <Video size={20} />
-            </label>
-            <button className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
-              <Award size={20} />
-            </button>
-          </div>
-          <div className="flex items-center space-x-4">
-            {selectedFile && (
-              <div className="flex items-center space-x-2 bg-[var(--bg)] px-3 py-1 rounded-full border border-[var(--border-ui)]">
-                <span className="text-[10px] font-bold truncate max-w-[100px]">{selectedFile.name}</span>
-                <button onClick={() => setSelectedFile(null)} className="text-rose-500">
-                  <X size={12} />
-                </button>
+              <div className="p-2 rounded-lg bg-[var(--bg)] group-hover:bg-[var(--primary)]/10">
+                <ImageIcon size={20} />
               </div>
-            )}
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Galeria</span>
+            </label>
+            <label className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer group">
+              <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleFileChange} />
+              <div className="p-2 rounded-lg bg-[var(--bg)] group-hover:bg-[var(--primary)]/10">
+                <Plus size={20} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Câmera</span>
+            </label>
+            <label className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer group">
+              <input type="file" className="hidden" accept="video/*" capture="environment" onChange={handleFileChange} />
+              <div className="p-2 rounded-lg bg-[var(--bg)] group-hover:bg-[var(--primary)]/10">
+                <Video size={20} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest hidden sm:inline">Vídeo</span>
+            </label>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <div className="flex items-center space-x-4">
+              {selectedFile && (
+                <div className="flex items-center space-x-2 bg-[var(--bg)] px-3 py-1 rounded-full border border-[var(--border-ui)]">
+                  <span className="text-[10px] font-bold truncate max-w-[100px]">{selectedFile.name}</span>
+                  <button onClick={() => setSelectedFile(null)} className="text-rose-500">
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={handleCreatePost}
               disabled={(!newPostContent.trim() && !selectedFile) || uploading}
-              className="bg-[var(--primary)] text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest disabled:opacity-50 hover:bg-[var(--primary-highlight)] transition-all"
+              className="bg-[var(--primary)] text-white px-8 py-2 rounded-full font-black text-xs uppercase tracking-widest disabled:opacity-50 hover:bg-[var(--primary-highlight)] transition-all shadow-lg shadow-[var(--primary)]/20"
             >
               {uploading ? 'Enviando...' : 'Postar'}
             </button>

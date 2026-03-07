@@ -516,8 +516,8 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
           )}
         </div>
         
-        <div className="absolute -bottom-12 left-8 flex items-end space-x-6">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[var(--surface)] border-4 border-[var(--bg)] overflow-hidden shadow-2xl transition-colors duration-300 relative group">
+        <div className="absolute -bottom-12 left-0 right-0 px-4 md:px-0 md:left-8 flex flex-col md:flex-row items-center md:items-end space-y-4 md:space-y-0 md:space-x-6">
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[var(--surface)] border-4 border-[var(--bg)] overflow-hidden shadow-2xl transition-colors duration-300 relative group shrink-0">
             {profile.profile_photo || profile.avatar_url ? (
               <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
@@ -532,32 +532,48 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
               </label>
             )}
           </div>
-          <div className="pb-4">
+          <div className="pb-4 text-center md:text-left flex-1 w-full">
             {isEditing ? (
-              <div className="space-y-2">
+              <div className="space-y-2 max-w-xs mx-auto md:mx-0">
                 <input 
                   value={editData.full_name} 
                   onChange={e => setEditData({...editData, full_name: e.target.value})}
-                  className="bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-1 text-xl font-black text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                  className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-1 text-xl font-black text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
                   placeholder="Nome Completo"
                 />
                 <input 
                   value={editData.nickname} 
                   onChange={e => setEditData({...editData, nickname: e.target.value})}
-                  className="bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-1 text-xs font-bold text-[var(--primary)] outline-none focus:border-[var(--primary)] block"
+                  className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-1 text-xs font-bold text-[var(--primary)] outline-none focus:border-[var(--primary)] block"
                   placeholder="Apelido"
                 />
               </div>
             ) : (
-              <>
-                <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic">
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic break-words">
                   {profile.full_name} {profile.nickname && <span className="text-[var(--text-muted)] text-lg">({profile.nickname})</span>}
                 </h1>
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-col md:flex-row items-center md:space-x-4 space-y-1 md:space-y-0">
                   <p className="text-[var(--primary)] font-bold text-xs uppercase tracking-widest">@{profile.username} • {profile.modality}</p>
-                  <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{followerCount} Seguidores</span>
+                  <div className="flex items-center space-x-2 text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest">
+                    <span>{followerCount} Seguidores</span>
+                    {profile.team && (
+                      <>
+                        <span>•</span>
+                        <span className="text-[var(--primary)]">{profile.team}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </>
+                {(profile.city || profile.state || profile.country) && (
+                  <div className="flex items-center justify-center md:justify-start space-x-2 text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest mt-1">
+                    <MapPin size={10} />
+                    <span>
+                      {[profile.city, profile.state, profile.country].filter(Boolean).join(' • ')}
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           
@@ -641,7 +657,7 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
                     className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)] min-h-[100px]"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">País</label>
                     <select 
@@ -870,7 +886,7 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
             ) : (
               <div className="space-y-4">
                 {results.length > 0 ? results.map((result) => (
-                  <div key={result.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex items-center justify-between transition-colors duration-300">
+                  <div key={result.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300">
                     <div className="flex items-center space-x-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs ${
                         result.placement === 1 ? 'bg-yellow-500 text-black' :

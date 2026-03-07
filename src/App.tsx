@@ -149,18 +149,57 @@ export default function App() {
                 </span>
               )}
             </button>
-            <button 
-              onClick={() => navigate('/profile')}
-              className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden"
-            >
-              {profile?.profile_photo || profile?.avatar_url ? (
-                <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
-                  <span className="text-[10px] font-bold">{profile?.full_name?.charAt(0)}</span>
-                </div>
-              )}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden"
+              >
+                {profile?.profile_photo || profile?.avatar_url ? (
+                  <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
+                    <span className="text-[10px] font-bold">{profile?.full_name?.charAt(0)}</span>
+                  </div>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl shadow-2xl overflow-hidden z-50 py-2"
+                  >
+                    <button 
+                      onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}
+                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                    >
+                      <span>Meu Perfil</span>
+                    </button>
+                    <button 
+                      onClick={() => { navigate('/profile/edit'); setShowProfileMenu(false); }}
+                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                    >
+                      <span>Editar Perfil</span>
+                    </button>
+                    <button 
+                      onClick={() => { navigate('/settings'); setShowProfileMenu(false); }}
+                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                    >
+                      <span>Configurações</span>
+                    </button>
+                    <div className="h-px bg-[var(--border-ui)] my-1" />
+                    <button 
+                      onClick={() => { supabase.auth.signOut(); navigate('/login'); }}
+                      className="w-full px-4 py-3 text-left text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors flex items-center space-x-2"
+                    >
+                      <span>Logout</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
