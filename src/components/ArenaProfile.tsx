@@ -9,6 +9,7 @@ import {
 import { supabase } from '../services/supabase';
 import { ArenaProfile, ArenaResult, ArenaPost } from '../types';
 import { countries, modalities } from '../utils/data';
+import { PostModal } from './PostModal';
 
 export const ArenaProfileView: React.FC<{ userId?: string; username?: string; forceEdit?: boolean }> = ({ userId, username, forceEdit }) => {
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
@@ -23,6 +24,8 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<ArenaPost | null>(null);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -223,6 +226,46 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
     }
   };
 
+  const handleLike = async (postId: string, authorId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: existingLike } = await supabase
+        .from('likes')
+        .select('*')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existingLike) {
+        await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id);
+      } else {
+        await supabase.from('likes').insert({ post_id: postId, user_id: user.id });
+        if (user.id !== authorId) {
+          await supabase.from('notifications').insert({
+            user_id: authorId,
+            actor_id: user.id,
+            type: 'like',
+            post_id: postId
+          });
+        }
+      }
+      
+      // Update local state for the modal post if open
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost(prev => prev ? {
+          ...prev,
+          likes_count: existingLike ? prev.likes_count - 1 : prev.likes_count + 1
+        } : null);
+      }
+      
+      fetchProfileData();
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -241,23 +284,55 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
 
     setUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        
-        const { error } = await supabase
-          .from('profiles')
-          .update({ profile_photo: base64String })
-          .eq('id', profile?.id);
+      const compressProfileImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 1080;
+              canvas.height = 1080;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                const imgRatio = img.width / img.height;
+                let drawWidth = 1080;
+                let drawHeight = 1080;
+                let offsetX = 0;
+                let offsetY = 0;
 
-        if (error) throw error;
-        
-        if (profile) {
-          setProfile({ ...profile, profile_photo: base64String });
-          setEditData({ ...editData, profile_photo: base64String });
-        }
+                if (imgRatio > 1) {
+                  drawWidth = 1080 * imgRatio;
+                  offsetX = (1080 - drawWidth) / 2;
+                } else {
+                  drawHeight = 1080 / imgRatio;
+                  offsetY = (1080 - drawHeight) / 2;
+                }
+                ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+              }
+              resolve(canvas.toDataURL('image/jpeg', 0.85));
+            };
+            img.onerror = reject;
+          };
+          reader.onerror = reject;
+        });
       };
-      reader.readAsDataURL(file);
+
+      const compressedBase64 = await compressProfileImage(file);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ profile_photo: compressedBase64 })
+        .eq('id', profile?.id);
+
+      if (error) throw error;
+      
+      if (profile) {
+        setProfile({ ...profile, profile_photo: compressedBase64 });
+        setEditData({ ...editData, profile_photo: compressedBase64 });
+      }
     } catch (error) {
       console.error('Error uploading photo:', error);
       alert('Erro ao fazer upload da foto.');
@@ -815,12 +890,12 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
                   </div>
                   {isEditing ? (
                     <input 
-                      value={editData[info.key as keyof ArenaProfile] || ''} 
+                      value={(editData[info.key as keyof ArenaProfile] as string) || ''} 
                       onChange={e => setEditData({...editData, [info.key]: e.target.value})}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
                     />
                   ) : (
-                    <p className="text-sm font-bold text-[var(--text-main)]">{info.value || '-'}</p>
+                    <p className="text-sm font-bold text-[var(--text-main)]">{(info.value as string) || '-'}</p>
                   )}
                 </div>
               ))}
@@ -868,7 +943,14 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
             {activeTab === 'posts' ? (
               <div className="grid grid-cols-2 gap-4">
                 {posts.length > 0 ? posts.map((post) => (
-                  <div key={post.id} className="aspect-square bg-[var(--surface)] rounded-xl overflow-hidden border border-[var(--border-ui)] group relative cursor-pointer transition-colors duration-300">
+                  <div 
+                    key={post.id} 
+                    onClick={() => {
+                      setSelectedPost({ ...post, author: profile || undefined });
+                      setIsPostModalOpen(true);
+                    }}
+                    className="aspect-square bg-[var(--surface)] rounded-xl overflow-hidden border border-[var(--border-ui)] group relative cursor-pointer transition-colors duration-300"
+                  >
                     {post.media_url ? (
                       <img src={post.media_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
                     ) : (
@@ -914,6 +996,12 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
           </div>
         </div>
       </div>
+
+      <PostModal 
+        post={selectedPost} 
+        onClose={() => setIsPostModalOpen(false)} 
+        onLike={handleLike}
+      />
     </div>
   );
 };
