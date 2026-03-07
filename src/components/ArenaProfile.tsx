@@ -138,12 +138,32 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
     if (!profile) return;
     setSaving(true);
     try {
+      // Create a clean object with only the fields we want to update
+      // This prevents errors if editData contains extra fields or missing columns
+      const updatePayload: any = {
+        full_name: editData.full_name,
+        nickname: editData.nickname,
+        bio: editData.bio,
+        state: editData.state,
+        country: editData.country,
+        modality: editData.modality,
+        category: editData.category,
+        weight: editData.weight ? parseFloat(String(editData.weight)) : null,
+        height: editData.height ? parseFloat(String(editData.height)) : null,
+        graduation: editData.graduation,
+        gym_name: editData.gym_name,
+        professor: editData.professor,
+        instagram_url: editData.instagram_url,
+        youtube_url: editData.youtube_url,
+        tiktok_url: editData.tiktok_url,
+        titles: editData.titles,
+        team: editData.team,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          ...editData,
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', profile.id);
 
       if (error) throw error;
@@ -151,7 +171,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       setIsEditing(false);
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Erro ao atualizar perfil. Verifique se todas as colunas existem no banco de dados.');
+      alert('Erro ao atualizar perfil. Verifique se as colunas "profile_photo" e "team" foram adicionadas à tabela "profiles" no seu banco de dados Supabase.');
     } finally {
       setSaving(false);
     }
