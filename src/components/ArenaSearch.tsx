@@ -93,7 +93,7 @@ export const ArenaSearch: React.FC = () => {
                         </div>
                       </div>
                       <Link 
-                        to={`/profile/${athlete.id}`}
+                        to={`/user/@${athlete.username}`}
                         className="px-4 py-2 bg-[var(--bg)] border border-[var(--border-ui)] rounded-xl text-[10px] font-black uppercase tracking-widest text-[var(--text-main)] hover:bg-[var(--primary)] hover:text-white hover:border-[var(--primary)] transition-all"
                       >
                         Ver Perfil

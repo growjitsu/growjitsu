@@ -10,7 +10,7 @@ import { supabase } from '../services/supabase';
 import { ArenaProfile, ArenaResult, ArenaPost } from '../types';
 import { countries, modalities } from '../utils/data';
 
-export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }> = ({ userId, forceEdit }) => {
+export const ArenaProfileView: React.FC<{ userId?: string; username?: string; forceEdit?: boolean }> = ({ userId, username, forceEdit }) => {
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
   const [results, setResults] = useState<ArenaResult[]>([]);
   const [posts, setPosts] = useState<ArenaPost[]>([]);
@@ -60,22 +60,33 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
     setLoading(true);
     setError(null);
     try {
-      // Get current session user
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (authError) {
-        console.error('Auth error:', authError);
-        // If not authenticated and no userId provided, we can't show a profile
-        if (!userId) {
+      let targetId = userId;
+      let profileData = null;
+
+      if (username) {
+        // Handle @username
+        const cleanUsername = username.startsWith('@') ? username.substring(1) : username;
+        const { data: byUsername, error: usernameError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('username', cleanUsername)
+          .maybeSingle();
+        
+        if (usernameError) throw usernameError;
+        if (!byUsername) {
+          setError('Perfil não encontrado');
           setLoading(false);
           return;
         }
+        profileData = byUsername;
+        targetId = byUsername.id;
+      } else if (!targetId && user) {
+        targetId = user.id;
       }
 
-      const targetId = userId || user?.id;
-      
       if (!targetId) {
-        console.warn('No targetId found for profile view');
         setLoading(false);
         return;
       }
@@ -87,47 +98,45 @@ export const ArenaProfileView: React.FC<{ userId?: string; forceEdit?: boolean }
       }
       fetchFollowerCount(targetId);
 
-      // Fetch Profile
-      let { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', targetId)
-        .single();
-      
-      // Auto-create profile if it doesn't exist and it's the own profile
-      if (profileError && profileError.code === 'PGRST116' && user?.id === targetId) {
-        console.log('Profile not found, creating one for user:', targetId);
-        const baseUsername = user.email?.split('@')[0] || `user_${targetId.slice(0, 5)}`;
-        const newProfile = {
-          id: targetId,
-          username: `${baseUsername}_${Math.floor(Math.random() * 1000)}`,
-          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Novo Atleta',
-          avatar_url: user.user_metadata?.avatar_url || null,
-          arena_score: 0,
-          wins: 0,
-          losses: 0,
-          perfil_publico: true,
-          permitir_seguidores: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        const { data: createdProfile, error: createError } = await supabase
+      // If we don't have profileData yet, fetch it
+      if (!profileData) {
+        let { data, error: profileError } = await supabase
           .from('profiles')
-          .insert([newProfile])
-          .select()
+          .select('*')
+          .eq('id', targetId)
           .single();
+        
+        // Auto-create profile if it doesn't exist and it's the own profile
+        if (profileError && profileError.code === 'PGRST116' && user?.id === targetId) {
+          console.log('Profile not found, creating one for user:', targetId);
+          const baseUsername = user.email?.split('@')[0] || `user_${targetId.slice(0, 5)}`;
+          const newProfile = {
+            id: targetId,
+            username: `${baseUsername}_${Math.floor(Math.random() * 1000)}`,
+            full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Novo Atleta',
+            avatar_url: user.user_metadata?.avatar_url || null,
+            arena_score: 0,
+            wins: 0,
+            losses: 0,
+            perfil_publico: true,
+            permitir_seguidores: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
 
-        if (createError) {
-          console.error('Error creating profile:', createError);
-          setError(`Erro ao criar perfil: ${createError.message}`);
-          throw createError;
+          const { data: createdProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          profileData = createdProfile;
+        } else if (profileError) {
+          throw profileError;
+        } else {
+          profileData = data;
         }
-        profileData = createdProfile;
-      } else if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        setError(`Erro ao buscar perfil: ${profileError.message}`);
-        throw profileError;
       }
 
       setProfile(profileData);
@@ -491,15 +500,11 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
       {/* Profile Header */}
       <div className="relative">
         <div className="h-48 md:h-64 bg-[var(--surface)] rounded-3xl overflow-hidden border border-[var(--border-ui)] transition-colors duration-300 relative">
-          {isEditing ? (
-            <div className="w-full h-full flex items-center justify-center bg-[var(--bg)] overflow-hidden">
-              <span className="text-6xl md:text-9xl font-black text-[var(--text-muted)] opacity-5 select-none tracking-tighter italic">
-                ARENACOMP
-              </span>
-            </div>
-          ) : (
-            <img src="https://picsum.photos/seed/sport/1200/400" alt="" className="w-full h-full object-cover opacity-50 grayscale" referrerPolicy="no-referrer" />
-          )}
+          <div className="w-full h-full flex items-center justify-center bg-[var(--bg)] overflow-hidden">
+            <span className="text-6xl md:text-9xl font-black text-[var(--text-muted)] opacity-5 select-none tracking-tighter italic">
+              ARENACOMP
+            </span>
+          </div>
           
           {isOwnProfile && !isEditing && (
             <button 

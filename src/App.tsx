@@ -14,8 +14,8 @@ import { ArenaProfile } from './types';
 import { Bell } from 'lucide-react';
 
 const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
-  const { userId } = useParams();
-  return <ArenaProfileView userId={userId} forceEdit={forceEdit} />;
+  const { userId, username } = useParams();
+  return <ArenaProfileView userId={userId} username={username} forceEdit={forceEdit} />;
 };
 
 export default function App() {
@@ -125,7 +125,46 @@ export default function App() {
           unreadNotifications={unreadNotifications}
         />
         
-        <main className="max-w-7xl mx-auto md:pt-16">
+        {/* Mobile Header */}
+        <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-[var(--bg)]/80 backdrop-blur-xl border-b border-[var(--border-ui)] flex items-center justify-between px-4 z-40">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-[var(--primary)] to-blue-700 rounded-lg flex items-center justify-center font-black text-white italic overflow-hidden">
+              {profile?.profile_photo || profile?.avatar_url ? (
+                <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                'A'
+              )}
+            </div>
+            <span className="text-xs font-black uppercase tracking-tighter italic">ArenaComp</span>
+          </div>
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => navigate('/notifications')}
+              className="relative p-2 text-[var(--text-muted)]"
+            >
+              <Bell size={20} />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[8px] font-black flex items-center justify-center rounded-full border-2 border-[var(--bg)]">
+                  {unreadNotifications}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => navigate('/profile')}
+              className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden"
+            >
+              {profile?.profile_photo || profile?.avatar_url ? (
+                <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
+                  <span className="text-[10px] font-bold">{profile?.full_name?.charAt(0)}</span>
+                </div>
+              )}
+            </button>
+          </div>
+        </header>
+
+        <main className="max-w-7xl mx-auto pt-14 md:pt-16">
           <AnimatePresence mode="wait">
             <motion.div
               key={tabId}
@@ -229,6 +268,7 @@ export default function App() {
       <Route path="/profile" element={renderLayout(<ProfileWrapper />, 'profile')} />
       <Route path="/profile/edit" element={renderLayout(<ProfileWrapper forceEdit />, 'profile/edit')} />
       <Route path="/profile/:userId" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/user/:username" element={renderLayout(<ProfileWrapper />, 'profile')} />
       <Route path="/notifications" element={renderLayout(<ArenaNotifications />, 'notifications')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />

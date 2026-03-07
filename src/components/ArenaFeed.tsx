@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User, Video, X } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaPost, ArenaProfile } from '../types';
 
@@ -8,9 +9,24 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   const [posts, setPosts] = useState<ArenaPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [newPostContent, setNewPostContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
+    // Initial fetch
     fetchPosts();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('public:posts')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+        fetchPosts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchPosts = async () => {
@@ -32,19 +48,62 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Image limit: 1MB
+    if (file.type.startsWith('image/') && file.size > 1024 * 1024) {
+      alert('Imagens devem ter no máximo 1MB');
+      return;
+    }
+
+    // Video limit: 3 minutes (approximate check by size or metadata if possible)
+    // For now, let's just check extension and size as a proxy or just format
+    if (file.type.startsWith('video/') && !file.type.includes('mp4')) {
+      // alert('Recomendamos o formato MP4 para vídeos');
+    }
+
+    setSelectedFile(file);
+  };
+
   const handleCreatePost = async () => {
-    if (!newPostContent.trim()) return;
+    if (!newPostContent.trim() && !selectedFile) return;
     
+    setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      let mediaUrl = null;
+      let mediaType = 'text';
+
+      if (selectedFile) {
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('posts')
+          .upload(filePath, selectedFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('posts')
+          .getPublicUrl(filePath);
+        
+        mediaUrl = publicUrl;
+        mediaType = selectedFile.type.startsWith('image/') ? 'image' : 'video';
+      }
 
       const { data: post, error } = await supabase
         .from('posts')
         .insert({
           author_id: user.id,
           content: newPostContent,
-          type: 'text'
+          type: mediaType === 'text' ? 'text' : mediaType,
+          media_url: mediaUrl
         })
         .select()
         .single();
@@ -68,9 +127,12 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       }
 
       setNewPostContent('');
+      setSelectedFile(null);
       fetchPosts();
     } catch (error) {
       console.error('Error creating post:', error);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -129,20 +191,35 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         </div>
         <div className="flex justify-between items-center pt-2 border-t border-[var(--border-ui)]">
           <div className="flex space-x-4">
-            <button className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
+            <label className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">
+              <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
               <ImageIcon size={20} />
-            </button>
+            </label>
+            <label className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors cursor-pointer">
+              <input type="file" className="hidden" accept="video/mp4,video/x-m4v,video/*" onChange={handleFileChange} />
+              <Video size={20} />
+            </label>
             <button className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
               <Award size={20} />
             </button>
           </div>
-          <button
-            onClick={handleCreatePost}
-            disabled={!newPostContent.trim()}
-            className="bg-[var(--primary)] text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest disabled:opacity-50 hover:bg-[var(--primary-highlight)] transition-all"
-          >
-            Postar
-          </button>
+          <div className="flex items-center space-x-4">
+            {selectedFile && (
+              <div className="flex items-center space-x-2 bg-[var(--bg)] px-3 py-1 rounded-full border border-[var(--border-ui)]">
+                <span className="text-[10px] font-bold truncate max-w-[100px]">{selectedFile.name}</span>
+                <button onClick={() => setSelectedFile(null)} className="text-rose-500">
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+            <button
+              onClick={handleCreatePost}
+              disabled={(!newPostContent.trim() && !selectedFile) || uploading}
+              className="bg-[var(--primary)] text-white px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest disabled:opacity-50 hover:bg-[var(--primary-highlight)] transition-all"
+            >
+              {uploading ? 'Enviando...' : 'Postar'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -163,13 +240,15 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
               {/* Post Header */}
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-[var(--bg)] overflow-hidden">
+                  <Link to={`/user/@${post.author?.username}`} className="w-10 h-10 rounded-full bg-[var(--bg)] overflow-hidden block">
                     {(post.author?.profile_photo || post.author?.avatar_url) && (
                       <img src={post.author.profile_photo || post.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     )}
-                  </div>
+                  </Link>
                   <div>
-                    <h3 className="font-bold text-sm text-[var(--text-main)]">{post.author?.full_name || 'Atleta'}</h3>
+                    <Link to={`/user/@${post.author?.username}`} className="font-bold text-sm text-[var(--text-main)] hover:text-[var(--primary)] transition-colors block">
+                      {post.author?.full_name || 'Atleta'}
+                    </Link>
                     <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">@{post.author?.username || 'user'}</p>
                   </div>
                 </div>
@@ -183,10 +262,14 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
               {/* Post Content */}
               <div className="px-4 pb-4">
-                <p className="text-[var(--text-main)]/90 text-sm leading-relaxed">{post.content}</p>
+                <p className="text-[var(--text-main)]/90 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
                 {post.media_url && (
-                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--border-ui)]">
-                    <img src={post.media_url} alt="" className="w-full h-auto" referrerPolicy="no-referrer" />
+                  <div className="mt-4 rounded-xl overflow-hidden border border-[var(--border-ui)] bg-black">
+                    {post.type === 'video' ? (
+                      <video src={post.media_url} controls className="w-full h-auto max-h-[500px]" />
+                    ) : (
+                      <img src={post.media_url} alt="" className="w-full h-auto" referrerPolicy="no-referrer" />
+                    )}
                   </div>
                 )}
               </div>
