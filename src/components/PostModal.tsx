@@ -166,21 +166,35 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
 
   if (!post) return null;
 
+  const handleClose = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    console.log('PostModal: Closing modal');
+    onClose();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={() => handleClose()}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[var(--bg)] w-full max-w-5xl h-full max-h-[800px] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-[var(--border-ui)]"
+        className="bg-[var(--bg)] w-full max-w-5xl h-full max-h-[800px] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-2xl border border-[var(--border-ui)] relative"
       >
+        {/* Global Close Button */}
+        <button 
+          onClick={handleClose}
+          className="absolute top-6 right-6 p-3 bg-black/50 text-white rounded-full hover:bg-rose-500 transition-all z-[110] shadow-lg backdrop-blur-md border border-white/10"
+          aria-label="Fechar"
+        >
+          <X size={24} />
+        </button>
           {/* Media Section */}
           <div className="flex-1 bg-black flex items-center justify-center relative min-h-[300px] md:min-h-0">
             {post.media_url ? (
@@ -219,13 +233,6 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
                 <p className="text-[var(--text-main)] text-xl leading-relaxed italic">{post.content}</p>
               </div>
             )}
-            
-            <button 
-              onClick={onClose}
-              className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full hover:bg-rose-500 transition-all md:hidden z-20"
-            >
-              <X size={20} />
-            </button>
           </div>
 
           {/* Info Section */}
@@ -245,15 +252,6 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
                   <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">@{post.author?.username || 'user'}</p>
                 </div>
               </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }} 
-                className="p-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors hidden md:block relative z-50"
-              >
-                <X size={24} />
-              </button>
             </div>
 
             {/* Content & Comments */}
