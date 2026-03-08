@@ -8,6 +8,7 @@ import { PostModal } from './PostModal';
 
 export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
   const [posts, setPosts] = useState<ArenaPost[]>([]);
+  const [topAthletes, setTopAthletes] = useState<ArenaProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingIds, setFollowingIds] = useState<Set<string>>(new Set());
   const [newPostContent, setNewPostContent] = useState('');
@@ -19,6 +20,14 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
   useEffect(() => {
     fetchPosts();
+    fetchTopAthletes();
+
+    // Check for deep link
+    const urlParams = new URLSearchParams(window.location.search);
+    const postId = urlParams.get('post');
+    if (postId) {
+      fetchSinglePost(postId);
+    }
 
     // Real-time subscription
     const channel = supabase
@@ -47,7 +56,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         currentUserProfile = profile;
 
         const { data: follows } = await supabase
@@ -86,9 +95,6 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       }
 
       // 4. Calculate scores for the "Instagram-inspired" algorithm
-      // Factors: Following (+50), Modality (+40), Engagement (L*2, C*4, S*6), 
-      // Recency (<1h +30, <6h +20, <24h +10), Geography (City+30, State+20, Country+10),
-      // Ranking (Top+50, +30, +20), Content (Video+15, Image+10, Text+5)
       const now = new Date();
       const scoredPosts = (postsData || []).map(post => {
         let score = 0;
@@ -118,7 +124,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
           else if (post.author.country === currentUserProfile.country) score += 10;
         }
 
-        // 6) Ranking do atleta (Simplified based on arena_score)
+        // 6) Ranking do atleta
         const authorScore = post.author?.arena_score || 0;
         if (authorScore > 1000) score += 50;
         else if (authorScore > 500) score += 30;
@@ -137,8 +143,6 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       });
 
       // 5. Final Sorting
-      // Requirement: "garantindo que o último post publicado sempre apareça primeiro"
-      // We sort primarily by created_at DESC. Tie-breaker is the calculated feed_score.
       const sortedPosts = scoredPosts.sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
@@ -151,6 +155,70 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       console.error('Error fetching posts:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTopAthletes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('arena_score', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      setTopAthletes(data || []);
+    } catch (error) {
+      console.error('Error fetching top athletes:', error);
+    }
+  };
+
+  const fetchSinglePost = async (postId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          author:profiles(*)
+        `)
+        .eq('id', postId)
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        setSelectedPost(data);
+        setIsPostModalOpen(true);
+      }
+    } catch (error) {
+      console.error('Error fetching single post:', error);
+    }
+  };
+
+  const handleShare = async (post: ArenaPost) => {
+    const shareUrl = `${window.location.origin}/?post=${post.id}`;
+    const shareData = {
+      title: 'ArenaComp - Performance Esportiva',
+      text: `Confira esta postagem de ${post.author?.full_name} na ArenaComp!`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Link copiado para a área de transferência!');
+      }
+      
+      // Increment share count
+      await supabase
+        .from('posts')
+        .update({ shares_count: (post.shares_count || 0) + 1 })
+        .eq('id', post.id);
+        
+      setPosts(prev => prev.map(p => p.id === post.id ? { ...p, shares_count: (p.shares_count || 0) + 1 } : p));
+    } catch (error) {
+      console.error('Error sharing:', error);
     }
   };
 
@@ -418,32 +486,51 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
               </Link>
             </div>
             <div className="flex space-x-8 overflow-x-auto pb-4 hide-scrollbar snap-x">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <div key={i} className="flex-shrink-0 flex flex-col items-center space-y-3 snap-start group cursor-pointer">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-[var(--primary)] to-cyan-400 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
-                    <div className="relative p-1 rounded-full bg-gradient-to-tr from-[var(--border-ui)] to-[var(--primary)]/30 group-hover:from-[var(--primary)] group-hover:to-cyan-400 transition-all duration-500">
-                      <div className="w-16 h-16 rounded-full bg-[var(--bg)] p-1">
-                        <div className="w-full h-full rounded-full bg-[var(--surface)] overflow-hidden border border-[var(--border-ui)]">
-                          <img 
-                            src={`https://picsum.photos/seed/athlete${i}/200/200`} 
-                            alt="" 
-                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-500"
-                            referrerPolicy="no-referrer"
-                          />
+              {topAthletes.length > 0 ? (
+                topAthletes.map((athlete, i) => (
+                  <Link 
+                    key={athlete.id} 
+                    to={`/user/@${athlete.username}`}
+                    className="flex-shrink-0 flex flex-col items-center space-y-3 snap-start group cursor-pointer"
+                  >
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-tr from-[var(--primary)] to-cyan-400 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+                      <div className="relative p-1 rounded-full bg-gradient-to-tr from-[var(--border-ui)] to-[var(--primary)]/30 group-hover:from-[var(--primary)] group-hover:to-cyan-400 transition-all duration-500">
+                        <div className="w-16 h-16 rounded-full bg-[var(--bg)] p-1">
+                          <div className="w-full h-full rounded-full bg-[var(--surface)] overflow-hidden border border-[var(--border-ui)]">
+                            {athlete.profile_photo || athlete.avatar_url ? (
+                              <img 
+                                src={athlete.profile_photo || athlete.avatar_url} 
+                                alt="" 
+                                className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-500"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-[var(--surface)] text-[var(--text-muted)]">
+                                <User size={24} />
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <div className="absolute -bottom-1 -right-1 bg-white text-black text-[9px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[var(--bg)] shadow-lg">
+                        {i + 1}
+                      </div>
                     </div>
-                    <div className="absolute -bottom-1 -right-1 bg-white text-black text-[9px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[var(--bg)] shadow-lg">
-                      {i}
+                    <div className="text-center">
+                      <p className="text-[10px] font-black uppercase tracking-tighter text-[var(--text-main)] truncate w-20">{athlete.full_name?.split(' ')[0]}</p>
+                      <p className="text-[8px] font-bold text-[var(--primary)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{Math.round(athlete.arena_score || 0)} pts</p>
                     </div>
+                  </Link>
+                ))
+              ) : (
+                [1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex-shrink-0 flex flex-col items-center space-y-3 snap-start animate-pulse">
+                    <div className="w-16 h-16 rounded-full bg-[var(--surface)] border border-[var(--border-ui)]" />
+                    <div className="w-12 h-2 bg-[var(--surface)] rounded" />
                   </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black uppercase tracking-tighter text-[var(--text-main)]">Atleta_{i}</p>
-                    <p className="text-[8px] font-bold text-[var(--primary)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">+{Math.floor(Math.random() * 100)} pts</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
@@ -688,7 +775,13 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                       </button>
                     </div>
 
-                    <button className="p-4 rounded-2xl bg-[var(--bg)]/50 border border-[var(--border-ui)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 hover:border-[var(--primary)]/30 transition-all duration-500">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShare(post);
+                      }}
+                      className="p-4 rounded-2xl bg-[var(--bg)]/50 border border-[var(--border-ui)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10 hover:border-[var(--primary)]/30 transition-all duration-500"
+                    >
                       <Share2 size={22} />
                     </button>
                   </div>
@@ -782,6 +875,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         post={selectedPost} 
         onClose={() => setIsPostModalOpen(false)} 
         onLike={handleLike}
+        onShare={handleShare}
       />
     </div>
   );

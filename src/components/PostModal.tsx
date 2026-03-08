@@ -9,12 +9,14 @@ interface PostModalProps {
   post: ArenaPost | null;
   onClose: () => void;
   onLike?: (postId: string, authorId: string) => void;
+  onShare?: (post: ArenaPost) => void;
 }
 
-export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) => {
+export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onShare }) => {
   const [comments, setComments] = useState<ArenaComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+  const [showShareOptions, setShowShareOptions] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -58,6 +60,25 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) =
     } finally {
       setLoadingComments(false);
     }
+  };
+
+  const handleShareOption = async (type: 'copy' | 'whatsapp') => {
+    if (!post) return;
+    const shareUrl = `${window.location.origin}/?post=${post.id}`;
+    
+    if (type === 'copy') {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Link copiado para a área de transferência!');
+      } catch (err) {
+        console.error('Failed to copy: ', err);
+      }
+    } else if (type === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent('Confira esta postagem na ArenaComp: ' + shareUrl)}`, '_blank');
+    }
+    
+    setShowShareOptions(false);
+    onShare?.(post);
   };
 
   const handleAddComment = async () => {
@@ -227,9 +248,38 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) =
                       <span className="text-sm font-bold">{post.comments_count}</span>
                     </div>
                   </div>
-                  <button className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
-                    <Share2 size={20} />
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowShareOptions(!showShareOptions)}
+                      className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                    >
+                      <Share2 size={20} />
+                    </button>
+
+                    <AnimatePresence>
+                      {showShareOptions && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          className="absolute bottom-full right-0 mb-2 w-48 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl shadow-2xl overflow-hidden z-50 py-2"
+                        >
+                          <button 
+                            onClick={() => handleShareOption('copy')}
+                            className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                          >
+                            <span>Copiar Link</span>
+                          </button>
+                          <button 
+                            onClick={() => handleShareOption('whatsapp')}
+                            className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                          >
+                            <span>WhatsApp</span>
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 
