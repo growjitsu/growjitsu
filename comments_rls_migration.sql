@@ -18,10 +18,24 @@ CREATE TABLE IF NOT EXISTS posts (
 CREATE TABLE IF NOT EXISTS comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Caso a tabela já exista mas a chave estrangeira aponte para auth.users, vamos ajustar:
+DO $$ 
+BEGIN 
+    -- Remover a restrição antiga se existir (o nome padrão costuma ser comments_user_id_fkey)
+    ALTER TABLE comments DROP CONSTRAINT IF EXISTS comments_user_id_fkey;
+    
+    -- Adicionar a nova restrição apontando para profiles
+    ALTER TABLE comments 
+    ADD CONSTRAINT comments_user_id_fkey 
+    FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+EXCEPTION WHEN OTHERS THEN 
+    RAISE NOTICE 'Nota: Não foi possível ajustar a constraint automaticamente. Se o erro persistir, verifique as chaves estrangeiras da tabela comments.';
+END $$;
 
 -- 3. Habilitar RLS
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
