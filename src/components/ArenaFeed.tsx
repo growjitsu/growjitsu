@@ -877,7 +877,10 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
       <PostModal 
         post={selectedPost} 
-        onClose={() => setIsPostModalOpen(false)} 
+        onClose={() => {
+          setIsPostModalOpen(false);
+          setSelectedPost(null);
+        }} 
         onLike={handleLike}
         onShare={handleShare}
       />

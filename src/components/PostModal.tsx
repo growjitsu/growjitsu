@@ -91,9 +91,13 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
   };
 
   const handleAddComment = async () => {
-    if (!post || !newComment.trim() || !currentUser) return;
+    if (!post || !newComment.trim() || !currentUser) {
+      console.log('Cannot add comment:', { post: !!post, newComment: !!newComment.trim(), currentUser: !!currentUser });
+      return;
+    }
     setSubmittingComment(true);
     try {
+      console.log('Submitting comment for post:', post.id);
       const { data, error } = await supabase
         .from('comments')
         .insert({
@@ -135,31 +139,32 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
           post_id: post.id
         });
       }
+      console.log('Comment added successfully');
     } catch (error) {
       console.error('Error adding comment:', error);
+      alert('Erro ao publicar comentário. Tente novamente.');
     } finally {
       setSubmittingComment(false);
     }
   };
 
-  if (!post) return null;
-
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-        onClick={onClose}
-      >
+      {post && (
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-[var(--surface)] w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-[var(--border-ui)]"
-          onClick={(e) => e.stopPropagation()}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+          onClick={onClose}
         >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-[var(--surface)] w-full max-w-5xl max-h-[90vh] rounded-3xl overflow-hidden flex flex-col md:flex-row shadow-2xl border border-[var(--border-ui)]"
+            onClick={(e) => e.stopPropagation()}
+          >
           {/* Media Section */}
           <div className="flex-1 bg-black flex items-center justify-center relative min-h-[300px] md:min-h-0">
             {post.media_url ? (
@@ -377,6 +382,7 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    )}
+  </AnimatePresence>
   );
 };
