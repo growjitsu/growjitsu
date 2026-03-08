@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Heart, MessageCircle, Share2, User, Award, Calendar } from 'lucide-react';
-import { ArenaPost } from '../types';
+import { X, Heart, MessageCircle, Share2, User, Award, Calendar, Send } from 'lucide-react';
+import { ArenaPost, ArenaComment } from '../types';
 import { Link } from 'react-router-dom';
+import { supabase } from '../services/supabase';
 
 interface PostModalProps {
   post: ArenaPost | null;
@@ -11,6 +12,106 @@ interface PostModalProps {
 }
 
 export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) => {
+  const [comments, setComments] = useState<ArenaComment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const getAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    };
+    getAuth();
+
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (post) {
+      fetchComments();
+    }
+  }, [post]);
+
+  const fetchComments = async () => {
+    if (!post) return;
+    setLoadingComments(true);
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .select(`
+          *,
+          user:profiles(*)
+        `)
+        .eq('post_id', post.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setComments(data || []);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!post || !newComment.trim() || !currentUser) return;
+    setSubmittingComment(true);
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .insert({
+          post_id: post.id,
+          user_id: currentUser.id,
+          content: newComment.trim()
+        })
+        .select(`
+          *,
+          user:profiles(*)
+        `)
+        .single();
+
+      if (error) throw error;
+      
+      setComments(prev => [...prev, data]);
+      setNewComment('');
+      
+      // Update comment count in posts table
+      const { data: postData } = await supabase
+        .from('posts')
+        .select('comments_count')
+        .eq('id', post.id)
+        .single();
+      
+      if (postData) {
+        await supabase
+          .from('posts')
+          .update({ comments_count: (postData.comments_count || 0) + 1 })
+          .eq('id', post.id);
+      }
+      
+      // Create notification for post author
+      if (currentUser.id !== post.author_id) {
+        await supabase.from('notifications').insert({
+          user_id: post.author_id,
+          actor_id: currentUser.id,
+          type: 'comment',
+          post_id: post.id
+        });
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
   if (!post) return null;
 
   return (
@@ -70,7 +171,7 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) =
             
             <button 
               onClick={onClose}
-              className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full hover:bg-rose-500 transition-all md:hidden"
+              className="absolute top-4 left-4 p-2 bg-black/50 text-white rounded-full hover:bg-rose-500 transition-all md:hidden z-20"
             >
               <X size={20} />
             </button>
@@ -98,7 +199,7 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) =
               </button>
             </div>
 
-            {/* Content */}
+            {/* Content & Comments */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <div className="space-y-4">
                 <p className="text-[var(--text-main)] text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
@@ -114,15 +215,17 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) =
                   <div className="flex items-center space-x-6">
                     <button 
                       onClick={() => onLike?.(post.id, post.author_id)}
-                      className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                      className={`flex items-center space-x-2 transition-colors ${
+                        post.is_liked ? 'text-rose-500' : 'text-[var(--text-muted)] hover:text-rose-500'
+                      }`}
                     >
-                      <Heart size={20} />
+                      <Heart size={20} className={post.is_liked ? 'fill-current' : ''} />
                       <span className="text-sm font-bold">{post.likes_count}</span>
                     </button>
-                    <button className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
+                    <div className="flex items-center space-x-2 text-[var(--text-muted)]">
                       <MessageCircle size={20} />
                       <span className="text-sm font-bold">{post.comments_count}</span>
-                    </button>
+                    </div>
                   </div>
                   <button className="text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">
                     <Share2 size={20} />
@@ -130,25 +233,68 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike }) =
                 </div>
               </div>
 
-              {/* Comments Placeholder */}
-              <div className="space-y-4">
+              {/* Comments */}
+              <div className="space-y-4 pt-6 border-t border-[var(--border-ui)]">
                 <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Comentários</h4>
-                <div className="py-8 text-center">
-                  <p className="text-xs text-[var(--text-muted)] font-bold italic">Nenhum comentário ainda. Seja o primeiro!</p>
-                </div>
+                
+                {loadingComments ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary)]" />
+                  </div>
+                ) : comments.length > 0 ? (
+                  <div className="space-y-4">
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex space-x-3">
+                        <Link to={`/user/@${comment.user?.username}`} className="w-8 h-8 rounded-full bg-[var(--bg)] overflow-hidden flex-shrink-0">
+                          {(comment.user?.profile_photo || comment.user?.avatar_url) && (
+                            <img src={comment.user.profile_photo || comment.user.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          )}
+                        </Link>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <Link to={`/user/@${comment.user?.username}`} className="text-xs font-bold text-[var(--text-main)] hover:text-[var(--primary)]">
+                              {comment.user?.full_name || 'Atleta'}
+                            </Link>
+                            <span className="text-[8px] text-[var(--text-muted)] uppercase font-bold">
+                              {new Date(comment.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--text-main)]/80 leading-relaxed">{comment.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-xs text-[var(--text-muted)] font-bold italic">Nenhum comentário ainda. Seja o primeiro!</p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Footer / Add Comment */}
             <div className="p-4 border-t border-[var(--border-ui)]">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex-shrink-0" />
+                <div className="w-8 h-8 rounded-full bg-[var(--bg)] flex-shrink-0 overflow-hidden border border-[var(--border-ui)]">
+                  {currentUser?.user_metadata?.avatar_url && (
+                    <img src={currentUser.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  )}
+                </div>
                 <input 
                   type="text" 
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
                   placeholder="Adicione um comentário..." 
                   className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)]"
                 />
-                <button className="text-[var(--primary)] font-black text-[10px] uppercase tracking-widest">Publicar</button>
+                <button 
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim() || submittingComment}
+                  className="text-[var(--primary)] font-black text-[10px] uppercase tracking-widest disabled:opacity-50 hover:opacity-80 transition-opacity"
+                >
+                  {submittingComment ? '...' : 'Publicar'}
+                </button>
               </div>
             </div>
           </div>

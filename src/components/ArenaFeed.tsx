@@ -34,111 +34,41 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   }, []);
 
   const fetchPosts = async () => {
+    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Fetch following list first
-      const { data: followingData } = await supabase
-        .from('followers')
-        .select('following_id')
-        .eq('follower_id', user.id);
       
-      const currentFollowingIds = new Set(followingData?.map(f => f.following_id) || []);
-      setFollowingIds(currentFollowingIds);
-
-      const { data, error } = await supabase
+      // 1. Fetch all posts with author info
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
           *,
           author:profiles(*)
-        `);
+        `)
+        .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      
-      const allPosts = data || [];
-      
-      // Calculate scores using currentFollowingIds instead of state
-      const scoredPosts = allPosts.map(post => {
-        let score = 0;
+      if (postsError) throw postsError;
 
-        // 1) Following (+50)
-        if (currentFollowingIds.has(post.author_id)) {
-          score += 50;
+      // 2. Fetch user's likes to mark posts as liked
+      let userLikes: Set<string> = new Set();
+      if (user) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', user.id);
+        
+        if (likesData) {
+          userLikes = new Set(likesData.map(l => l.post_id));
         }
+      }
 
-        // 2) Modality (+40)
-        if (userProfile?.modality && post.author?.modality === userProfile.modality) {
-          score += 40;
-        }
+      // 3. Map posts with is_liked status
+      const postsWithLikes = (postsData || []).map(post => ({
+        ...post,
+        is_liked: userLikes.has(post.id)
+      }));
 
-        // 3) Engagement
-        score += (post.likes_count || 0) * 2;
-        score += (post.comments_count || 0) * 4;
-        score += (post.shares_count || 0) * 6;
-
-        // 4) Recency
-        const now = new Date();
-        const postDate = new Date(post.created_at);
-        const diffHours = (now.getTime() - postDate.getTime()) / (1000 * 60 * 60);
-
-        if (diffHours <= 1) score += 30;
-        else if (diffHours <= 6) score += 20;
-        else if (diffHours <= 24) score += 10;
-
-        // 5) Geography
-        if (userProfile) {
-          if (post.author?.city === userProfile.city) score += 30;
-          else if (post.author?.state === userProfile.state) score += 20;
-          else if (post.author?.country === userProfile.country) score += 10;
-        }
-
-        // 6) Ranking (Mocked based on arena_score)
-        if (post.author?.arena_score) {
-          if (post.author.arena_score > 1000) score += 50;
-          else if (post.author.arena_score > 500) score += 30;
-          else if (post.author.arena_score > 200) score += 20;
-        }
-
-        // 7) Content Type
-        if (post.type === 'video') score += 15;
-        else if (post.type === 'image') score += 10;
-        else if (post.type === 'text') score += 5;
-
-        return { ...post, score };
-      });
-
-      // Mixing Strategy: 70% following, 20% same modality, 10% popular
-      const followingPosts = scoredPosts.filter(p => currentFollowingIds.has(p.author_id))
-        .sort((a, b) => b.score - a.score);
-      
-      const modalityPosts = scoredPosts.filter(p => 
-        !currentFollowingIds.has(p.author_id) && 
-        userProfile?.modality && 
-        p.author?.modality === userProfile.modality
-      ).sort((a, b) => b.score - a.score);
-
-      const popularPosts = scoredPosts.filter(p => 
-        !currentFollowingIds.has(p.author_id) && 
-        (!userProfile?.modality || p.author?.modality !== userProfile.modality)
-      ).sort((a, b) => b.score - a.score);
-
-      // Determine total count to show (e.g., 50 posts)
-      const targetCount = 50;
-      const followingCount = Math.ceil(targetCount * 0.7);
-      const modalityCount = Math.ceil(targetCount * 0.2);
-      const popularCount = Math.ceil(targetCount * 0.1);
-
-      const selectedPosts = [
-        ...followingPosts.slice(0, followingCount),
-        ...modalityPosts.slice(0, modalityCount),
-        ...popularPosts.slice(0, popularCount)
-      ];
-
-      // Final sort by score
-      selectedPosts.sort((a, b) => b.score - a.score);
-
-      setPosts(selectedPosts);
+      setPosts(postsWithLikes);
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
@@ -345,14 +275,33 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: existingLike } = await supabase
-        .from('likes')
-        .select('*')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
 
-      if (existingLike) {
+      const isLiked = post.is_liked;
+
+      // Optimistic update for posts list
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            is_liked: !isLiked,
+            likes_count: isLiked ? p.likes_count - 1 : p.likes_count + 1
+          };
+        }
+        return p;
+      }));
+
+      // Optimistic update for selected post (modal)
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost(prev => prev ? {
+          ...prev,
+          is_liked: !isLiked,
+          likes_count: isLiked ? prev.likes_count - 1 : prev.likes_count + 1
+        } : null);
+      }
+
+      if (isLiked) {
         await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id);
       } else {
         await supabase.from('likes').insert({ post_id: postId, user_id: user.id });
@@ -366,9 +315,9 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
           });
         }
       }
-      fetchPosts();
     } catch (error) {
       console.error('Error toggling like:', error);
+      fetchPosts(); // Revert on error
     }
   };
 
@@ -560,10 +509,15 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
               {/* Post Actions */}
               <div className="px-4 py-3 border-t border-[var(--border-ui)] flex items-center space-x-6">
                 <button 
-                  onClick={() => handleLike(post.id, post.author_id)}
-                  className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLike(post.id, post.author_id);
+                  }}
+                  className={`flex items-center space-x-2 transition-colors ${
+                    post.is_liked ? 'text-rose-500' : 'text-[var(--text-muted)] hover:text-rose-500'
+                  }`}
                 >
-                  <Heart size={18} />
+                  <Heart size={18} className={post.is_liked ? 'fill-current' : ''} />
                   <span className="text-xs font-bold">{post.likes_count}</span>
                 </button>
                 <button className="flex items-center space-x-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors">

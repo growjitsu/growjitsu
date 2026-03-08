@@ -164,7 +164,25 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         .eq('author_id', targetId)
         .order('created_at', { ascending: false });
       
-      setPosts(postsData || []);
+      // Fetch user's likes to mark posts as liked
+      let userLikes: Set<string> = new Set();
+      if (user) {
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .eq('user_id', user.id);
+        
+        if (likesData) {
+          userLikes = new Set(likesData.map(l => l.post_id));
+        }
+      }
+
+      const postsWithLikes = (postsData || []).map(post => ({
+        ...post,
+        is_liked: userLikes.has(post.id)
+      }));
+      
+      setPosts(postsWithLikes);
 
     } catch (error: any) {
       console.error('Error fetching profile data:', error);
@@ -231,14 +249,33 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: existingLike } = await supabase
-        .from('likes')
-        .select('*')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const post = posts.find(p => p.id === postId) || (selectedPost?.id === postId ? selectedPost : null);
+      if (!post) return;
 
-      if (existingLike) {
+      const isLiked = post.is_liked;
+
+      // Optimistic update for posts list
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          return {
+            ...p,
+            is_liked: !isLiked,
+            likes_count: isLiked ? p.likes_count - 1 : p.likes_count + 1
+          };
+        }
+        return p;
+      }));
+
+      // Optimistic update for selected post (modal)
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost(prev => prev ? {
+          ...prev,
+          is_liked: !isLiked,
+          likes_count: isLiked ? prev.likes_count - 1 : prev.likes_count + 1
+        } : null);
+      }
+
+      if (isLiked) {
         await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id);
       } else {
         await supabase.from('likes').insert({ post_id: postId, user_id: user.id });
@@ -251,18 +288,9 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
           });
         }
       }
-      
-      // Update local state for the modal post if open
-      if (selectedPost && selectedPost.id === postId) {
-        setSelectedPost(prev => prev ? {
-          ...prev,
-          likes_count: existingLike ? prev.likes_count - 1 : prev.likes_count + 1
-        } : null);
-      }
-      
-      fetchProfileData();
     } catch (error) {
       console.error('Error toggling like:', error);
+      fetchProfileData(); // Revert on error
     }
   };
 
