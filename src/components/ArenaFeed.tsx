@@ -131,7 +131,8 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         if (followingSet.has(post.author_id)) score += 50;
 
         // 2) Modalidade
-        if (currentUserProfile && post.author?.modality === currentUserProfile.modality) score += 40;
+        const normalizeModality = (m?: string) => m?.toLowerCase().replace(/[-\s]/g, '') || '';
+        if (currentUserProfile && normalizeModality(post.author?.modality) === normalizeModality(currentUserProfile.modality)) score += 40;
 
         // 3) Engajamento
         score += (post.likes_count || 0) * 2;

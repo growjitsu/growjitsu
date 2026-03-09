@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Trophy, Medal, Target, Filter, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaProfile } from '../types';
+import { modalities } from '../utils/data';
 
 export const ArenaRankings: React.FC = () => {
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
@@ -29,11 +30,14 @@ export const ArenaRankings: React.FC = () => {
         .limit(50);
 
       if (filter.modality !== 'Todas') {
-        query = query.eq('modality', filter.modality);
+        // Normalize the filter modality to handle common variations (hyphens vs spaces)
+        // and use ilike with wildcards for maximum flexibility
+        const searchPattern = filter.modality.replace(/[-\s]/g, '%');
+        query = query.ilike('modality', `%${searchPattern}%`);
       }
       
       if (filter.scope === 'Cidade' && filter.city !== 'Todas') {
-        query = query.eq('city', filter.city);
+        query = query.ilike('city', filter.city);
       } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
         query = query.eq('country', filter.country);
       }
@@ -80,11 +84,9 @@ export const ArenaRankings: React.FC = () => {
             className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
           >
             <option>Todas</option>
-            <option>Jiu-Jitsu</option>
-            <option>Muay Thai</option>
-            <option>Boxe</option>
-            <option>MMA</option>
-            <option>Crossfit</option>
+            {modalities.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
           </select>
           <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
         </div>
