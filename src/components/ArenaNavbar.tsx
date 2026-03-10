@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Trophy, Search, User, Dumbbell, Sun, Moon, Edit3, Bell, Zap, ChevronRight, Menu, X, LogOut, Settings, PlusSquare } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Home, Trophy, Search, User, Dumbbell, Sun, Moon, Edit3, Bell, Zap, ChevronRight, Menu, X, LogOut, Settings, PlusSquare, PlaySquare } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { ArenaProfile } from '../types';
 
@@ -9,13 +9,15 @@ interface ArenaNavbarProps {
   setActiveTab: (tab: string) => void;
   userProfile?: ArenaProfile | null;
   unreadNotifications?: number;
+  onCreatePost?: () => void;
 }
 
-export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTab, userProfile, unreadNotifications = 0 }) => {
+export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTab, userProfile, unreadNotifications = 0, onCreatePost }) => {
   const { theme, toggleTheme } = useTheme();
   
   const tabs = [
     { id: 'feed', icon: Home, label: 'Feed' },
+    { id: 'clips', icon: PlaySquare, label: 'Clips' },
     { id: 'rankings', icon: Trophy, label: 'Rankings' },
     { id: 'search', icon: Search, label: 'Busca' },
     { id: 'notifications', icon: Bell, label: 'Notificações' },
@@ -25,7 +27,7 @@ export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTa
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-[var(--surface)]/60 backdrop-blur-2xl border-t border-[var(--border-ui)] z-50 md:top-0 md:bottom-auto md:h-screen md:w-24 md:flex-col md:border-r md:border-t-0 transition-all duration-500 shadow-2xl">
       <div className="flex justify-around items-center h-20 md:flex-col md:h-full md:py-10">
-        <div className="hidden md:block mb-12">
+        <div className="hidden md:block mb-8">
           <div className="relative group cursor-pointer" onClick={() => setActiveTab('feed')}>
             <div className="absolute inset-0 bg-[var(--primary)] rounded-2xl blur-lg opacity-0 group-hover:opacity-40 transition-opacity" />
             <div className="relative w-12 h-12 bg-gradient-to-br from-[var(--primary)] to-blue-700 rounded-2xl flex items-center justify-center font-black text-white shadow-2xl shadow-blue-500/30 border border-white/10 italic overflow-hidden transform group-hover:scale-110 transition-transform duration-500">
@@ -37,8 +39,18 @@ export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTa
             </div>
           </div>
         </div>
+
+        {/* Create Post Button (Fixed Left) */}
+        <button
+          onClick={onCreatePost}
+          className="hidden md:flex flex-col items-center justify-center mb-8 group transition-all"
+        >
+          <div className="p-4 rounded-2xl bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20 group-hover:scale-110 group-hover:bg-[var(--primary-highlight)] transition-all">
+            <PlusSquare size={24} strokeWidth={2.5} />
+          </div>
+        </button>
         
-        <div className="flex flex-1 justify-around items-center w-full md:flex-col md:justify-center md:space-y-10">
+        <div className="flex flex-1 justify-around items-center w-full md:flex-col md:justify-center md:space-y-8">
           {tabs.map((tab) => (
             <button
               key={tab.id}

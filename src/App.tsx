@@ -4,14 +4,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { ArenaNavbar } from './components/ArenaNavbar';
 import { ArenaFeed } from './components/ArenaFeed';
+import { ArenaClips } from './components/ArenaClips';
 import { ArenaRankings } from './components/ArenaRankings';
 import { ArenaSearch } from './components/ArenaSearch';
 import { ArenaProfileView } from './components/ArenaProfile';
 import { ArenaSettings } from './components/ArenaSettings';
 import { ArenaAuth } from './components/ArenaAuth';
 import { ArenaNotifications } from './components/ArenaNotifications';
+import { CreatePostModal } from './components/CreatePostModal';
 import { ArenaProfile } from './types';
-import { Bell } from 'lucide-react';
+import { Bell, Plus } from 'lucide-react';
 
 const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
   const { userId, username } = useParams();
@@ -25,6 +27,7 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -38,6 +41,7 @@ export default function App() {
     const subPath = pathParts[1];
     
     if (path === 'feed') setActiveTab('feed');
+    else if (path === 'clips') setActiveTab('clips');
     else if (path === 'profile' && subPath === 'edit') setActiveTab('profile/edit');
     else if (['rankings', 'search', 'profile', 'settings', 'gyms', 'notifications'].includes(path)) setActiveTab(path);
   }, [location.pathname]);
@@ -123,6 +127,7 @@ export default function App() {
           setActiveTab={(tab) => navigate(`/${tab === 'feed' ? '' : tab}`)} 
           userProfile={profile}
           unreadNotifications={unreadNotifications}
+          onCreatePost={() => setIsCreatePostModalOpen(true)}
         />
         
         {/* Mobile Header */}
@@ -203,7 +208,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto pt-16 md:pt-20">
+        <main className={`${tabId === 'clips' ? 'max-w-none' : 'max-w-7xl'} mx-auto pt-16 md:pt-20`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={tabId}
@@ -216,6 +221,24 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Mobile Floating Create Button */}
+        <button
+          onClick={() => setIsCreatePostModalOpen(true)}
+          className="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-[var(--primary)] text-white rounded-full shadow-2xl shadow-[var(--primary)]/40 flex items-center justify-center z-40 active:scale-90 transition-transform"
+        >
+          <Plus size={28} />
+        </button>
+
+        <CreatePostModal 
+          isOpen={isCreatePostModalOpen}
+          onClose={() => setIsCreatePostModalOpen(false)}
+          userProfile={profile}
+          onPostCreated={() => {
+            // Refresh feed if active
+            if (activeTab === 'feed') window.location.reload();
+          }}
+        />
 
         {/* Header (Desktop Only) */}
         <header className="hidden md:flex fixed top-0 right-0 left-24 h-20 bg-[var(--bg)]/40 backdrop-blur-2xl border-b border-[var(--border-ui)] items-center justify-between px-12 z-40 transition-all duration-500">
@@ -310,6 +333,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <ArenaAuth />} />
       <Route path="/" element={renderLayout(<ArenaFeed userProfile={profile} />, 'feed')} />
+      <Route path="/clips" element={renderLayout(<ArenaClips />, 'clips')} />
       <Route path="/rankings" element={renderLayout(<ArenaRankings />, 'rankings')} />
       <Route path="/search" element={renderLayout(<ArenaSearch />, 'search')} />
       <Route path="/profile" element={renderLayout(<ProfileWrapper />, 'profile')} />
