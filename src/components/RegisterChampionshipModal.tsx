@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Trophy, Target, MapPin, Calendar, User, Save, Camera, Award, Shield } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { modalities } from '../utils/data';
+import { modalities, ageCategories, belts } from '../utils/data';
 import { calculateAndUpdateStats } from '../services/arenaService';
 import { ChampionshipPlacement } from '../types';
 
@@ -23,13 +23,38 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
     championship_name: '',
     modalidade: 'Jiu Jitsu',
     categoria_idade: 'Adulto',
-    faixa: '',
-    peso: '',
+    faixa: 'Branca',
+    peso_atleta: '',
+    peso: 'Galo',
     cidade: '',
     pais: 'Brasil',
     data_evento: new Date().toISOString().split('T')[0],
     resultado: 'Campeão' as ChampionshipPlacement
   });
+
+  const calculateWeightCategory = (weight: number, modality: string) => {
+    if (modality !== 'Jiu Jitsu') return formData.peso;
+    
+    if (weight <= 57) return 'Galo';
+    if (weight <= 64) return 'Pluma';
+    if (weight <= 70) return 'Pena';
+    if (weight <= 76) return 'Leve';
+    if (weight <= 82) return 'Médio';
+    if (weight <= 88) return 'Meio Pesado';
+    if (weight <= 94) return 'Pesado';
+    if (weight <= 100) return 'Super Pesado';
+    return 'Pesadíssimo';
+  };
+
+  const handleWeightChange = (val: string) => {
+    const weightNum = parseFloat(val);
+    const category = !isNaN(weightNum) ? calculateWeightCategory(weightNum, formData.modalidade) : formData.peso;
+    setFormData({
+      ...formData,
+      peso_atleta: val,
+      peso: category
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,11 +107,12 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
       }
 
       // 2. Insert championship result
+      const { peso_atleta, ...insertData } = formData;
       const { error: insertError } = await supabase
         .from('championship_results')
         .insert([{
           athlete_id: athleteId,
-          ...formData,
+          ...insertData,
           foto_podio_url,
           created_at: new Date().toISOString()
         }]);
@@ -179,9 +205,9 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
                       required
                       type="text"
                       value={formData.championship_name}
-                      onChange={e => setFormData({...formData, championship_name: e.target.value})}
-                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
-                      placeholder="Ex: Copa São Paulo de Jiu-Jitsu"
+                      onChange={e => setFormData({...formData, championship_name: e.target.value.toUpperCase()})}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all uppercase"
+                      placeholder="Ex: COPA SÃO PAULO DE JIU-JITSU"
                     />
                   </div>
 
@@ -193,7 +219,12 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
                     </label>
                     <select
                       value={formData.modalidade}
-                      onChange={e => setFormData({...formData, modalidade: e.target.value})}
+                      onChange={e => {
+                        const newModality = e.target.value;
+                        const weightNum = parseFloat(formData.peso_atleta);
+                        const category = !isNaN(weightNum) ? calculateWeightCategory(weightNum, newModality) : formData.peso;
+                        setFormData({...formData, modalidade: newModality, peso: category});
+                      }}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
                     >
                       {modalities.map(m => <option key={m} value={m}>{m}</option>)}
@@ -206,77 +237,61 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
                       <User size={12} />
                       <span>Categoria de Idade</span>
                     </label>
-                    <input
+                    <select
                       required
-                      type="text"
                       value={formData.categoria_idade}
                       onChange={e => setFormData({...formData, categoria_idade: e.target.value})}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
-                      placeholder="Ex: Adulto, Master 1"
-                    />
+                    >
+                      {ageCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
 
                   {/* Faixa */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
                       <Award size={12} />
-                      <span>Faixa (Opcional)</span>
+                      <span>Faixa</span>
                     </label>
-                    <input
-                      type="text"
+                    <select
+                      required
                       value={formData.faixa}
                       onChange={e => setFormData({...formData, faixa: e.target.value})}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
-                      placeholder="Ex: Faixa Azul"
+                    >
+                      {belts.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Peso do Atleta */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
+                      <Target size={12} />
+                      <span>Peso do Atleta (kg)</span>
+                    </label>
+                    <input
+                      required
+                      type="number"
+                      step="0.1"
+                      value={formData.peso_atleta}
+                      onChange={e => handleWeightChange(e.target.value)}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
+                      placeholder="Ex: 74.5"
                     />
                   </div>
 
-                  {/* Peso */}
+                  {/* Categoria de Peso (Calculada) */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
                       <Target size={12} />
                       <span>Categoria de Peso</span>
                     </label>
                     <input
-                      required
+                      readOnly
                       type="text"
                       value={formData.peso}
-                      onChange={e => setFormData({...formData, peso: e.target.value})}
-                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
-                      placeholder="Ex: Peso Leve (-76kg)"
-                    />
-                  </div>
-
-                  {/* Resultado */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
-                      <Award size={12} />
-                      <span>Resultado Final</span>
-                    </label>
-                    <select
-                      value={formData.resultado}
-                      onChange={e => setFormData({...formData, resultado: e.target.value as ChampionshipPlacement})}
-                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
-                    >
-                      <option value="Campeão">Campeão</option>
-                      <option value="Vice-campeão">Vice-campeão</option>
-                      <option value="Terceiro lugar">Terceiro lugar</option>
-                      <option value="Participação">Participação</option>
-                    </select>
-                  </div>
-
-                  {/* Data */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
-                      <Calendar size={12} />
-                      <span>Data do Campeonato</span>
-                    </label>
-                    <input
-                      required
-                      type="date"
-                      value={formData.data_evento}
-                      onChange={e => setFormData({...formData, data_evento: e.target.value})}
-                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
+                      className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-muted)] outline-none cursor-not-allowed"
+                      placeholder="Calculado automaticamente"
                     />
                   </div>
 
@@ -310,6 +325,39 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
                       placeholder="Ex: Brasil"
                     />
+                  </div>
+
+                  {/* Data */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
+                      <Calendar size={12} />
+                      <span>Data do Evento</span>
+                    </label>
+                    <input
+                      required
+                      type="date"
+                      value={formData.data_evento}
+                      onChange={e => setFormData({...formData, data_evento: e.target.value})}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
+                    />
+                  </div>
+
+                  {/* Resultado */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center space-x-2">
+                      <Award size={12} />
+                      <span>Resultado</span>
+                    </label>
+                    <select
+                      value={formData.resultado}
+                      onChange={e => setFormData({...formData, resultado: e.target.value as ChampionshipPlacement})}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] transition-all"
+                    >
+                      <option value="Campeão">Campeão</option>
+                      <option value="Vice-campeão">Vice-campeão</option>
+                      <option value="Terceiro lugar">Terceiro lugar</option>
+                      <option value="Participação">Participação</option>
+                    </select>
                   </div>
                 </div>
 

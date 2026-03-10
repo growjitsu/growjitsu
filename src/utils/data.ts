@@ -32,3 +32,24 @@ export const modalities = [
   'Aikido',
   'Outros'
 ];
+
+export const ageCategories = [
+  'Pré-Mirim',
+  'Mirim',
+  'Infantil',
+  'Infanto Juvenil',
+  'Juvenil',
+  'Adulto',
+  'Master 1',
+  'Master 2',
+  'Master 3',
+  'Master 4'
+];
+
+export const belts = [
+  'Branca',
+  'Azul',
+  'Roxa',
+  'Marrom',
+  'Preta'
+];

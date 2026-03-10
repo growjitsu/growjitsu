@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Trophy, Medal, Target, Filter, ChevronDown } from 'lucide-react';
+import { Trophy, Medal, Target, Filter, ChevronDown, Users, User } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaProfile } from '../types';
 import { modalities } from '../utils/data';
 
+interface TeamRanking {
+  team: string;
+  total_score: number;
+  athlete_count: number;
+}
+
 export const ArenaRankings: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'athletes' | 'teams'>('athletes');
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
+  const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({
     scope: 'Mundial',
@@ -17,8 +25,12 @@ export const ArenaRankings: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchRankings();
-  }, [filter]);
+    if (activeTab === 'athletes') {
+      fetchRankings();
+    } else {
+      fetchTeamRankings();
+    }
+  }, [filter, activeTab]);
 
   const fetchRankings = async () => {
     setLoading(true);
@@ -30,8 +42,6 @@ export const ArenaRankings: React.FC = () => {
         .limit(50);
 
       if (filter.modality !== 'Todas') {
-        // Normalize the filter modality to handle common variations (hyphens vs spaces)
-        // and use ilike with wildcards for maximum flexibility
         const searchPattern = filter.modality.replace(/[-\s]/g, '%');
         query = query.ilike('modality', `%${searchPattern}%`);
       }
@@ -52,6 +62,24 @@ export const ArenaRankings: React.FC = () => {
     }
   };
 
+  const fetchTeamRankings = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_team_rankings', {
+        p_modality: filter.modality === 'Todas' ? null : filter.modality,
+        p_country: filter.scope === 'Nacional' ? filter.country : null,
+        p_city: filter.scope === 'Cidade' && filter.city !== 'Todas' ? filter.city : null
+      });
+
+      if (error) throw error;
+      setTeamRankings(data || []);
+    } catch (error) {
+      console.error('Error fetching team rankings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 space-y-8">
       {/* Header */}
@@ -60,6 +88,32 @@ export const ArenaRankings: React.FC = () => {
           Arena <span className="text-[var(--primary)]">Rankings</span>
         </h1>
         <p className="text-[var(--text-muted)] text-xs uppercase tracking-[0.3em] font-bold">O topo do esporte nacional</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex justify-center p-1 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl w-fit mx-auto">
+        <button
+          onClick={() => setActiveTab('athletes')}
+          className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            activeTab === 'athletes' 
+              ? 'bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20' 
+              : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+          }`}
+        >
+          <User size={14} />
+          <span>Atletas</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('teams')}
+          className={`flex items-center space-x-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+            activeTab === 'teams' 
+              ? 'bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20' 
+              : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+          }`}
+        >
+          <Users size={14} />
+          <span>Equipes</span>
+        </button>
       </div>
 
       {/* Filters */}
@@ -122,9 +176,9 @@ export const ArenaRankings: React.FC = () => {
       <div className="bg-[var(--surface)] border border-[var(--border-ui)] rounded-3xl overflow-hidden transition-colors duration-300">
         <div className="grid grid-cols-12 p-4 border-b border-[var(--border-ui)] text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
           <div className="col-span-1 text-center">#</div>
-          <div className="col-span-6 md:col-span-7">Atleta</div>
+          <div className="col-span-6 md:col-span-7">{activeTab === 'athletes' ? 'Atleta' : 'Equipe'}</div>
           <div className="col-span-3 md:col-span-2 text-center">Arena Score</div>
-          <div className="col-span-2 text-center hidden md:block">Vitórias</div>
+          <div className="col-span-2 text-center hidden md:block">{activeTab === 'athletes' ? 'Vitórias' : 'Atletas'}</div>
         </div>
 
         {loading ? (
@@ -133,7 +187,8 @@ export const ArenaRankings: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-[var(--border-ui)]">
-            {rankings.map((athlete, index) => (
+            {activeTab === 'athletes' ? (
+              rankings.map((athlete, index) => (
                 <Link 
                   to={`/user/@${athlete.username}`}
                   key={athlete.id}
@@ -160,7 +215,9 @@ export const ArenaRankings: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-sm text-[var(--text-main)]">{athlete.full_name}</h3>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">{athlete.modality} • {athlete.state}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">
+                        {athlete.modality} • {athlete.state} {athlete.team && `• ${athlete.team}`}
+                      </p>
                     </div>
                   </div>
                   <div className="col-span-3 md:col-span-2 text-center">
@@ -170,7 +227,44 @@ export const ArenaRankings: React.FC = () => {
                     <span className="text-[var(--text-muted)] font-bold text-sm">{athlete.wins}</span>
                   </div>
                 </Link>
-            ))}
+              ))
+            ) : (
+              teamRankings.map((team, index) => (
+                <div 
+                  key={team.team}
+                  className="grid grid-cols-12 p-4 items-center hover:bg-[var(--primary)]/5 transition-colors"
+                >
+                  <div className="col-span-1 text-center">
+                    {index < 3 ? (
+                      <div className={`w-6 h-6 rounded-full mx-auto flex items-center justify-center text-[10px] font-black ${
+                        index === 0 ? 'bg-yellow-500 text-black' :
+                        index === 1 ? 'bg-zinc-300 text-black' :
+                        'bg-amber-700 text-white'
+                      }`}>
+                        {index + 1}
+                      </div>
+                    ) : (
+                      <span className="text-xs font-bold text-[var(--text-muted)]">{index + 1}</span>
+                    )}
+                  </div>
+                  <div className="col-span-6 md:col-span-7 flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center text-[var(--primary)] flex-shrink-0">
+                      <Users size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm text-[var(--text-main)]">{team.team}</h3>
+                      <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">Equipe / Academia</p>
+                    </div>
+                  </div>
+                  <div className="col-span-3 md:col-span-2 text-center">
+                    <span className="text-[var(--primary)] font-black text-sm">{Math.round(team.total_score)}</span>
+                  </div>
+                  <div className="col-span-2 text-center hidden md:block">
+                    <span className="text-[var(--text-muted)] font-bold text-sm">{team.athlete_count}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>

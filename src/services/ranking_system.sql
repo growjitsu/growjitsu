@@ -71,3 +71,31 @@ CREATE INDEX IF NOT EXISTS idx_profiles_country_score ON profiles(country, arena
 CREATE INDEX IF NOT EXISTS idx_profiles_city_score ON profiles(city, arena_score DESC);
 CREATE INDEX IF NOT EXISTS idx_fights_athlete_id ON fights(athlete_id);
 CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_results(athlete_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_team ON profiles(team);
+
+-- 9. Function to get team rankings with filters
+CREATE OR REPLACE FUNCTION get_team_rankings(
+  p_modality TEXT DEFAULT NULL,
+  p_country TEXT DEFAULT NULL,
+  p_city TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+  team TEXT,
+  total_score NUMERIC,
+  athlete_count BIGINT
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    p.team,
+    SUM(p.arena_score) as total_score,
+    COUNT(p.id) as athlete_count
+  FROM profiles p
+  WHERE p.team IS NOT NULL
+    AND (p_modality IS NULL OR p.modality ILIKE '%' || p_modality || '%')
+    AND (p_country IS NULL OR p.country = p_country)
+    AND (p_city IS NULL OR p.city ILIKE p_city)
+  GROUP BY p.team
+  ORDER BY total_score DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

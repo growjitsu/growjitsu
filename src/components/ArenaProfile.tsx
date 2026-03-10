@@ -730,7 +730,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     {profile.team && (
                       <>
                         <span>•</span>
-                        <span className="text-[var(--primary)]">{profile.team}</span>
+                        <span className="text-[var(--primary)] font-bold">Equipe: {profile.team}</span>
                       </>
                     )}
                   </div>
