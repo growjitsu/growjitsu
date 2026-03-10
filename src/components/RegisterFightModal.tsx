@@ -62,8 +62,7 @@ export const RegisterFightModal: React.FC<RegisterFightModalProps> = ({ isOpen, 
         const { error } = await supabase
           .from('fights')
           .update({
-            ...formData,
-            updated_at: new Date().toISOString()
+            ...formData
           })
           .eq('id', initialData.id);
 

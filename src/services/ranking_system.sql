@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS fights (
     cidade TEXT NOT NULL,
     pais TEXT NOT NULL,
     data_luta DATE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 2. Add new columns to profiles table
@@ -54,7 +55,8 @@ CREATE TABLE IF NOT EXISTS championship_results (
     data_evento DATE NOT NULL,
     resultado TEXT CHECK (resultado IN ('Campeão', 'Vice-campeão', 'Terceiro lugar', 'Participação')),
     foto_podio_url TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 6. Enable RLS on championship_results

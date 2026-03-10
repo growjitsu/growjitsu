@@ -148,8 +148,7 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
           .from('championship_results')
           .update({
             ...insertData,
-            foto_podio_url,
-            updated_at: new Date().toISOString()
+            foto_podio_url
           })
           .eq('id', initialData.id);
 
