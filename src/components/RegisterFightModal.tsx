@@ -46,7 +46,11 @@ export const RegisterFightModal: React.FC<RegisterFightModalProps> = ({ isOpen, 
       onClose();
     } catch (error: any) {
       console.error('Error registering fight:', error);
-      alert('Erro ao registrar luta: ' + error.message);
+      if (error.message?.includes("Could not find the table 'public.fights'")) {
+        alert('Erro: A tabela "fights" não foi encontrada. Por favor, execute o script SQL de atualização no seu dashboard do Supabase (disponível no arquivo src/services/ranking_system.sql).');
+      } else {
+        alert('Erro ao registrar luta: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }

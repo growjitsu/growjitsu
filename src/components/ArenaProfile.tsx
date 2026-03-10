@@ -469,8 +469,24 @@ CREATE TABLE IF NOT EXISTS profiles (
     wins INTEGER DEFAULT 0,
     losses INTEGER DEFAULT 0,
     draws INTEGER DEFAULT 0,
+    total_fights INTEGER DEFAULT 0,
+    win_rate DECIMAL(5,2) DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS fights (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    athlete_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    opponent_name TEXT NOT NULL,
+    modalidade TEXT NOT NULL,
+    resultado TEXT CHECK (resultado IN ('win', 'loss')),
+    tipo_vitoria TEXT CHECK (tipo_vitoria IN ('pontos', 'finalização', 'nocaute', 'decisão', 'outro')),
+    evento TEXT NOT NULL,
+    cidade TEXT NOT NULL,
+    pais TEXT NOT NULL,
+    data_luta DATE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS follows (
@@ -518,7 +534,18 @@ CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE USING 
 
 CREATE POLICY "Posts are viewable by everyone" ON posts FOR SELECT USING (true);
 CREATE POLICY "Users can create posts" ON posts FOR INSERT WITH CHECK (auth.uid() = author_id);
-CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (auth.uid() = author_id);`}
+CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (auth.uid() = author_id);
+
+-- Fights Policies
+ALTER TABLE fights ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Fights are viewable by everyone" ON fights FOR SELECT USING (true);
+CREATE POLICY "Users can insert their own fights" ON fights FOR INSERT WITH CHECK (auth.uid() = athlete_id);
+CREATE POLICY "Users can update/delete their own fights" ON fights FOR ALL USING (auth.uid() = athlete_id);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_profiles_arena_score ON profiles(arena_score DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_city ON profiles(city);
+CREATE INDEX IF NOT EXISTS idx_profiles_country ON profiles(country);`}
                   </pre>
                 </div>
               </details>
