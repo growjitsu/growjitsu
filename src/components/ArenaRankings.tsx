@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Trophy, Medal, Target, Filter, ChevronDown, Users, User } from 'lucide-react';
+import { Trophy, Medal, Target, Filter, ChevronDown, Users, User, Database } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaProfile } from '../types';
 import { modalities } from '../utils/data';
@@ -19,6 +19,7 @@ export const ArenaRankings: React.FC = () => {
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
   const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState({
     scope: 'Mundial',
     modality: 'Todas',
@@ -67,18 +68,156 @@ export const ArenaRankings: React.FC = () => {
   const fetchTeamRankings = async () => {
     setLoading(true);
     try {
+      // Try to use the RPC first
       const { data, error } = await supabase.rpc('get_team_rankings', {
         p_modality: filter.modality === 'Todas' ? null : filter.modality,
         p_country: filter.scope === 'Nacional' ? filter.country : null,
         p_city: filter.scope === 'Cidade' && filter.city !== 'Todas' ? filter.city : null
       });
+      
+      if (!error && data && data.length > 0) {
+        // Normalize data if it comes from the old RPC version
+        const normalizedData = data.map((item: any) => ({
+          team_id: item.team_id || item.team || Math.random().toString(),
+          team_name: item.team_name || item.team || 'Equipe Desconhecida',
+          logo_url: item.logo_url,
+          total_score: item.total_score || 0,
+          athlete_count: item.athlete_count || 0
+        }));
+        setTeamRankings(normalizedData);
+      } else {
+        // Fallback: Calculate on client side if RPC fails or returns empty
+        console.log('RPC failed or empty, falling back to client-side calculation');
+        let query = supabase
+          .from('profiles')
+          .select('id, team, team_id, arena_score, modality, city, state, country')
+          .not('team', 'is', null);
 
-      if (error) throw error;
-      setTeamRankings(data || []);
+        if (filter.modality !== 'Todas') {
+          const searchPattern = filter.modality.replace(/[-\s]/g, '%');
+          query = query.ilike('modality', `%${searchPattern}%`);
+        }
+        
+        if (filter.scope === 'Cidade' && filter.city !== 'Todas') {
+          query = query.ilike('city', filter.city);
+        } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
+          query = query.eq('country', filter.country);
+        }
+
+        const { data: profiles, error: profilesError } = await query;
+        if (profilesError) throw profilesError;
+
+        if (profiles) {
+          const teamsMap = new Map<string, TeamRanking>();
+          
+          profiles.forEach(p => {
+            const teamName = p.team || 'Sem Equipe';
+            const teamId = p.team_id || teamName;
+            
+            if (teamsMap.has(teamId)) {
+              const existing = teamsMap.get(teamId)!;
+              existing.total_score += p.arena_score || 0;
+              existing.athlete_count += 1;
+            } else {
+              teamsMap.set(teamId, {
+                team_id: teamId,
+                team_name: teamName,
+                total_score: p.arena_score || 0,
+                athlete_count: 1
+              });
+            }
+          });
+
+          const sortedTeams = Array.from(teamsMap.values())
+            .sort((a, b) => b.total_score - a.total_score)
+            .slice(0, 50);
+            
+          setTeamRankings(sortedTeams);
+        }
+      }
     } catch (error) {
       console.error('Error fetching team rankings:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const seedSampleData = async () => {
+    setSeeding(true);
+    try {
+      // 1. Create some sample teams
+      const sampleTeams = [
+        { name: 'Alliance', professor: 'Fabio Gurgel', city: 'São Paulo', state: 'SP' },
+        { name: 'Gracie Barra', professor: 'Carlos Gracie Jr.', city: 'Rio de Janeiro', state: 'RJ' },
+        { name: 'Checkmat', professor: 'Leo Vieira', city: 'São Paulo', state: 'SP' },
+        { name: 'Atos', professor: 'Andre Galvao', city: 'San Diego', state: 'CA', country: 'EUA' }
+      ];
+
+      await supabase
+        .from('teams')
+        .upsert(sampleTeams, { onConflict: 'name' });
+
+      // 2. Create some sample profiles linked to teams
+      const sampleProfiles = [
+        { 
+          full_name: 'Ricardo Almeida', 
+          username: 'ricardo_bjj', 
+          arena_score: 1250, 
+          team: 'Alliance', 
+          modality: 'Jiu-Jitsu',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'Brasil',
+          wins: 15,
+          losses: 2,
+          perfil_publico: true,
+          permitir_seguidores: true,
+          arena_points: 1250
+        },
+        { 
+          full_name: 'Beatriz Mesquita', 
+          username: 'biamesquita', 
+          arena_score: 1100, 
+          team: 'Gracie Barra', 
+          modality: 'Jiu-Jitsu',
+          city: 'Rio de Janeiro',
+          state: 'RJ',
+          country: 'Brasil',
+          wins: 12,
+          losses: 1,
+          perfil_publico: true,
+          permitir_seguidores: true,
+          arena_points: 1100
+        },
+        { 
+          full_name: 'Marcus Buchecha', 
+          username: 'buchecha', 
+          arena_score: 1500, 
+          team: 'Checkmat', 
+          modality: 'Jiu-Jitsu',
+          city: 'São Paulo',
+          state: 'SP',
+          country: 'Brasil',
+          wins: 20,
+          losses: 0,
+          perfil_publico: true,
+          permitir_seguidores: true,
+          arena_points: 1500
+        }
+      ];
+
+      await supabase
+        .from('profiles')
+        .upsert(sampleProfiles, { onConflict: 'username' });
+
+      alert('Dados de exemplo gerados com sucesso!');
+      if (activeTab === 'athletes') fetchRankings();
+      else fetchTeamRankings();
+    } catch (error) {
+      console.error('Error seeding data:', error);
+      alert('Erro ao gerar dados. Verifique se as tabelas existem no Supabase.');
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -189,6 +328,27 @@ export const ArenaRankings: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-[var(--border-ui)]">
+            {(activeTab === 'athletes' ? rankings : teamRankings).length === 0 && (
+              <div className="p-12 text-center space-y-4">
+                <div className="w-16 h-16 bg-[var(--primary)]/10 rounded-full flex items-center justify-center mx-auto text-[var(--primary)]">
+                  <Database size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Nenhum dado encontrado</h3>
+                  <p className="text-sm text-[var(--text-muted)] max-w-xs mx-auto">
+                    Ainda não há {activeTab === 'athletes' ? 'atletas' : 'equipes'} registrados com os filtros selecionados.
+                  </p>
+                </div>
+                <button
+                  onClick={seedSampleData}
+                  disabled={seeding}
+                  className="px-6 py-2 bg-[var(--primary)] text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
+                >
+                  {seeding ? 'Gerando...' : 'Gerar Dados de Exemplo'}
+                </button>
+              </div>
+            )}
+
             {activeTab === 'athletes' ? (
               rankings.map((athlete, index) => (
                 <Link 
