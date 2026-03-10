@@ -4,10 +4,10 @@ import {
   Award, Target, TrendingUp, Grid, History, MapPin, Calendar, 
   Settings, Edit2, Save, X, Instagram, Youtube, Music, 
   User, Dumbbell, Ruler, Scale, GraduationCap, Trophy,
-  Database, Plus
+  Database, Plus, Trash2
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { ArenaProfile, ArenaResult, ArenaPost, ArenaChampionshipResult } from '../types';
+import { ArenaProfile, ArenaResult, ArenaPost, ArenaChampionshipResult, ArenaFight } from '../types';
 import { countries, modalities } from '../utils/data';
 import { PostModal } from './PostModal';
 import { RegisterFightModal } from './RegisterFightModal';
@@ -18,9 +18,10 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
   const [results, setResults] = useState<ArenaResult[]>([]);
   const [championships, setChampionships] = useState<ArenaChampionshipResult[]>([]);
+  const [fights, setFights] = useState<ArenaFight[]>([]);
   const [posts, setPosts] = useState<ArenaPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'posts' | 'history' | 'championships'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'history' | 'championships' | 'fights'>('posts');
   const [isEditing, setIsEditing] = useState(forceEdit || false);
   const [editData, setEditData] = useState<Partial<ArenaProfile>>({});
   const [saving, setSaving] = useState(false);
@@ -32,6 +33,8 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isRegisterFightModalOpen, setIsRegisterFightModalOpen] = useState(false);
   const [isRegisterChampionshipModalOpen, setIsRegisterChampionshipModalOpen] = useState(false);
+  const [editingChampionship, setEditingChampionship] = useState<ArenaChampionshipResult | null>(null);
+  const [editingFight, setEditingFight] = useState<ArenaFight | null>(null);
   const [rankings, setRankings] = useState({ world: 0, national: 0, city: 0 });
 
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +181,15 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         .order('data_evento', { ascending: false });
       
       setChampionships(champData || []);
+
+      // Fetch Fights
+      const { data: fightsData } = await supabase
+        .from('fights')
+        .select('*')
+        .eq('athlete_id', targetId)
+        .order('data_luta', { ascending: false });
+      
+      setFights(fightsData || []);
 
       // Fetch Posts
       const { data: postsData } = await supabase
@@ -1083,6 +1095,15 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
               Campeonatos
               {activeTab === 'championships' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
             </button>
+            <button
+              onClick={() => setActiveTab('fights')}
+              className={`pb-4 text-xs font-black uppercase tracking-widest transition-colors relative ${
+                activeTab === 'fights' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              Lutas
+              {activeTab === 'fights' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -1139,6 +1160,79 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   <div className="py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhum resultado registrado</div>
                 )}
               </div>
+            ) : activeTab === 'fights' ? (
+              <div className="space-y-4">
+                {fights.length > 0 ? fights.map((fight) => (
+                  <div key={fight.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-6 rounded-[2rem] transition-colors duration-300">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          fight.resultado === 'win' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
+                        }`}>
+                          {fight.resultado === 'win' ? <Trophy size={16} /> : <Target size={16} />}
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Oponente</p>
+                          <h4 className="font-bold text-sm text-[var(--text-main)]">{fight.opponent_name}</h4>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          fight.resultado === 'win' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                        }`}>
+                          {fight.resultado === 'win' ? 'Vitória' : 'Derrota'}
+                        </div>
+                        {isOwnProfile && (
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => {
+                                setEditingFight(fight);
+                                setIsRegisterFightModalOpen(true);
+                              }}
+                              className="p-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                              title="Editar"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingFight(fight);
+                                setIsRegisterFightModalOpen(true);
+                                // The modal will handle the delete confirmation
+                              }}
+                              className="p-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                              title="Excluir"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-[var(--border-ui)]">
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Modalidade</p>
+                        <p className="text-xs font-bold text-[var(--text-main)]">{fight.modalidade}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Tipo</p>
+                        <p className="text-xs font-bold text-[var(--text-main)] capitalize">{fight.tipo_vitoria}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Evento</p>
+                        <p className="text-xs font-bold text-[var(--text-main)] truncate">{fight.evento || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-widest">Data</p>
+                        <p className="text-xs font-bold text-[var(--text-main)]">{new Date(fight.data_luta).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhuma luta registrada</div>
+                )}
+              </div>
             ) : (
               <div className="space-y-6">
                 {championships.length > 0 ? championships.map((champ) => (
@@ -1169,6 +1263,31 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                           }`}>
                             {champ.resultado}
                           </div>
+                          {isOwnProfile && (
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => {
+                                  setEditingChampionship(champ);
+                                  setIsRegisterChampionshipModalOpen(true);
+                                }}
+                                className="p-2 text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                                title="Editar"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingChampionship(champ);
+                                  setIsRegisterChampionshipModalOpen(true);
+                                  // The modal will handle the delete confirmation
+                                }}
+                                className="p-2 text-[var(--text-muted)] hover:text-rose-500 transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1214,18 +1333,26 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       {isRegisterFightModalOpen && profile && (
         <RegisterFightModal
           isOpen={isRegisterFightModalOpen}
-          onClose={() => setIsRegisterFightModalOpen(false)}
+          onClose={() => {
+            setIsRegisterFightModalOpen(false);
+            setEditingFight(null);
+          }}
           athleteId={profile.id}
           onFightRegistered={fetchProfileData}
+          initialData={editingFight}
         />
       )}
 
       {isRegisterChampionshipModalOpen && profile && (
         <RegisterChampionshipModal
           isOpen={isRegisterChampionshipModalOpen}
-          onClose={() => setIsRegisterChampionshipModalOpen(false)}
+          onClose={() => {
+            setIsRegisterChampionshipModalOpen(false);
+            setEditingChampionship(null);
+          }}
           athleteId={profile.id}
           onChampionshipRegistered={fetchProfileData}
+          initialData={editingChampionship}
         />
       )}
     </div>

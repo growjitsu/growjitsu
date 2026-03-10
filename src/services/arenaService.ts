@@ -33,21 +33,15 @@ export const calculateAndUpdateStats = async (athleteId: string) => {
   championships?.forEach(champ => {
     switch (champ.resultado) {
       case 'Campeão':
-        wins += 3;
         arenaScore += 100;
         break;
       case 'Vice-campeão':
-        wins += 2;
-        losses += 1;
         arenaScore += 60;
         break;
       case 'Terceiro lugar':
-        wins += 1;
-        losses += 1;
         arenaScore += 40;
         break;
       case 'Participação':
-        losses += 1;
         arenaScore += 10;
         break;
     }

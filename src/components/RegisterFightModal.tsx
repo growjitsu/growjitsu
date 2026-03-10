@@ -1,43 +1,84 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Trophy, Target, MapPin, Calendar, User, Save, Award } from 'lucide-react';
+import { X, Trophy, Target, MapPin, Calendar, User, Save, Award, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { modalities } from '../utils/data';
 import { calculateAndUpdateStats } from '../services/arenaService';
+import { ArenaFight } from '../types';
 
 interface RegisterFightModalProps {
   isOpen: boolean;
   onClose: () => void;
   athleteId: string;
   onFightRegistered: () => void;
+  initialData?: ArenaFight | null;
 }
 
-export const RegisterFightModal: React.FC<RegisterFightModalProps> = ({ isOpen, onClose, athleteId, onFightRegistered }) => {
+export const RegisterFightModal: React.FC<RegisterFightModalProps> = ({ isOpen, onClose, athleteId, onFightRegistered, initialData }) => {
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [formData, setFormData] = useState({
-    opponent_name: '',
-    modalidade: 'Jiu-Jitsu',
-    resultado: 'win' as 'win' | 'loss',
-    tipo_vitoria: 'pontos' as any,
-    evento: '',
-    cidade: '',
-    pais: 'Brasil',
-    data_luta: new Date().toISOString().split('T')[0]
+    opponent_name: initialData?.opponent_name || '',
+    modalidade: initialData?.modalidade || 'Jiu-Jitsu',
+    resultado: (initialData?.resultado || 'win') as 'win' | 'loss',
+    tipo_vitoria: (initialData?.tipo_vitoria || 'pontos') as any,
+    evento: initialData?.evento || '',
+    cidade: initialData?.cidade || '',
+    pais: initialData?.pais || 'Brasil',
+    data_luta: initialData?.data_luta || new Date().toISOString().split('T')[0]
   });
+
+  React.useEffect(() => {
+    if (initialData) {
+      setFormData({
+        opponent_name: initialData.opponent_name,
+        modalidade: initialData.modalidade,
+        resultado: initialData.resultado as 'win' | 'loss',
+        tipo_vitoria: initialData.tipo_vitoria as any,
+        evento: initialData.evento,
+        cidade: initialData.cidade,
+        pais: initialData.pais,
+        data_luta: initialData.data_luta
+      });
+    } else {
+      setFormData({
+        opponent_name: '',
+        modalidade: 'Jiu-Jitsu',
+        resultado: 'win' as 'win' | 'loss',
+        tipo_vitoria: 'pontos' as any,
+        evento: '',
+        cidade: '',
+        pais: 'Brasil',
+        data_luta: new Date().toISOString().split('T')[0]
+      });
+    }
+  }, [initialData, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('fights')
-        .insert([{
-          athlete_id: athleteId,
-          ...formData,
-          created_at: new Date().toISOString()
-        }]);
+      if (initialData) {
+        const { error } = await supabase
+          .from('fights')
+          .update({
+            ...formData,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', initialData.id);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('fights')
+          .insert([{
+            athlete_id: athleteId,
+            ...formData,
+            created_at: new Date().toISOString()
+          }]);
+
+        if (error) throw error;
+      }
 
       // Update athlete stats
       await calculateAndUpdateStats(athleteId);
@@ -46,13 +87,33 @@ export const RegisterFightModal: React.FC<RegisterFightModalProps> = ({ isOpen, 
       onClose();
     } catch (error: any) {
       console.error('Error registering fight:', error);
-      if (error.message?.includes("Could not find the table 'public.fights'")) {
-        alert('Erro: A tabela "fights" não foi encontrada. Por favor, execute o script SQL de atualização no seu dashboard do Supabase (disponível no arquivo src/services/ranking_system.sql).');
-      } else {
-        alert('Erro ao registrar luta: ' + error.message);
-      }
+      alert('Erro ao registrar luta: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!initialData) return;
+    if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('fights')
+        .delete()
+        .eq('id', initialData.id);
+
+      if (error) throw error;
+
+      await calculateAndUpdateStats(athleteId);
+      onFightRegistered();
+      onClose();
+    } catch (error: any) {
+      console.error('Error deleting fight:', error);
+      alert('Erro ao excluir registro: ' + error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -230,18 +291,35 @@ export const RegisterFightModal: React.FC<RegisterFightModalProps> = ({ isOpen, 
                   </div>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                  {initialData && (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={loading || deleting}
+                      className="flex-1 bg-rose-500/10 text-rose-500 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
+                    >
+                      {deleting ? (
+                        <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Trash2 size={18} />
+                          <span>Excluir Registro</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-[var(--primary)] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[var(--primary-highlight)] transition-all shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center space-x-3 disabled:opacity-50"
+                    disabled={loading || deleting}
+                    className="flex-[2] bg-[var(--primary)] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[var(--primary-highlight)] transition-all shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center space-x-3 disabled:opacity-50"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
                         <Save size={18} />
-                        <span>Salvar Luta</span>
+                        <span>{initialData ? 'Salvar Alterações' : 'Salvar Luta'}</span>
                       </>
                     )}
                   </button>

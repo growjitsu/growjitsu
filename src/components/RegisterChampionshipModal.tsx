@@ -1,36 +1,70 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Trophy, Target, MapPin, Calendar, User, Save, Camera, Award, Shield } from 'lucide-react';
+import { X, Trophy, Target, MapPin, Calendar, User, Save, Camera, Award, Shield, Trash2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { modalities, ageCategories, belts } from '../utils/data';
 import { calculateAndUpdateStats } from '../services/arenaService';
-import { ChampionshipPlacement } from '../types';
+import { ChampionshipPlacement, ArenaChampionshipResult } from '../types';
 
 interface RegisterChampionshipModalProps {
   isOpen: boolean;
   onClose: () => void;
   athleteId: string;
   onChampionshipRegistered: () => void;
+  initialData?: ArenaChampionshipResult | null;
 }
 
-export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps> = ({ isOpen, onClose, athleteId, onChampionshipRegistered }) => {
+export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps> = ({ isOpen, onClose, athleteId, onChampionshipRegistered, initialData }) => {
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.foto_podio_url || null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
-    championship_name: '',
-    modalidade: 'Jiu Jitsu',
-    categoria_idade: 'Adulto',
-    faixa: 'Branca',
-    peso_atleta: '',
-    peso: 'Galo',
-    cidade: '',
-    pais: 'Brasil',
-    data_evento: new Date().toISOString().split('T')[0],
-    resultado: 'Campeão' as ChampionshipPlacement
+    championship_name: initialData?.championship_name || '',
+    modalidade: initialData?.modalidade || 'Jiu Jitsu',
+    categoria_idade: initialData?.categoria_idade || 'Adulto',
+    faixa: initialData?.faixa || 'Branca',
+    peso_atleta: '', // This was not in the schema, but used for calculation
+    peso: initialData?.peso || 'Galo',
+    cidade: initialData?.cidade || '',
+    pais: initialData?.pais || 'Brasil',
+    data_evento: initialData?.data_evento || new Date().toISOString().split('T')[0],
+    resultado: (initialData?.resultado || 'Campeão') as ChampionshipPlacement
   });
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        championship_name: initialData.championship_name,
+        modalidade: initialData.modalidade,
+        categoria_idade: initialData.categoria_idade,
+        faixa: initialData.faixa || 'Branca',
+        peso_atleta: '',
+        peso: initialData.peso || 'Galo',
+        cidade: initialData.cidade,
+        pais: initialData.pais,
+        data_evento: initialData.data_evento,
+        resultado: initialData.resultado as ChampionshipPlacement
+      });
+      setPreviewUrl(initialData.foto_podio_url || null);
+    } else {
+      setFormData({
+        championship_name: '',
+        modalidade: 'Jiu Jitsu',
+        categoria_idade: 'Adulto',
+        faixa: 'Branca',
+        peso_atleta: '',
+        peso: 'Galo',
+        cidade: '',
+        pais: 'Brasil',
+        data_evento: new Date().toISOString().split('T')[0],
+        resultado: 'Campeão' as ChampionshipPlacement
+      });
+      setPreviewUrl(null);
+    }
+  }, [initialData, isOpen]);
 
   const calculateWeightCategory = (weight: number, modality: string) => {
     if (modality !== 'Jiu Jitsu') return formData.peso;
@@ -106,18 +140,32 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
         }
       }
 
-      // 2. Insert championship result
+      // 2. Insert or Update championship result
       const { peso_atleta, ...insertData } = formData;
-      const { error: insertError } = await supabase
-        .from('championship_results')
-        .insert([{
-          athlete_id: athleteId,
-          ...insertData,
-          foto_podio_url,
-          created_at: new Date().toISOString()
-        }]);
+      
+      if (initialData) {
+        const { error: updateError } = await supabase
+          .from('championship_results')
+          .update({
+            ...insertData,
+            foto_podio_url,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', initialData.id);
 
-      if (insertError) throw insertError;
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('championship_results')
+          .insert([{
+            athlete_id: athleteId,
+            ...insertData,
+            foto_podio_url,
+            created_at: new Date().toISOString()
+          }]);
+
+        if (insertError) throw insertError;
+      }
 
       // 3. Update athlete stats
       await calculateAndUpdateStats(athleteId);
@@ -129,6 +177,30 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
       alert('Erro ao registrar campeonato: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!initialData) return;
+    if (!window.confirm('Tem certeza que deseja excluir este registro?')) return;
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('championship_results')
+        .delete()
+        .eq('id', initialData.id);
+
+      if (error) throw error;
+
+      await calculateAndUpdateStats(athleteId);
+      onChampionshipRegistered();
+      onClose();
+    } catch (error: any) {
+      console.error('Error deleting championship:', error);
+      alert('Erro ao excluir registro: ' + error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -361,18 +433,35 @@ export const RegisterChampionshipModal: React.FC<RegisterChampionshipModalProps>
                   </div>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                  {initialData && (
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={loading || deleting}
+                      className="flex-1 bg-rose-500/10 text-rose-500 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center space-x-3 disabled:opacity-50"
+                    >
+                      {deleting ? (
+                        <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <Trash2 size={18} />
+                          <span>Excluir Registro</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-[var(--primary)] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[var(--primary-highlight)] transition-all shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center space-x-3 disabled:opacity-50"
+                    disabled={loading || deleting}
+                    className="flex-[2] bg-[var(--primary)] text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-[var(--primary-highlight)] transition-all shadow-xl shadow-[var(--primary)]/20 flex items-center justify-center space-x-3 disabled:opacity-50"
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <>
                         <Save size={18} />
-                        <span>Salvar Campeonato</span>
+                        <span>{initialData ? 'Salvar Alterações' : 'Salvar Campeonato'}</span>
                       </>
                     )}
                   </button>
