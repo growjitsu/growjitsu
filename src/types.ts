@@ -24,6 +24,7 @@ export interface ArenaProfile {
   profile_photo?: string;
   team?: string;
   team_id?: string;
+  team_leader?: boolean;
   bio?: string;
   instagram_url?: string;
   youtube_url?: string;
@@ -95,6 +96,8 @@ export interface ArenaPost {
   likes_count: number;
   comments_count: number;
   shares_count?: number;
+  is_archived?: boolean;
+  hashtags?: string;
   created_at: string;
   author?: ArenaProfile;
   is_liked?: boolean;

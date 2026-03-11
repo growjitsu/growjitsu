@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Heart, MessageCircle, Share2, User, Award, Calendar, Send } from 'lucide-react';
+import { X, Heart, MessageCircle, Share2, User, Award, Calendar, Send, MoreVertical, Archive, Trash2, Edit2 } from 'lucide-react';
 import { ArenaPost, ArenaComment } from '../types';
 import { Link } from 'react-router-dom';
 import { supabase } from '../services/supabase';
@@ -10,16 +10,30 @@ interface PostModalProps {
   onClose: () => void;
   onLike?: (postId: string, authorId: string) => void;
   onShare?: (post: ArenaPost) => void;
+  onArchive?: (postId: string) => void;
+  onDelete?: (postId: string, mediaUrls?: string[]) => void;
+  onUpdate?: (postId: string, content: string, hashtags: string) => void;
 }
 
-export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onShare }) => {
+export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onShare, onArchive, onDelete, onUpdate }) => {
   const [comments, setComments] = useState<ArenaComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
   const [showShareOptions, setShowShareOptions] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [editHashtags, setEditHashtags] = useState('');
+
+  useEffect(() => {
+    if (post) {
+      setEditContent(post.content || '');
+      setEditHashtags(post.hashtags || '');
+    }
+  }, [post]);
 
   useEffect(() => {
     const getAuth = async () => {
@@ -257,12 +271,111 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
                   <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">@{post.author?.username || 'user'}</p>
                 </div>
               </div>
+
+              {currentUser?.id === post.author_id && (
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                    className="p-2 text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg)] rounded-full transition-all"
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showOptionsMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute top-full right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl shadow-2xl overflow-hidden z-50"
+                      >
+                        <button 
+                          onClick={() => {
+                            setIsEditing(true);
+                            setShowOptionsMenu(false);
+                          }}
+                          className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 text-[var(--text-main)] transition-colors flex items-center space-x-2 border-b border-[var(--border-ui)]"
+                        >
+                          <Edit2 size={14} className="text-[var(--primary)]" />
+                          <span>Editar</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            onArchive?.(post.id);
+                            setShowOptionsMenu(false);
+                            onClose();
+                          }}
+                          className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 text-[var(--text-main)] transition-colors flex items-center space-x-2 border-b border-[var(--border-ui)]"
+                        >
+                          <Archive size={14} className="text-amber-500" />
+                          <span>{post.is_archived ? 'Desarquivar' : 'Arquivar'}</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            let urls: string[] = [];
+                            try {
+                              if (post.media_url?.startsWith('[')) urls = JSON.parse(post.media_url);
+                              else if (post.media_url) urls = [post.media_url];
+                            } catch (e) {}
+                            onDelete?.(post.id, urls);
+                            setShowOptionsMenu(false);
+                            onClose();
+                          }}
+                          className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-rose-500/10 text-rose-500 transition-colors flex items-center space-x-2"
+                        >
+                          <Trash2 size={14} />
+                          <span>Excluir</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
 
             {/* Content & Comments */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               <div className="space-y-4">
-                <p className="text-[var(--text-main)] text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                {isEditing ? (
+                  <div className="space-y-3">
+                    <textarea 
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-xl p-3 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] min-h-[100px]"
+                    />
+                    <input 
+                      type="text"
+                      value={editHashtags}
+                      onChange={(e) => setEditHashtags(e.target.value)}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--primary)] outline-none focus:border-[var(--primary)]"
+                      placeholder="#tags"
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <button 
+                        onClick={() => setIsEditing(false)}
+                        className="px-3 py-1.5 text-[10px] font-bold uppercase text-[var(--text-muted)]"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        onClick={() => {
+                          onUpdate?.(post.id, editContent, editHashtags);
+                          setIsEditing(false);
+                        }}
+                        className="px-4 py-1.5 bg-[var(--primary)] text-white text-[10px] font-bold uppercase rounded-lg"
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[var(--text-main)] text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                    {post.hashtags && (
+                      <p className="text-xs font-bold text-[var(--primary)]">{post.hashtags}</p>
+                    )}
+                  </>
+                )}
                 <div className="flex items-center space-x-2 text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-widest">
                   <Calendar size={12} />
                   <span>{new Date(post.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</span>

@@ -4,7 +4,7 @@ import {
   Award, Target, TrendingUp, Grid, History, MapPin, Calendar, 
   Settings, Edit2, Save, X, Instagram, Youtube, Music, 
   User, Dumbbell, Ruler, Scale, GraduationCap, Trophy,
-  Database, Plus, Trash2
+  Database, Plus, Trash2, MoreVertical, Archive, RotateCcw, Heart, MessageCircle, Share2
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaProfile, ArenaResult, ArenaPost, ArenaChampionshipResult, ArenaFight, Team } from '../types';
@@ -20,8 +20,9 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [championships, setChampionships] = useState<ArenaChampionshipResult[]>([]);
   const [fights, setFights] = useState<ArenaFight[]>([]);
   const [posts, setPosts] = useState<ArenaPost[]>([]);
+  const [archivedPosts, setArchivedPosts] = useState<ArenaPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'posts' | 'history' | 'championships' | 'fights'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'history' | 'championships' | 'fights' | 'archive'>('posts');
   const [isEditing, setIsEditing] = useState(forceEdit || false);
   const [editData, setEditData] = useState<Partial<ArenaProfile>>({});
   const [saving, setSaving] = useState(false);
@@ -31,6 +32,10 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [uploading, setUploading] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ArenaPost | null>(null);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [isEditingPost, setIsEditingPost] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editHashtags, setEditHashtags] = useState('');
   const [isRegisterFightModalOpen, setIsRegisterFightModalOpen] = useState(false);
   const [isRegisterChampionshipModalOpen, setIsRegisterChampionshipModalOpen] = useState(false);
   const [editingChampionship, setEditingChampionship] = useState<ArenaChampionshipResult | null>(null);
@@ -220,7 +225,8 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         is_liked: userLikes.has(post.id)
       }));
       
-      setPosts(postsWithLikes);
+      setPosts(postsWithLikes.filter(p => !p.is_archived));
+      setArchivedPosts(postsWithLikes.filter(p => p.is_archived));
 
     } catch (error: any) {
       console.error('Error fetching profile data:', error);
@@ -238,6 +244,85 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
     setIsEditing(forceEdit || false);
     fetchProfileData();
   }, [userId, forceEdit]);
+
+  const handleArchive = async (postId: string, archive: boolean = true) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ is_archived: archive })
+        .eq('id', postId);
+      
+      if (error) throw error;
+      
+      if (archive) {
+        const postToArchive = posts.find(p => p.id === postId);
+        if (postToArchive) {
+          setPosts(prev => prev.filter(p => p.id !== postId));
+          setArchivedPosts(prev => [{ ...postToArchive, is_archived: true }, ...prev]);
+        }
+      } else {
+        const postToRestore = archivedPosts.find(p => p.id === postId);
+        if (postToRestore) {
+          setArchivedPosts(prev => prev.filter(p => p.id !== postId));
+          setPosts(prev => [{ ...postToRestore, is_archived: false }, ...prev]);
+        }
+      }
+      setActiveMenuId(null);
+    } catch (error) {
+      console.error('Error archiving post:', error);
+      alert('Erro ao arquivar postagem.');
+    }
+  };
+
+  const handleDeletePost = async (postId: string, mediaUrls?: string[]) => {
+    if (!window.confirm('Tem certeza que deseja excluir este post? Essa ação não poderá ser desfeita.')) return;
+
+    try {
+      if (mediaUrls && mediaUrls.length > 0) {
+        for (const url of mediaUrls) {
+          const path = url.split('/').pop();
+          if (path) {
+            await supabase.storage.from('posts').remove([path]);
+          }
+        }
+      }
+
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+      
+      if (error) throw error;
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setArchivedPosts(prev => prev.filter(p => p.id !== postId));
+      setActiveMenuId(null);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Erro ao excluir postagem.');
+    }
+  };
+
+  const handleUpdatePost = async (postId: string, content: string, hashtags: string) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ 
+          content: content,
+          hashtags: hashtags
+        })
+        .eq('id', postId);
+      
+      if (error) throw error;
+      
+      const updateFn = (p: ArenaPost) => p.id === postId ? { ...p, content: content, hashtags: hashtags } : p;
+      setPosts(prev => prev.map(updateFn));
+      setArchivedPosts(prev => prev.map(updateFn));
+      setIsEditingPost(null);
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Erro ao atualizar postagem.');
+    }
+  };
 
   const handleSave = async () => {
     if (!profile) return;
@@ -1163,6 +1248,17 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
               Lutas
               {activeTab === 'fights' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
             </button>
+            {isOwnProfile && (
+              <button
+                onClick={() => setActiveTab('archive')}
+                className={`pb-4 text-xs font-black uppercase tracking-widest transition-colors relative ${
+                  activeTab === 'archive' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                Arquivo
+                {activeTab === 'archive' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
+              </button>
+            )}
           </div>
 
           {/* Tab Content */}
@@ -1292,6 +1388,54 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   <div className="py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhuma luta registrada</div>
                 )}
               </div>
+            ) : activeTab === 'archive' && isOwnProfile ? (
+              <div className="grid grid-cols-2 gap-4">
+                {archivedPosts.length > 0 ? archivedPosts.map((post) => (
+                  <div 
+                    key={post.id} 
+                    onClick={() => {
+                      setSelectedPost(post);
+                      setIsPostModalOpen(true);
+                    }}
+                    className="aspect-square rounded-[2rem] overflow-hidden bg-black relative group cursor-pointer border border-[var(--border-ui)]"
+                  >
+                    {post.media_url ? (
+                      (() => {
+                        let url = '';
+                        try {
+                          if (post.media_url.startsWith('[')) url = JSON.parse(post.media_url)[0];
+                          else url = post.media_url;
+                        } catch (e) { url = post.media_url; }
+                        
+                        return post.type === 'video' ? (
+                          <video src={url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                        ) : (
+                          <img src={url} alt="" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" referrerPolicy="no-referrer" />
+                        );
+                      })()
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center p-4 bg-[var(--surface)]">
+                        <p className="text-[10px] font-bold text-[var(--text-main)] text-center line-clamp-3">{post.content}</p>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-4">
+                      <div className="flex items-center space-x-1 text-white">
+                        <Heart size={16} className="fill-current" />
+                        <span className="text-xs font-black">{post.likes_count}</span>
+                      </div>
+                      <div className="flex items-center space-x-1 text-white">
+                        <MessageCircle size={16} className="fill-current" />
+                        <span className="text-xs font-black">{post.comments_count}</span>
+                      </div>
+                    </div>
+                    <div className="absolute top-4 right-4 bg-amber-500 text-white p-1.5 rounded-lg shadow-lg">
+                      <Archive size={12} />
+                    </div>
+                  </div>
+                )) : (
+                  <div className="col-span-2 py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhuma postagem arquivada</div>
+                )}
+              </div>
             ) : (
               <div className="space-y-6">
                 {championships.length > 0 ? championships.map((champ) => (
@@ -1386,6 +1530,9 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           post={selectedPost} 
           onClose={() => setIsPostModalOpen(false)} 
           onLike={handleLike}
+          onArchive={(id) => handleArchive(id, !selectedPost.is_archived)}
+          onDelete={handleDeletePost}
+          onUpdate={handleUpdatePost}
         />
       )}
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Mail, Lock, User, Trophy, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, Trophy, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
 export const ArenaAuth: React.FC = () => {
@@ -9,8 +9,30 @@ export const ArenaAuth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
+  const [isTeamLeader, setIsTeamLeader] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [teamSearch, setTeamSearch] = useState('');
+  const [teamResults, setTeamResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const searchTeams = async (query: string) => {
+    setTeamSearch(query);
+    if (query.length < 2) {
+      setTeamResults([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('teams')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .limit(5);
+    
+    if (!error && data) {
+      setTeamResults(data);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +55,13 @@ export const ArenaAuth: React.FC = () => {
                 username: username.toLowerCase(),
                 full_name: fullName,
                 role: 'athlete',
+                team_leader: isTeamLeader,
+                team_id: selectedTeamId,
                 perfil_publico: true,
                 permitir_seguidores: true
               });
             if (profileError) {
               console.error('Error creating profile during signup:', profileError);
-              // We don't throw here to allow the user to at least be signed up
-              // The ArenaProfileView will try to auto-create it later if missing
             }
           } catch (pErr) {
             console.error('Exception creating profile during signup:', pErr);
@@ -105,6 +127,60 @@ export const ArenaAuth: React.FC = () => {
                     className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-2xl py-3 pl-12 pr-4 text-sm text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
                     required
                   />
+                </div>
+                
+                <div className="space-y-3 p-4 bg-[var(--bg)]/30 rounded-2xl border border-[var(--border-ui)]">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isTeamLeader ? 'bg-[var(--primary)] border-[var(--primary)]' : 'border-[var(--border-ui)] group-hover:border-[var(--primary)]'}`}>
+                      {isTeamLeader && <CheckCircle2 size={14} className="text-white" />}
+                    </div>
+                      <input
+                        type="checkbox"
+                        className="hidden"
+                        checked={isTeamLeader}
+                        onChange={(e) => setIsTeamLeader(e.target.checked)}
+                      />
+                    <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-tight">Sou líder ou responsável por equipe</span>
+                  </label>
+
+                  {isTeamLeader && (
+                    <div className="space-y-2 pt-2 border-t border-[var(--border-ui)]">
+                      <p className="text-[10px] font-black uppercase text-[var(--primary)] tracking-widest">Selecione sua Equipe</p>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Buscar equipe..."
+                          value={teamSearch}
+                          onChange={(e) => searchTeams(e.target.value)}
+                          className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
+                        />
+                        {teamResults.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-[var(--surface)] border border-[var(--border-ui)] rounded-xl shadow-xl overflow-hidden">
+                            {teamResults.map(team => (
+                              <button
+                                key={team.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTeamId(team.id);
+                                  setTeamSearch(team.name);
+                                  setTeamResults([]);
+                                }}
+                                className="w-full px-4 py-2 text-left text-xs hover:bg-[var(--primary)] hover:text-white transition-colors border-b border-[var(--border-ui)] last:border-0"
+                              >
+                                {team.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {selectedTeamId && (
+                        <div className="flex items-center gap-2 text-[10px] text-emerald-500 font-bold uppercase">
+                          <CheckCircle2 size={12} />
+                          Equipe selecionada com sucesso
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </>
             )}

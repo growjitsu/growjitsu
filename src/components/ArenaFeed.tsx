@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User, Video, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User, Video, X, MoreVertical, Trash2, Edit2, Archive, RotateCcw } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaPost, ArenaProfile, PostType } from '../types';
 import { PostModal } from './PostModal';
@@ -17,6 +17,10 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [selectedPost, setSelectedPost] = useState<ArenaPost | null>(null);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [isEditingPost, setIsEditingPost] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editHashtags, setEditHashtags] = useState('');
   const [arenaStats, setArenaStats] = useState({
     totalPosts: 0,
     activeUsers: 0,
@@ -24,6 +28,70 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
     growth: 0
   });
   const [trendingPosts, setTrendingPosts] = useState<ArenaPost[]>([]);
+
+  const handleArchive = async (postId: string, archive: boolean = true) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ is_archived: archive })
+        .eq('id', postId);
+      
+      if (error) throw error;
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setActiveMenuId(null);
+    } catch (error) {
+      console.error('Error archiving post:', error);
+      alert('Erro ao arquivar postagem.');
+    }
+  };
+
+  const handleDelete = async (postId: string, mediaUrls?: string[]) => {
+    if (!window.confirm('Tem certeza que deseja excluir este post? Essa ação não poderá ser desfeita.')) return;
+
+    try {
+      // 1. Delete media from storage if exists
+      if (mediaUrls && mediaUrls.length > 0) {
+        for (const url of mediaUrls) {
+          const path = url.split('/').pop();
+          if (path) {
+            await supabase.storage.from('posts').remove([path]);
+          }
+        }
+      }
+
+      // 2. Delete post from database
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+      
+      if (error) throw error;
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setActiveMenuId(null);
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Erro ao excluir postagem.');
+    }
+  };
+
+  const handleUpdatePost = async (postId: string, content: string, hashtags: string) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ 
+          content: content,
+          hashtags: hashtags
+        })
+        .eq('id', postId);
+      
+      if (error) throw error;
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, content: content, hashtags: hashtags } : p));
+      setIsEditingPost(null);
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Erro ao atualizar postagem.');
+    }
+  };
 
   useEffect(() => {
     fetchPosts();
@@ -105,6 +173,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
+        .eq('is_archived', false)
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -713,8 +782,73 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                     </div>
                     
                     <div className="flex flex-col items-end space-y-2">
-                      <div className="text-[10px] font-mono font-bold text-[var(--text-muted)] bg-[var(--bg)]/50 px-3 py-1 rounded-full border border-[var(--border-ui)]">
-                        {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className="flex items-center space-x-2">
+                        <div className="text-[10px] font-mono font-bold text-[var(--text-muted)] bg-[var(--bg)]/50 px-3 py-1 rounded-full border border-[var(--border-ui)]">
+                          {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        {userProfile?.id === post.author_id && (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuId(activeMenuId === post.id ? null : post.id);
+                              }}
+                              className="p-1.5 rounded-full hover:bg-[var(--bg)] transition-colors text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                            >
+                              <MoreVertical size={16} />
+                            </button>
+                            
+                            <AnimatePresence>
+                              {activeMenuId === post.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                  className="absolute right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl shadow-2xl z-50 overflow-hidden"
+                                >
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsEditingPost(post.id);
+                                      setEditContent(post.content || '');
+                                      setEditHashtags(post.hashtags || '');
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full flex items-center space-x-3 px-4 py-3 text-xs font-bold text-[var(--text-main)] hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border-ui)]"
+                                  >
+                                    <Edit2 size={14} className="text-[var(--primary)]" />
+                                    <span>Editar Postagem</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleArchive(post.id);
+                                    }}
+                                    className="w-full flex items-center space-x-3 px-4 py-3 text-xs font-bold text-[var(--text-main)] hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border-ui)]"
+                                  >
+                                    <Archive size={14} className="text-amber-500" />
+                                    <span>Arquivar Postagem</span>
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      let urls: string[] = [];
+                                      try {
+                                        if (post.media_url?.startsWith('[')) urls = JSON.parse(post.media_url);
+                                        else if (post.media_url) urls = [post.media_url];
+                                      } catch (e) {}
+                                      handleDelete(post.id, urls);
+                                    }}
+                                    className="w-full flex items-center space-x-3 px-4 py-3 text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                  >
+                                    <Trash2 size={14} />
+                                    <span>Excluir Permanentemente</span>
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
                       </div>
                       {post.type === 'result' && (
                         <div className="bg-gradient-to-r from-amber-400 to-orange-600 text-white px-4 py-1.5 rounded-xl flex items-center space-x-2 shadow-2xl shadow-orange-500/30 border border-white/10">
@@ -727,7 +861,44 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
                   {/* Post Content */}
                   <div className="px-8 pb-4">
-                    <p className="text-[var(--text-main)]/90 text-base leading-relaxed font-medium mb-6 tracking-tight">{post.content}</p>
+                    {isEditingPost === post.id ? (
+                      <div className="space-y-4 mb-6" onClick={(e) => e.stopPropagation()}>
+                        <textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-2xl p-4 text-sm text-[var(--text-main)] outline-none focus:border-[var(--primary)] min-h-[100px]"
+                          placeholder="O que está acontecendo na Arena?"
+                        />
+                        <input
+                          type="text"
+                          value={editHashtags}
+                          onChange={(e) => setEditHashtags(e.target.value)}
+                          className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-xl p-3 text-xs text-[var(--primary)] outline-none focus:border-[var(--primary)]"
+                          placeholder="#jiujitsu #mma #ranking"
+                        />
+                        <div className="flex items-center justify-end space-x-3">
+                          <button
+                            onClick={() => setIsEditingPost(null)}
+                            className="px-4 py-2 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] uppercase tracking-widest"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => handleUpdatePost(post.id, editContent, editHashtags)}
+                            className="px-6 py-2 bg-[var(--primary)] text-white text-xs font-black rounded-xl uppercase tracking-widest hover:bg-[var(--primary-highlight)] transition-all"
+                          >
+                            Salvar Alterações
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[var(--text-main)]/90 text-base leading-relaxed font-medium mb-2 tracking-tight">{post.content}</p>
+                        {post.hashtags && (
+                          <p className="text-xs font-bold text-[var(--primary)] mb-6 tracking-widest uppercase">{post.hashtags}</p>
+                        )}
+                      </>
+                    )}
                     
                     {post.media_url && (
                       <div className="relative rounded-[2.5rem] overflow-hidden border border-[var(--border-ui)] bg-black group/media shadow-2xl">
@@ -939,6 +1110,9 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
             }} 
             onLike={handleLike}
             onShare={handleShare}
+            onArchive={(id) => handleArchive(id, !selectedPost.is_archived)}
+            onDelete={handleDelete}
+            onUpdate={handleUpdatePost}
           />
         )}
       </AnimatePresence>
