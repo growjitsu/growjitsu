@@ -1266,22 +1266,37 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
             {activeTab === 'posts' ? (
               <div className="grid grid-cols-2 gap-4">
                 {posts.length > 0 ? posts.map((post) => (
-                  <div 
-                    key={post.id} 
-                    onClick={() => {
-                      setSelectedPost({ ...post, author: profile || undefined });
-                      setIsPostModalOpen(true);
-                    }}
-                    className="aspect-square bg-[var(--surface)] rounded-xl overflow-hidden border border-[var(--border-ui)] group relative cursor-pointer transition-colors duration-300"
-                  >
-                    {post.media_url ? (
-                      <img src={post.media_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full p-4 flex items-center justify-center text-center">
-                        <p className="text-[10px] text-[var(--text-muted)] line-clamp-3">{post.content}</p>
-                      </div>
-                    )}
-                  </div>
+                    <div 
+                      key={post.id} 
+                      onClick={() => {
+                        setSelectedPost({ ...post, author: profile || undefined });
+                        setIsPostModalOpen(true);
+                      }}
+                      className="aspect-[9/16] bg-[var(--surface)] rounded-xl overflow-hidden border border-[var(--border-ui)] group relative cursor-pointer transition-colors duration-300"
+                    >
+                      {post.media_url ? (
+                        (() => {
+                          let url = '';
+                          try {
+                            if (post.media_url.startsWith('[')) url = JSON.parse(post.media_url)[0];
+                            else url = post.media_url;
+                          } catch (e) { url = post.media_url; }
+                          
+                          return post.type === 'video' ? (
+                            <div className="w-full h-full relative">
+                              <video src={url} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/0 transition-colors" />
+                            </div>
+                          ) : (
+                            <img src={url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+                          );
+                        })()
+                      ) : (
+                        <div className="w-full h-full p-4 flex items-center justify-center text-center">
+                          <p className="text-[10px] text-[var(--text-muted)] line-clamp-6">{post.content}</p>
+                        </div>
+                      )}
+                    </div>
                 )) : (
                   <div className="col-span-2 py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhuma postagem ainda</div>
                 )}
@@ -1397,7 +1412,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                       setSelectedPost(post);
                       setIsPostModalOpen(true);
                     }}
-                    className="aspect-square rounded-[2rem] overflow-hidden bg-black relative group cursor-pointer border border-[var(--border-ui)]"
+                    className="aspect-[9/16] rounded-[2rem] overflow-hidden bg-black relative group cursor-pointer border border-[var(--border-ui)]"
                   >
                     {post.media_url ? (
                       (() => {
@@ -1530,7 +1545,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           post={selectedPost} 
           onClose={() => setIsPostModalOpen(false)} 
           onLike={handleLike}
-          onArchive={(id) => handleArchive(id, !selectedPost.is_archived)}
+          onArchive={handleArchive}
           onDelete={handleDeletePost}
           onUpdate={handleUpdatePost}
         />

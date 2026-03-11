@@ -29,7 +29,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   });
   const [trendingPosts, setTrendingPosts] = useState<ArenaPost[]>([]);
 
-  const handleArchive = async (postId: string, archive: boolean = true) => {
+  const handleArchivePost = async (postId: string, archive: boolean = true) => {
     try {
       const { error } = await supabase
         .from('posts')
@@ -38,6 +38,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       
       if (error) throw error;
       setPosts(prev => prev.filter(p => p.id !== postId));
+      setTrendingPosts(prev => prev.filter(p => p.id !== postId));
       setActiveMenuId(null);
     } catch (error) {
       console.error('Error archiving post:', error);
@@ -45,7 +46,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
     }
   };
 
-  const handleDelete = async (postId: string, mediaUrls?: string[]) => {
+  const handleDeletePost = async (postId: string, mediaUrls?: string[]) => {
     if (!window.confirm('Tem certeza que deseja excluir este post? Essa ação não poderá ser desfeita.')) return;
 
     try {
@@ -67,6 +68,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       
       if (error) throw error;
       setPosts(prev => prev.filter(p => p.id !== postId));
+      setTrendingPosts(prev => prev.filter(p => p.id !== postId));
       setActiveMenuId(null);
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -85,60 +87,16 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         .eq('id', postId);
       
       if (error) throw error;
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, content: content, hashtags: hashtags } : p));
+      
+      const updateFn = (p: ArenaPost) => p.id === postId ? { ...p, content: content, hashtags: hashtags } : p;
+      setPosts(prev => prev.map(updateFn));
+      setTrendingPosts(prev => prev.map(updateFn));
       setIsEditingPost(null);
     } catch (error) {
       console.error('Error updating post:', error);
       alert('Erro ao atualizar postagem.');
     }
   };
-
-  useEffect(() => {
-    fetchPosts();
-    fetchTopAthletes();
-    fetchArenaStats();
-    fetchTrendingPosts();
-
-    // Check for deep link
-    const urlParams = new URLSearchParams(window.location.search);
-    const postId = urlParams.get('post');
-    if (postId) {
-      fetchSinglePost(postId);
-    }
-
-    // Real-time subscription for everything that affects the feed and stats
-    const channel = supabase
-      .channel('arena-live-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
-        fetchPosts();
-        fetchArenaStats();
-        fetchTrendingPosts();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'likes' }, () => {
-        fetchArenaStats();
-        fetchTrendingPosts();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, () => {
-        fetchArenaStats();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-        fetchTopAthletes();
-        fetchArenaStats();
-      })
-      .subscribe();
-
-    // Periodic refresh for general stats (every 5s for "faster" feel)
-    const interval = setInterval(() => {
-      fetchArenaStats();
-      fetchTrendingPosts();
-      fetchTopAthletes();
-    }, 5000);
-
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, []);
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -867,7 +825,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleArchive(post.id);
+                                      handleArchivePost(post.id);
                                     }}
                                     className="w-full flex items-center space-x-3 px-4 py-3 text-xs font-bold text-[var(--text-main)] hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border-ui)]"
                                   >
@@ -882,7 +840,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                                         if (post.media_url?.startsWith('[')) urls = JSON.parse(post.media_url);
                                         else if (post.media_url) urls = [post.media_url];
                                       } catch (e) {}
-                                      handleDelete(post.id, urls);
+                                      handleDeletePost(post.id, urls);
                                     }}
                                     className="w-full flex items-center space-x-3 px-4 py-3 text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
                                   >
@@ -946,7 +904,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                     )}
                     
                     {post.media_url && (
-                      <div className="relative rounded-[2.5rem] overflow-hidden border border-[var(--border-ui)] bg-black group/media shadow-2xl">
+                      <div className="relative aspect-[9/16] rounded-[2.5rem] overflow-hidden border border-[var(--border-ui)] bg-black group/media shadow-2xl">
                         {(() => {
                           let urls: string[] = [];
                           try {
@@ -961,9 +919,9 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
                           if (urls.length > 1) {
                             return (
-                              <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar aspect-[4/5]">
+                              <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar w-full h-full">
                                 {urls.map((url, i) => (
-                                  <div key={i} className="flex-shrink-0 w-full snap-center relative">
+                                  <div key={i} className="flex-shrink-0 w-full h-full snap-center relative">
                                     <img src={url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                     <div className="absolute top-6 right-6 bg-black/60 backdrop-blur-xl text-white text-[10px] font-black px-3 py-1.5 rounded-xl border border-white/10 shadow-2xl">
                                       {i + 1} / {urls.length}
@@ -975,8 +933,8 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                           }
 
                           return post.type === 'video' ? (
-                            <div className="relative aspect-video flex items-center justify-center bg-black group/vid">
-                              <video src={urls[0]} className="w-full h-full object-contain" />
+                            <div className="relative w-full h-full flex items-center justify-center bg-black group/vid">
+                              <video src={urls[0]} className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 group-hover/media:opacity-100 transition-all duration-500 pointer-events-none" />
                               <div className="absolute top-6 left-6 bg-[var(--primary)] text-white text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-[0.3em] shadow-2xl shadow-[var(--primary)]/40 border border-white/10">Replay</div>
                               <div className="absolute bottom-6 left-6 flex items-center space-x-3 opacity-0 group-hover/media:opacity-100 transition-all duration-500 delay-100">
@@ -985,8 +943,8 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                               </div>
                             </div>
                           ) : (
-                            <div className="relative group/img overflow-hidden">
-                              <img src={urls[0]} alt="" className="w-full h-auto max-h-[700px] object-cover group-hover/img:scale-105 transition-transform duration-1000" referrerPolicy="no-referrer" />
+                            <div className="relative w-full h-full group/img overflow-hidden">
+                              <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-1000" referrerPolicy="no-referrer" />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                             </div>
                           );
@@ -1155,8 +1113,8 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
             }} 
             onLike={handleLike}
             onShare={handleShare}
-            onArchive={(id) => handleArchive(id, !selectedPost.is_archived)}
-            onDelete={handleDelete}
+            onArchive={handleArchivePost}
+            onDelete={handleDeletePost}
             onUpdate={handleUpdatePost}
           />
         )}
