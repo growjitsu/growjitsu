@@ -170,30 +170,63 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
       // 2. Fetch all posts
       console.log('ArenaFeed: Fetching posts...');
-      const { data: postsData, error: postsError } = await supabase
+      
+      // Try to filter by is_archived if the column exists
+      let { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
         .eq('is_archived', false)
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (postsError) {
+      // If we got an error and it likely was "column does not exist", we need to fetch without the filter
+      if (postsError && (postsError.message?.includes('column') || postsError.code === '42703')) {
+        console.log('ArenaFeed: is_archived column might be missing, falling back to client-side filtering. Error:', postsError.message);
+        const { data: retryData, error: retryError } = await supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(100);
+        
+        if (retryError) {
+          console.error('ArenaFeed: Retry fetch failed:', retryError);
+          throw retryError;
+        }
+        postsData = retryData;
+        postsError = null;
+      } else if (postsError) {
         console.error('ArenaFeed: Error fetching posts:', postsError);
         throw postsError;
       }
+
+      if (!postsData) {
+        console.warn('ArenaFeed: No posts data returned from Supabase');
+        postsData = [];
+      }
       
       // 3. Fetch authors for these posts to avoid join issues
-      const authorIds = Array.from(new Set((postsData || []).map(p => p.author_id)));
-      const { data: authorsData } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', authorIds);
+      const authorIds = Array.from(new Set(postsData.map(p => p.author_id)));
+      console.log(`ArenaFeed: Fetching profiles for ${authorIds.length} authors`);
       
-      const authorsMap = new Map((authorsData || []).map(a => [a.id, a]));
-      const postsWithAuthors = (postsData || []).map(p => ({
+      let authorsMap = new Map();
+      if (authorIds.length > 0) {
+        const { data: authorsData, error: authorsError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', authorIds);
+        
+        if (authorsError) {
+          console.error('ArenaFeed: Error fetching authors:', authorsError);
+        } else if (authorsData) {
+          authorsMap = new Map(authorsData.map(a => [a.id, a]));
+        }
+      }
+      
+      const postsWithAuthors = postsData.map(p => ({
         ...p,
         author: authorsMap.get(p.author_id)
-      }));
+      }))
+      .filter(p => p.is_archived !== true); // Client-side filter as fallback
 
       console.log(`ArenaFeed: Fetched ${postsWithAuthors.length} posts`);
 
@@ -325,13 +358,25 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
   const fetchTrendingPosts = async () => {
     try {
-      const { data: postsData, error: postsError } = await supabase
+      let { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
+        .eq('is_archived', false)
         .order('likes_count', { ascending: false })
         .limit(3);
       
-      if (postsError) throw postsError;
+      if (postsError && (postsError.message?.includes('column') || postsError.code === '42703')) {
+        const { data: retryData, error: retryError } = await supabase
+          .from('posts')
+          .select('*')
+          .order('likes_count', { ascending: false })
+          .limit(3);
+        
+        if (retryError) throw retryError;
+        postsData = retryData;
+      } else if (postsError) {
+        throw postsError;
+      }
       
       const authorIds = Array.from(new Set((postsData || []).map(p => p.author_id)));
       const { data: authorsData } = await supabase
