@@ -32,6 +32,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [uploading, setUploading] = useState(false);
   const [selectedPost, setSelectedPost] = useState<ArenaPost | null>(null);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [modalInitialEditMode, setModalInitialEditMode] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isEditingPost, setIsEditingPost] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -345,8 +346,8 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         country: editData.country,
         modality: editData.modality,
         category: editData.category,
-        weight: editData.weight ? parseFloat(String(editData.weight)) : null,
-        height: editData.height ? parseFloat(String(editData.height)) : null,
+        weight: editData.weight ? parseFloat(String(editData.weight).replace(',', '.')) : null,
+        height: editData.height ? parseFloat(String(editData.height).replace(',', '.')) : null,
         graduation: editData.graduation,
         gym_name: editData.gym_name,
         professor: editData.professor,
@@ -1124,8 +1125,8 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
               {[
                 { label: 'Equipe / Team', value: profile.team, icon: Award, key: 'team' },
                 { label: 'Categoria', value: profile.category, icon: Target, key: 'category' },
-                { label: 'Peso', value: profile.weight ? `${profile.weight}kg` : '-', icon: Scale, key: 'weight' },
-                { label: 'Altura', value: profile.height ? `${profile.height}m` : '-', icon: Ruler, key: 'height' },
+                { label: 'Peso', value: profile.weight ? `${String(profile.weight).replace('.', ',')}kg` : '-', icon: Scale, key: 'weight' },
+                { label: 'Altura', value: profile.height ? `${String(profile.height).replace('.', ',')}m` : '-', icon: Ruler, key: 'height' },
                 { label: 'Graduação', value: profile.graduation, icon: GraduationCap, key: 'graduation' },
                 { label: 'Professor', value: profile.professor, icon: User, key: 'professor' },
                 { label: 'Academia', value: profile.gym_name, icon: Dumbbell, key: 'gym_name' },
@@ -1272,10 +1273,76 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                       key={post.id} 
                       onClick={() => {
                         setSelectedPost({ ...post, author: profile || undefined });
+                        setModalInitialEditMode(false);
                         setIsPostModalOpen(true);
                       }}
                       className="aspect-[9/16] bg-[var(--surface)] rounded-xl overflow-hidden border border-[var(--border-ui)] group relative cursor-pointer transition-colors duration-300"
                     >
+                      {isOwnProfile && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(activeMenuId === post.id ? null : post.id);
+                            }}
+                            className="p-1.5 bg-black/40 backdrop-blur-md rounded-lg text-white hover:bg-black/60 transition-colors"
+                          >
+                            <MoreVertical size={14} />
+                          </button>
+                          
+                          <AnimatePresence>
+                            {activeMenuId === post.id && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                className="absolute right-0 mt-1 w-40 bg-[var(--surface)] border border-[var(--border-ui)] rounded-xl shadow-2xl overflow-hidden z-50"
+                              >
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedPost({ ...post, author: profile || undefined });
+                                    setModalInitialEditMode(true);
+                                    setIsPostModalOpen(true);
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full flex items-center space-x-2 px-3 py-2 text-[10px] font-bold text-[var(--text-main)] hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border-ui)]"
+                                >
+                                  <Edit2 size={12} className="text-[var(--primary)]" />
+                                  <span>Editar</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleArchive(post.id);
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full flex items-center space-x-2 px-3 py-2 text-[10px] font-bold text-[var(--text-main)] hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border-ui)]"
+                                >
+                                  <Archive size={12} className="text-amber-500" />
+                                  <span>Arquivar</span>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    let urls: string[] = [];
+                                    try {
+                                      if (post.media_url?.startsWith('[')) urls = JSON.parse(post.media_url);
+                                      else if (post.media_url) urls = [post.media_url];
+                                    } catch (e) {}
+                                    handleDeletePost(post.id, urls);
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full flex items-center space-x-2 px-3 py-2 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                >
+                                  <Trash2 size={12} />
+                                  <span>Excluir</span>
+                                </button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
                       {post.media_url ? (
                         (() => {
                           let url = '';
@@ -1445,8 +1512,55 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                         <span className="text-xs font-black">{post.comments_count}</span>
                       </div>
                     </div>
-                    <div className="absolute top-4 right-4 bg-amber-500 text-white p-1.5 rounded-lg shadow-lg">
-                      <Archive size={12} />
+                    <div className="absolute top-4 right-4 z-10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(activeMenuId === post.id ? null : post.id);
+                        }}
+                        className="p-1.5 bg-amber-500 text-white rounded-lg shadow-lg hover:bg-amber-600 transition-colors"
+                      >
+                        {activeMenuId === post.id ? <X size={12} /> : <Archive size={12} />}
+                      </button>
+                      
+                      <AnimatePresence>
+                        {activeMenuId === post.id && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            className="absolute right-0 mt-1 w-40 bg-[var(--surface)] border border-[var(--border-ui)] rounded-xl shadow-2xl overflow-hidden z-50"
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchive(post.id, false);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full flex items-center space-x-2 px-3 py-2 text-[10px] font-bold text-[var(--text-main)] hover:bg-[var(--primary)]/10 transition-colors border-b border-[var(--border-ui)]"
+                            >
+                              <RotateCcw size={12} className="text-[var(--primary)]" />
+                              <span>Restaurar</span>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                let urls: string[] = [];
+                                try {
+                                  if (post.media_url?.startsWith('[')) urls = JSON.parse(post.media_url);
+                                  else if (post.media_url) urls = [post.media_url];
+                                } catch (e) {}
+                                handleDeletePost(post.id, urls);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full flex items-center space-x-2 px-3 py-2 text-[10px] font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                            >
+                              <Trash2 size={12} />
+                              <span>Excluir</span>
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
                 )) : (
@@ -1545,11 +1659,16 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       {isPostModalOpen && selectedPost && (
         <PostModal 
           post={selectedPost} 
-          onClose={() => setIsPostModalOpen(false)} 
+          onClose={() => {
+            setIsPostModalOpen(false);
+            setSelectedPost(null);
+            setModalInitialEditMode(false);
+          }} 
           onLike={handleLike}
           onArchive={handleArchive}
           onDelete={handleDeletePost}
           onUpdate={handleUpdatePost}
+          initialEditMode={modalInitialEditMode}
         />
       )}
 

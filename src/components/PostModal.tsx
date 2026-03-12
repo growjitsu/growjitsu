@@ -13,9 +13,10 @@ interface PostModalProps {
   onArchive?: (postId: string) => void;
   onDelete?: (postId: string, mediaUrls?: string[]) => void;
   onUpdate?: (postId: string, content: string, hashtags: string) => void;
+  initialEditMode?: boolean;
 }
 
-export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onShare, onArchive, onDelete, onUpdate }) => {
+export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onShare, onArchive, onDelete, onUpdate, initialEditMode }) => {
   const [comments, setComments] = useState<ArenaComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
@@ -32,8 +33,11 @@ export const PostModal: React.FC<PostModalProps> = ({ post, onClose, onLike, onS
     if (post) {
       setEditContent(post.content || '');
       setEditHashtags(post.hashtags || '');
+      if (initialEditMode) {
+        setIsEditing(true);
+      }
     }
-  }, [post]);
+  }, [post, initialEditMode]);
 
   useEffect(() => {
     const getAuth = async () => {
