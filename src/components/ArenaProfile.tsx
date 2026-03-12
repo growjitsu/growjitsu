@@ -1137,33 +1137,52 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   </div>
                   {isEditing ? (
                     info.key === 'team' ? (
-                      <select
-                        value={editData.team_id || ''}
-                        onChange={(e) => {
-                          const selectedTeam = allTeams.find(t => t.id === e.target.value);
-                          if (selectedTeam) {
-                            setEditData({
-                              ...editData,
-                              team: selectedTeam.name,
-                              team_id: selectedTeam.id
-                            });
-                          } else {
-                            setEditData({
-                              ...editData,
-                              team: '',
-                              team_id: undefined
-                            });
-                          }
-                        }}
-                        className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
-                      >
-                        <option value="">Selecionar Equipe</option>
-                        {allTeams.map(team => (
-                          <option key={team.id} value={team.id}>
-                            {team.name} ({team.city})
-                          </option>
-                        ))}
-                      </select>
+                      <>
+                        <select 
+                          value={editData.team_id || ''}
+                          onChange={(e) => {
+                            if (e.target.value === 'other') {
+                              setEditData({
+                                ...editData,
+                                team: '',
+                                team_id: 'other'
+                              });
+                              return;
+                            }
+                            const selectedTeam = allTeams.find(t => t.id === e.target.value);
+                            if (selectedTeam) {
+                              setEditData({
+                                ...editData,
+                                team: selectedTeam.name,
+                                team_id: selectedTeam.id
+                              });
+                            } else {
+                              setEditData({
+                                ...editData,
+                                team: '',
+                                team_id: undefined
+                              });
+                            }
+                          }}
+                          className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                        >
+                          <option value="">Selecionar Equipe</option>
+                          {allTeams.map(team => (
+                            <option key={team.id} value={team.id}>
+                              {team.name} ({team.city})
+                            </option>
+                          ))}
+                          <option value="other">Outra Equipe (Não listada)</option>
+                        </select>
+                        {editData.team_id === 'other' && (
+                          <input 
+                            placeholder="Digite o nome da sua equipe"
+                            value={editData.team || ''}
+                            onChange={e => setEditData({...editData, team: e.target.value})}
+                            className="mt-2 w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                          />
+                        )}
+                      </>
                     ) : (
                       <input 
                         value={(editData[info.key as keyof ArenaProfile] as string) || ''} 

@@ -29,6 +29,20 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   });
   const [trendingPosts, setTrendingPosts] = useState<ArenaPost[]>([]);
 
+  useEffect(() => {
+    fetchPosts();
+    fetchTopAthletes();
+    fetchArenaStats();
+    fetchTrendingPosts();
+
+    // Check for single post in URL
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get('post');
+    if (postId) {
+      fetchSinglePost(postId);
+    }
+  }, []);
+
   const handleArchivePost = async (postId: string, archive: boolean = true) => {
     try {
       const { error } = await supabase
