@@ -12,6 +12,13 @@ import { ArenaSettings } from './components/ArenaSettings';
 import { ArenaAuth } from './components/ArenaAuth';
 import { ArenaNotifications } from './components/ArenaNotifications';
 import { CreatePostModal } from './components/CreatePostModal';
+import { AdminLayout } from './components/Admin/AdminLayout';
+import { AdminDashboard } from './components/Admin/AdminDashboard';
+import { AdminAthletes } from './components/Admin/AdminAthletes';
+import { AdminTeams } from './components/Admin/AdminTeams';
+import { AdminPosts } from './components/Admin/AdminPosts';
+import { AdminLogs } from './components/Admin/AdminLogs';
+import { AdminExport } from './components/Admin/AdminExport';
 import { ArenaProfile } from './types';
 import { Bell, Plus } from 'lucide-react';
 
@@ -182,6 +189,14 @@ export default function App() {
                     >
                       <span>Meu Perfil</span>
                     </button>
+                    {profile?.role === 'admin' && (
+                      <button 
+                        onClick={() => { navigate('/admin'); setShowProfileMenu(false); }}
+                        className="w-full px-4 py-3 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors flex items-center space-x-2"
+                      >
+                        <span>Painel Admin</span>
+                      </button>
+                    )}
                     <button 
                       onClick={() => { navigate('/profile/edit'); setShowProfileMenu(false); }}
                       className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
@@ -301,6 +316,14 @@ export default function App() {
                   >
                     <span>Meu Perfil</span>
                   </button>
+                  {profile?.role === 'admin' && (
+                    <button 
+                      onClick={() => { navigate('/admin'); setShowProfileMenu(false); }}
+                      className="w-full px-4 py-2 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors flex items-center space-x-2"
+                    >
+                      <span>Painel Admin</span>
+                    </button>
+                  )}
                   <button 
                     onClick={() => { navigate('/profile/edit'); setShowProfileMenu(false); }}
                     className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
@@ -343,6 +366,28 @@ export default function App() {
       <Route path="/notifications" element={renderLayout(<ArenaNotifications />, 'notifications')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />
+      
+      {/* Admin Routes */}
+      <Route 
+        path="/admin/*" 
+        element={
+          isLoggedIn && profile?.role === 'admin' ? (
+            <AdminLayout userProfile={profile}>
+              <Routes>
+                <Route path="/" element={<AdminDashboard />} />
+                <Route path="/athletes" element={<AdminAthletes />} />
+                <Route path="/teams" element={<AdminTeams />} />
+                <Route path="/posts" element={<AdminPosts />} />
+                <Route path="/logs" element={<AdminLogs />} />
+                <Route path="/export" element={<AdminExport />} />
+              </Routes>
+            </AdminLayout>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

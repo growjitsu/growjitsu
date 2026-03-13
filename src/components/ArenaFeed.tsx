@@ -679,7 +679,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         {/* Left Column - Feed Content */}
         <div className="lg:col-span-8 space-y-8">
           {/* Top Athletes Rail - Immersive Style (Elite Arena) */}
-          <div className="bg-[var(--surface)]/40 backdrop-blur-2xl border border-[var(--border-ui)] rounded-[2.5rem] p-6 overflow-hidden shadow-2xl shadow-black/20">
+          <div className="sticky top-20 z-30 bg-[var(--bg)]/80 backdrop-blur-2xl border border-[var(--border-ui)] rounded-[2.5rem] p-6 overflow-hidden shadow-2xl shadow-black/20 mb-8">
             <div className="flex items-center justify-between mb-6 px-2">
               <div className="flex items-center space-x-3">
                 <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
@@ -1021,8 +1021,8 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
         </div>
 
         {/* Right Column - Arena Intelligence - Premium Sidebar */}
-        <div className="hidden lg:block lg:col-span-4 space-y-8">
-          <div className="bg-[var(--surface)]/40 backdrop-blur-2xl border border-[var(--border-ui)] rounded-[3rem] p-8 sticky top-24 shadow-2xl shadow-black/40 overflow-hidden group/sidebar">
+        <div className="lg:col-span-4 space-y-8 order-last lg:order-none">
+          <div className="bg-[var(--surface)]/40 backdrop-blur-2xl border border-[var(--border-ui)] rounded-[3rem] p-8 lg:sticky lg:top-24 shadow-2xl shadow-black/40 overflow-hidden group/sidebar">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--primary)] to-transparent opacity-50" />
             
             <div className="flex items-center justify-between mb-8">

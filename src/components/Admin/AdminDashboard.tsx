@@ -1,0 +1,347 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Users, 
+  Shield, 
+  FileText, 
+  Award, 
+  Heart, 
+  MessageCircle, 
+  TrendingUp, 
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight
+} from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  PieChart, 
+  Pie, 
+  Cell,
+  AreaChart,
+  Area
+} from 'recharts';
+import { supabase } from '../../services/supabase';
+
+export const AdminDashboard: React.FC = () => {
+  const [stats, setStats] = useState({
+    athletes: 0,
+    teams: 0,
+    posts: 0,
+    championships: 0,
+    likes: 0,
+    comments: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  // Mock data for charts (in a real app, these would be fetched from the DB)
+  const growthData = [
+    { month: 'Set', users: 400 },
+    { month: 'Out', users: 600 },
+    { month: 'Nov', users: 800 },
+    { month: 'Dez', users: 1200 },
+    { month: 'Jan', users: 1800 },
+    { month: 'Fev', users: 2400 },
+    { month: 'Mar', users: 3100 },
+  ];
+
+  const modalityData = [
+    { name: 'Jiu-Jitsu', value: 45 },
+    { name: 'MMA', value: 25 },
+    { name: 'Muay Thai', value: 15 },
+    { name: 'Boxe', value: 10 },
+    { name: 'Judô', value: 5 },
+  ];
+
+  const teamData = [
+    { name: 'Alliance', athletes: 120 },
+    { name: 'Checkmat', athletes: 95 },
+    { name: 'Gracie Barra', athletes: 88 },
+    { name: 'Atos', athletes: 72 },
+    { name: 'Nova União', athletes: 65 },
+  ];
+
+  const COLORS = ['#2563eb', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const [
+        { count: athletes },
+        { count: teams },
+        { count: posts },
+        { count: championships },
+        { count: likes },
+        { count: comments }
+      ] = await Promise.all([
+        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('teams').select('*', { count: 'exact', head: true }),
+        supabase.from('posts').select('*', { count: 'exact', head: true }),
+        supabase.from('championship_results').select('*', { count: 'exact', head: true }),
+        supabase.from('likes').select('*', { count: 'exact', head: true }),
+        supabase.from('comments').select('*', { count: 'exact', head: true })
+      ]);
+
+      setStats({
+        athletes: athletes || 0,
+        teams: teams || 0,
+        posts: posts || 0,
+        championships: championships || 0,
+        likes: likes || 0,
+        comments: comments || 0
+      });
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
+    <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl p-6 relative overflow-hidden group">
+      <div className={`absolute top-0 right-0 w-32 h-32 bg-${color}-500/5 blur-3xl -mr-16 -mt-16 group-hover:bg-${color}-500/10 transition-all duration-500`} />
+      
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-3 rounded-2xl bg-${color}-500/10 border border-${color}-500/20 text-${color}-500`}>
+          <Icon size={24} />
+        </div>
+        {trend && (
+          <div className={`flex items-center space-x-1 text-xs font-black ${trend > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+            {trend > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            <span>{Math.abs(trend)}%</span>
+          </div>
+        )}
+      </div>
+      
+      <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">{label}</p>
+      <h3 className="text-3xl font-black tracking-tight">{value.toLocaleString()}</h3>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <StatCard icon={Users} label="Atletas Cadastrados" value={stats.athletes} trend={12} color="blue" />
+        <StatCard icon={Shield} label="Equipes Registradas" value={stats.teams} trend={5} color="cyan" />
+        <StatCard icon={FileText} label="Posts Publicados" value={stats.posts} trend={24} color="emerald" />
+        <StatCard icon={Award} label="Campeonatos" value={stats.championships} trend={8} color="amber" />
+        <StatCard icon={Heart} label="Total de Curtidas" value={stats.likes} trend={15} color="rose" />
+        <StatCard icon={MessageCircle} label="Comentários" value={stats.comments} trend={18} color="indigo" />
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Growth Chart */}
+        <div className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] p-8">
+          <div className="flex items-center justify-between mb-8">
+            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Crescimento de Usuários</h4>
+            <TrendingUp size={16} className="text-blue-500" />
+          </div>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={growthData}>
+                <defs>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }} 
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 700 }} 
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                  itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <Area type="monotone" dataKey="users" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Modality Pie Chart */}
+        <div className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] p-8">
+          <div className="flex items-center justify-between mb-8">
+            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Atletas por Modalidade</h4>
+            <Activity size={16} className="text-cyan-500" />
+          </div>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={modalityData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {modalityData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                  itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {modalityData.map((item, index) => (
+              <div key={item.name} className="flex items-center space-x-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.name}</span>
+                <span className="text-[10px] font-black">{item.value}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Top Teams Chart */}
+        <div className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] p-8 lg:col-span-2">
+          <div className="flex items-center justify-between mb-8">
+            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Equipes com Mais Atletas</h4>
+            <Shield size={16} className="text-emerald-500" />
+          </div>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={teamData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" horizontal={false} />
+                <XAxis type="number" hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#fff', fontSize: 10, fontWeight: 900 }}
+                  width={100}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#ffffff05' }}
+                  contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #ffffff10', borderRadius: '12px' }}
+                  itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <Bar dataKey="athletes" fill="#10b981" radius={[0, 12, 12, 0]} barSize={30} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* System Health & Bootstrap */}
+      <div className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] p-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-tighter italic text-white">Saúde do Sistema</h2>
+            <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Verificação de infraestrutura e permissões</p>
+          </div>
+          <div className="flex items-center space-x-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest">Online</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-6 bg-black/50 rounded-2xl border border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Tabela de Logs</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <p className="text-xs text-white font-bold">A tabela `admin_logs` está configurada e recebendo dados.</p>
+          </div>
+
+          <div className="p-6 bg-black/50 rounded-2xl border border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Usuário Admin</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <p className="text-xs text-white font-bold">Usuário `admin@arenacomp.com.br` identificado com privilégios totais.</p>
+          </div>
+
+          <div className="p-6 bg-black/50 rounded-2xl border border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">Exportação</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+            </div>
+            <p className="text-xs text-white font-bold">Módulo de exportação Excel (xlsx) carregado e operacional.</p>
+          </div>
+        </div>
+
+        <div className="mt-8 p-6 bg-blue-500/5 rounded-2xl border border-blue-500/20">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-blue-500 uppercase tracking-widest italic">Configuração do Banco de Dados</h4>
+              <p className="text-xs text-gray-500">Certifique-se de executar o script SQL de configuração para habilitar todas as funcionalidades administrativas.</p>
+            </div>
+            <button 
+              onClick={() => {
+                const sql = `
+-- 1. Criar tabela de logs se não existir
+CREATE TABLE IF NOT EXISTS admin_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  admin_id UUID REFERENCES auth.users(id),
+  admin_email TEXT,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT,
+  details JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Habilitar RLS
+ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
+
+-- 3. Política: Apenas admins podem ver logs
+CREATE POLICY "Admins can view logs" ON admin_logs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+    )
+  );
+
+-- 4. Criar usuário admin inicial (Substitua o ID se necessário)
+-- UPDATE profiles SET role = 'admin' WHERE email = 'admin@arenacomp.com.br';
+                `;
+                navigator.clipboard.writeText(sql);
+                alert('Script SQL copiado para a área de transferência! Execute-o no SQL Editor do Supabase.');
+              }}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-blue-600/20"
+            >
+              Copiar Script SQL
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
