@@ -11,6 +11,51 @@ const ClipItem: React.FC<{ post: ArenaPost; isActive: boolean }> = ({ post, isAc
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLiked, setIsLiked] = useState(post.is_liked || false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  useEffect(() => {
+    checkFollowStatus();
+  }, [post.author_id]);
+
+  const checkFollowStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || user.id === post.author_id) return;
+
+      const { data, error } = await supabase
+        .from('follows')
+        .select('*')
+        .eq('follower_id', user.id)
+        .eq('following_id', post.author_id)
+        .single();
+
+      if (data) setIsFollowing(true);
+    } catch (err) {
+      // Silent error
+    }
+  };
+
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFollowLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (isFollowing) {
+        await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', post.author_id);
+        setIsFollowing(false);
+      } else {
+        await supabase.from('follows').insert({ follower_id: user.id, following_id: post.author_id });
+        setIsFollowing(true);
+      }
+    } catch (err) {
+      console.error('Error toggling follow:', err);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (videoRef.current) {
@@ -114,8 +159,16 @@ const ClipItem: React.FC<{ post: ArenaPost; isActive: boolean }> = ({ post, isAc
             </Link>
             <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest drop-shadow-lg">@{post.author?.username}</p>
           </div>
-          <button className="ml-4 px-4 py-1.5 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-white/90 transition-all">
-            Seguir
+          <button 
+            onClick={handleFollow}
+            disabled={followLoading}
+            className={`ml-4 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+              isFollowing 
+                ? 'bg-white/20 text-white border border-white/20' 
+                : 'bg-white text-black hover:bg-white/90'
+            }`}
+          >
+            {isFollowing ? '✔ Seguindo' : 'Seguir'}
           </button>
         </div>
         <p className="text-white text-sm font-medium line-clamp-2 drop-shadow-lg max-w-[80%]">
@@ -234,7 +287,7 @@ export const ArenaClips: React.FC = () => {
     <div 
       ref={containerRef}
       onScroll={handleScroll}
-      className="h-screen w-full bg-black overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
+      className="h-[calc(100vh-4rem-5rem)] md:h-[calc(100vh-5rem)] w-full bg-black overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
     >
       {clips.map((clip, index) => (
         <ClipItem 

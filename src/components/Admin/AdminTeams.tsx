@@ -11,7 +11,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  MapPin
+  MapPin,
+  User
 } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { Team } from '../../types';
@@ -29,8 +30,11 @@ export const AdminTeams: React.FC = () => {
     name: '',
     location: '',
     description: '',
-    logo_url: ''
+    logo_url: '',
+    professor: ''
   });
+  const [uploading, setUploading] = useState(false);
+  const [teamStats, setTeamStats] = useState<Record<string, number>>({});
   const pageSize = 10;
 
   useEffect(() => {
@@ -55,10 +59,58 @@ export const AdminTeams: React.FC = () => {
       if (error) throw error;
       setTeams(data || []);
       setTotalCount(count || 0);
+
+      // Fetch athlete counts for these teams
+      if (data && data.length > 0) {
+        const teamIds = data.map(t => t.id);
+        const { data: countData, error: countError } = await supabase
+          .from('profiles')
+          .select('team_id')
+          .in('team_id', teamIds);
+        
+        if (!countError && countData) {
+          const counts: Record<string, number> = {};
+          countData.forEach(p => {
+            if (p.team_id) {
+              counts[p.team_id] = (counts[p.team_id] || 0) + 1;
+            }
+          });
+          setTeamStats(counts);
+        }
+      }
     } catch (error) {
       console.error('Error fetching teams:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `team-logos/${fileName}`;
+
+    setUploading(true);
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('arena-assets')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('arena-assets')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, logo_url: publicUrl }));
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      alert('Erro ao fazer upload do logo.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -123,7 +175,7 @@ export const AdminTeams: React.FC = () => {
         <button
           onClick={() => {
             setSelectedTeam(null);
-            setFormData({ name: '', location: '', description: '', logo_url: '' });
+            setFormData({ name: '', location: '', description: '', logo_url: '', professor: '' });
             setIsModalOpen(true);
           }}
           className="w-full md:w-auto bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center space-x-2"
@@ -169,9 +221,17 @@ export const AdminTeams: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-sm font-black uppercase tracking-tight">{team.name}</h3>
-                    <div className="flex items-center space-x-1 text-gray-500 mt-1">
-                      <MapPin size={12} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">{team.location || 'Sem Localização'}</span>
+                    <div className="flex flex-col space-y-1 mt-1">
+                      <div className="flex items-center space-x-1 text-gray-500">
+                        <MapPin size={10} />
+                        <span className="text-[9px] font-bold uppercase tracking-widest">{team.location || 'Sem Localização'}</span>
+                      </div>
+                      {team.professor && (
+                        <div className="flex items-center space-x-1 text-blue-500">
+                          <User size={10} />
+                          <span className="text-[9px] font-black uppercase tracking-widest">Líder: {team.professor}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -202,7 +262,9 @@ export const AdminTeams: React.FC = () => {
               <div className="flex items-center justify-between pt-4 border-t border-white/5">
                 <div className="flex items-center space-x-2">
                   <Users size={14} className="text-blue-500" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">128 Atletas</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    {teamStats[team.id] || 0} Atletas
+                  </span>
                 </div>
                 <button className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:underline">
                   Ver Detalhes
@@ -286,14 +348,43 @@ export const AdminTeams: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">URL do Logo</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Responsável pela Equipe</label>
                   <input
                     type="text"
-                    value={formData.logo_url}
-                    onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                    value={formData.professor}
+                    onChange={(e) => setFormData({ ...formData, professor: e.target.value })}
                     className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
-                    placeholder="https://..."
+                    placeholder="Nome do Professor / Líder"
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Logo da Equipe</label>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                      {formData.logo_url ? (
+                        <img src={formData.logo_url} alt="Preview" className="w-full h-full object-contain" />
+                      ) : (
+                        <Shield className="w-8 h-8 text-gray-700" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <label
+                        htmlFor="logo-upload"
+                        className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg border border-white/10 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-white/5 transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                      >
+                        <Plus size={14} />
+                        <span>{uploading ? 'Enviando...' : 'Fazer Upload'}</span>
+                      </label>
+                      <p className="text-[8px] text-gray-500 mt-2 uppercase font-bold tracking-widest">PNG, JPG ou WEBP. Máx 2MB.</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Descrição</label>

@@ -237,7 +237,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className={`${tabId === 'clips' ? 'max-w-none' : 'max-w-7xl'} mx-auto pt-16 md:pt-20`}>
+        <main className={`${tabId === 'clips' ? 'max-w-none pt-16 pb-0 md:pt-20 h-screen overflow-hidden' : 'max-w-7xl pt-16 md:pt-20'} mx-auto`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={tabId}

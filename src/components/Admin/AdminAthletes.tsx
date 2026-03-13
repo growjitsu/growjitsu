@@ -52,7 +52,7 @@ export const AdminAthletes: React.FC = () => {
       }
 
       if (filters.team) query = query.eq('team', filters.team);
-      if (filters.graduation) query = query.eq('graduation', filters.graduation);
+      if (filters.graduation) query = query.ilike('graduation', filters.graduation);
       if (filters.country) query = query.eq('country', filters.country);
 
       const { data, count, error } = await query

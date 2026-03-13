@@ -330,7 +330,15 @@ CREATE POLICY "Admins can view logs" ON admin_logs
     )
   );
 
--- 4. Criar usuário admin inicial (Substitua o ID se necessário)
+-- 4. Adicionar coluna professor à tabela teams se não existir
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='teams' AND column_name='professor') THEN
+    ALTER TABLE teams ADD COLUMN professor TEXT;
+  END IF;
+END $$;
+
+-- 5. Criar usuário admin inicial (Substitua o ID se necessário)
 -- UPDATE profiles SET role = 'admin' WHERE email = 'admin@arenacomp.com.br';
                 `;
                 navigator.clipboard.writeText(sql);
