@@ -20,7 +20,7 @@ import { AdminPosts } from './components/Admin/AdminPosts';
 import { AdminLogs } from './components/Admin/AdminLogs';
 import { AdminExport } from './components/Admin/AdminExport';
 import { ArenaProfile } from './types';
-import { Bell, Plus } from 'lucide-react';
+import { Bell, Plus, Shield, Lock, ArrowLeft } from 'lucide-react';
 
 const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
   const { userId, username } = useParams();
@@ -385,7 +385,9 @@ export default function App() {
       <Route 
         path="/admin/*" 
         element={
-          isLoggedIn && profile?.role === 'admin' ? (
+          !isLoggedIn ? (
+            <ArenaAuth />
+          ) : profile?.role === 'admin' ? (
             <AdminLayout userProfile={profile}>
               <Routes>
                 <Route path="/" element={<AdminDashboard />} />
@@ -397,7 +399,35 @@ export default function App() {
               </Routes>
             </AdminLayout>
           ) : (
-            <Navigate to="/" replace />
+            <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 text-center">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="w-24 h-24 bg-rose-500/10 border border-rose-500/20 rounded-3xl flex items-center justify-center text-rose-500 mb-8"
+              >
+                <Shield size={48} />
+              </motion.div>
+              <h1 className="text-4xl font-black uppercase italic tracking-tighter mb-4">Acesso Restrito</h1>
+              <p className="text-gray-400 max-w-md mb-10 text-sm leading-relaxed font-medium">
+                Olá <span className="text-white font-bold">{profile?.full_name}</span>, você está autenticado mas não possui as credenciais de administrador necessárias para acessar este protocolo.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button 
+                  onClick={() => navigate('/')}
+                  className="px-10 py-4 bg-white/5 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all flex items-center justify-center space-x-2"
+                >
+                  <ArrowLeft size={16} />
+                  <span>Voltar ao App</span>
+                </button>
+                <button 
+                  onClick={() => supabase.auth.signOut()}
+                  className="px-10 py-4 bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all flex items-center justify-center space-x-2"
+                >
+                  <Lock size={16} />
+                  <span>Trocar de Conta</span>
+                </button>
+              </div>
+            </div>
           )
         } 
       />
