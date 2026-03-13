@@ -237,7 +237,7 @@ export default function App() {
           </div>
         </header>
 
-        <main className={`${tabId === 'clips' ? 'max-w-none pt-16 pb-0 md:pt-20 h-screen overflow-hidden' : 'max-w-7xl pt-16 md:pt-20'} mx-auto`}>
+        <main className={`${(tabId === 'clips' || tabId === 'feed') ? 'max-w-none pt-16 pb-20 md:pb-0 md:pt-20 h-screen overflow-hidden' : 'max-w-7xl pt-16 md:pt-20'} mx-auto`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={tabId}
@@ -245,6 +245,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
+              className={(tabId === 'clips' || tabId === 'feed') ? 'h-full' : ''}
             >
               {content}
             </motion.div>

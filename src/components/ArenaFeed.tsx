@@ -680,73 +680,77 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-4 md:py-8 px-4">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column - Feed Content */}
-        <div className="lg:col-span-8 space-y-8">
-          {/* Top Athletes Rail - Immersive Style (Elite Arena) */}
-          <div className="sticky top-20 z-30 bg-[var(--bg)]/80 backdrop-blur-2xl border border-[var(--border-ui)] rounded-[2.5rem] p-6 overflow-hidden shadow-2xl shadow-black/20 mb-8">
-            <div className="flex items-center justify-between mb-6 px-2">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--text-main)]">ELITE ARENA</h3>
-              </div>
-              <Link to="/rankings" className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--primary)] transition-all flex items-center space-x-1 group">
-                <span>RANKING GLOBAL</span>
-                <Plus size={10} className="group-hover:rotate-90 transition-transform" />
-              </Link>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Elite Arena - Fixed at top */}
+      <div className="flex-none bg-[var(--bg)] z-30 px-4 py-4 border-b border-[var(--border-ui)]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-4 px-2">
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+              <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--text-main)]">ELITE ARENA</h3>
             </div>
-            <div className="flex space-x-8 overflow-x-auto pb-4 hide-scrollbar snap-x">
-              {topAthletes.length > 0 ? (
-                topAthletes.map((athlete, i) => (
-                  <Link 
-                    key={athlete.id} 
-                    to={`/user/@${athlete.username}`}
-                    className="flex-shrink-0 flex flex-col items-center space-y-3 snap-start group cursor-pointer"
-                  >
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-[var(--primary)] to-cyan-400 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
-                      <div className="relative p-1 rounded-full bg-gradient-to-tr from-[var(--border-ui)] to-[var(--primary)]/30 group-hover:from-[var(--primary)] group-hover:to-cyan-400 transition-all duration-500">
-                        <div className="w-16 h-16 rounded-full bg-[var(--bg)] p-1">
-                          <div className="w-full h-full rounded-full bg-[var(--surface)] overflow-hidden border border-[var(--border-ui)]">
-                            {athlete.profile_photo || athlete.avatar_url ? (
-                              <img 
-                                src={athlete.profile_photo || athlete.avatar_url} 
-                                alt="" 
-                                className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-500"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-[var(--surface)] text-[var(--text-muted)]">
-                                <User size={24} />
-                              </div>
-                            )}
-                          </div>
+            <Link to="/rankings" className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] hover:text-[var(--primary)] transition-all flex items-center space-x-1 group">
+              <span>RANKING GLOBAL</span>
+              <Plus size={10} className="group-hover:rotate-90 transition-transform" />
+            </Link>
+          </div>
+          <div className="flex space-x-6 overflow-x-auto pb-2 hide-scrollbar snap-x">
+            {topAthletes.length > 0 ? (
+              topAthletes.map((athlete, i) => (
+                <Link 
+                  key={athlete.id} 
+                  to={`/user/@${athlete.username}`}
+                  className="flex-shrink-0 flex flex-col items-center space-y-2 snap-start group cursor-pointer"
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[var(--primary)] to-cyan-400 rounded-full blur-md opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+                    <div className="relative p-0.5 rounded-full bg-gradient-to-tr from-[var(--border-ui)] to-[var(--primary)]/30 group-hover:from-[var(--primary)] group-hover:to-cyan-400 transition-all duration-500">
+                      <div className="w-14 h-14 rounded-full bg-[var(--bg)] p-0.5">
+                        <div className="w-full h-full rounded-full bg-[var(--surface)] overflow-hidden border border-[var(--border-ui)]">
+                          {athlete.profile_photo || athlete.avatar_url ? (
+                            <img 
+                              src={athlete.profile_photo || athlete.avatar_url} 
+                              alt="" 
+                              className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-500"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-[var(--surface)] text-[var(--text-muted)]">
+                              <User size={20} />
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <div className="absolute -bottom-1 -right-1 bg-white text-black text-[9px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-[var(--bg)] shadow-lg">
-                        {i + 1}
-                      </div>
                     </div>
-                    <div className="text-center">
-                      <p className="text-[10px] font-black uppercase tracking-tighter text-[var(--text-main)] truncate w-20">{athlete.full_name?.split(' ')[0]}</p>
-                      <p className="text-[8px] font-bold text-[var(--primary)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">{Math.round(athlete.arena_score || 0)} pts</p>
+                    <div className="absolute -bottom-1 -right-1 bg-white text-black text-[8px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-[var(--bg)] shadow-lg">
+                      {i + 1}
                     </div>
-                  </Link>
-                ))
-              ) : (
-                [1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex-shrink-0 flex flex-col items-center space-y-3 snap-start animate-pulse">
-                    <div className="w-16 h-16 rounded-full bg-[var(--surface)] border border-[var(--border-ui)]" />
-                    <div className="w-12 h-2 bg-[var(--surface)] rounded" />
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="text-center">
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-[var(--text-main)] truncate w-16">{athlete.full_name?.split(' ')[0]}</p>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              [1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex-shrink-0 flex flex-col items-center space-y-2 snap-start animate-pulse">
+                  <div className="w-14 h-14 rounded-full bg-[var(--surface)] border border-[var(--border-ui)]" />
+                  <div className="w-10 h-1.5 bg-[var(--surface)] rounded" />
+                </div>
+              ))
+            )}
           </div>
+        </div>
+      </div>
 
-          {/* Feed List - Immersive Cards */}
-          <div className="space-y-12">
+      {/* Scrollable Feed Area */}
+      <div className="flex-1 overflow-y-auto hide-scrollbar">
+        <div className="max-w-7xl mx-auto py-6 px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column - Feed Content */}
+            <div className="lg:col-span-8 space-y-8">
+              {/* Feed List - Immersive Cards */}
+              <div className="space-y-8">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-32 space-y-6">
                 <div className="relative">
@@ -924,7 +928,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                     )}
                     
                     {post.media_url && (
-                      <div className="relative aspect-[9/16] rounded-[2.5rem] overflow-hidden border border-[var(--border-ui)] bg-black group/media shadow-2xl">
+                      <div className="relative rounded-[2.5rem] overflow-hidden border border-[var(--border-ui)] bg-black group/media shadow-2xl">
                         {(() => {
                           let urls: string[] = [];
                           try {
@@ -939,10 +943,15 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
                           if (urls.length > 1) {
                             return (
-                              <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar w-full h-full">
+                              <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar w-full">
                                 {urls.map((url, i) => (
-                                  <div key={i} className="flex-shrink-0 w-full h-full snap-center relative">
-                                    <img src={url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  <div key={i} className="flex-shrink-0 w-full snap-center relative flex items-center justify-center bg-black/20">
+                                    <img 
+                                      src={url} 
+                                      alt="" 
+                                      className="w-full h-auto block max-h-[70vh] object-contain" 
+                                      referrerPolicy="no-referrer" 
+                                    />
                                     <div className="absolute top-6 right-6 bg-black/60 backdrop-blur-xl text-white text-[10px] font-black px-3 py-1.5 rounded-xl border border-white/10 shadow-2xl">
                                       {i + 1} / {urls.length}
                                     </div>
@@ -953,18 +962,26 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                           }
 
                           return post.type === 'video' ? (
-                            <div className="relative w-full h-full flex items-center justify-center bg-black group/vid">
-                              <video src={urls[0]} className="w-full h-full object-cover" />
+                            <div className="relative w-full flex items-center justify-center bg-black group/vid">
+                              <video 
+                                src={urls[0]} 
+                                className="w-full h-auto max-h-[70vh] block" 
+                                autoPlay 
+                                muted 
+                                loop 
+                                playsInline
+                              />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-0 group-hover/media:opacity-100 transition-all duration-500 pointer-events-none" />
                               <div className="absolute top-6 left-6 bg-[var(--primary)] text-white text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-[0.3em] shadow-2xl shadow-[var(--primary)]/40 border border-white/10">Replay</div>
-                              <div className="absolute bottom-6 left-6 flex items-center space-x-3 opacity-0 group-hover/media:opacity-100 transition-all duration-500 delay-100">
-                                <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                                <span className="text-[10px] font-black text-white uppercase tracking-widest">4K Ultra HD</span>
-                              </div>
                             </div>
                           ) : (
-                            <div className="relative w-full h-full group/img overflow-hidden">
-                              <img src={urls[0]} alt="" className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-1000" referrerPolicy="no-referrer" />
+                            <div className="relative w-full group/img overflow-hidden flex items-center justify-center bg-black/20">
+                              <img 
+                                src={urls[0]} 
+                                alt="" 
+                                className="w-full h-auto block max-h-[70vh] object-contain group-hover/img:scale-105 transition-transform duration-1000" 
+                                referrerPolicy="no-referrer" 
+                              />
                               <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                             </div>
                           );
@@ -1121,8 +1138,10 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <AnimatePresence>
+  <AnimatePresence>
         {isPostModalOpen && selectedPost && (
           <PostModal 
             key={selectedPost.id}
