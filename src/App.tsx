@@ -60,10 +60,10 @@ export default function App() {
     }
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
         setIsLoggedIn(true);
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
       }
       setIsInitializing(false);
     }).catch(err => {
@@ -72,10 +72,10 @@ export default function App() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         setIsLoggedIn(true);
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
       } else {
         setIsLoggedIn(false);
         setProfile(null);
