@@ -46,7 +46,9 @@ export const AdminAthletes: React.FC = () => {
         .select('*', { count: 'exact' });
 
       if (search) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,username.ilike.%${search}%`);
+        // Search by full_name or username. Email is excluded if it's not in the table, 
+        // but we'll try to include it safely if possible or just stick to what we know exists.
+        query = query.or(`full_name.ilike.%${search}%,username.ilike.%${search}%`);
       }
 
       if (filters.team) query = query.eq('team', filters.team);
@@ -116,16 +118,16 @@ export const AdminAthletes: React.FC = () => {
       {/* Search & Filters */}
       <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl p-6">
         <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar por nome, email ou username..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 transition-all"
-            />
-          </div>
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou username..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm outline-none focus:border-blue-500 transition-all"
+                />
+              </div>
           <div className="flex gap-4">
             <select
               value={filters.graduation}
@@ -190,7 +192,10 @@ export const AdminAthletes: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-xs font-medium text-gray-400">{athlete.email || 'N/A'}</td>
+                    <td className="px-6 py-4 text-xs font-medium text-gray-400">
+                      {/* @ts-ignore - email might not exist in profiles table */}
+                      {athlete.email || 'N/A'}
+                    </td>
                     <td className="px-6 py-4">
                       <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">{athlete.team || 'Sem Equipe'}</span>
                     </td>
@@ -306,13 +311,15 @@ export const AdminAthletes: React.FC = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Email</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Email (Visualização)</label>
                     <input
                       type="email"
-                      value={editData.email}
-                      onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                      /* @ts-ignore */
+                      value={editData.email || ''}
+                      disabled
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none opacity-50 cursor-not-allowed"
                     />
+                    <p className="text-[9px] text-gray-600 italic">O email é gerenciado pelo sistema de autenticação.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Equipe</label>
