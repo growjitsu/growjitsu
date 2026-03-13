@@ -59,23 +59,37 @@ export default function App() {
       return;
     }
 
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        setIsLoggedIn(true);
-        await fetchProfile(session.user.id);
+    const initAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          setIsLoggedIn(true);
+          // Fetch profile but don't strictly block initialization if it's slow
+          // We'll wait a bit, but if it takes too long, we'll proceed
+          const profilePromise = fetchProfile(session.user.id);
+          
+          // Wait up to 2 seconds for profile, then proceed anyway
+          await Promise.race([
+            profilePromise,
+            new Promise(resolve => setTimeout(resolve, 2000))
+          ]);
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+      } finally {
+        setIsInitializing(false);
       }
-      setIsInitializing(false);
-    }).catch(err => {
-      console.error('Supabase session error:', err);
-      setIsInitializing(false);
-    });
+    };
+
+    initAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setIsLoggedIn(true);
-        await fetchProfile(session.user.id);
+        fetchProfile(session.user.id);
       } else {
         setIsLoggedIn(false);
         setProfile(null);
