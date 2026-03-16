@@ -23,7 +23,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [posts, setPosts] = useState<ArenaPost[]>([]);
   const [archivedPosts, setArchivedPosts] = useState<ArenaPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'posts' | 'history' | 'championships' | 'fights' | 'archive' | 'intelligence'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'certificates' | 'championships' | 'fights' | 'archive' | 'intelligence'>('posts');
   const [isEditing, setIsEditing] = useState(forceEdit || false);
   const [editData, setEditData] = useState<Partial<ArenaProfile>>({});
   const [saving, setSaving] = useState(false);
@@ -929,7 +929,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       </AnimatePresence>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 pt-12">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4 pt-12">
         {[
           { label: 'Arena Score', value: Math.round(profile.arena_score), icon: Award, color: 'text-[var(--primary)]' },
           { label: 'Vitórias', value: profile.wins, icon: Target, color: 'text-blue-500' },
@@ -937,12 +937,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           { label: 'Lutas Totais', value: totalFights, icon: History, color: 'text-zinc-500' },
           { label: 'Taxa de Vitória', value: `${winRate}%`, icon: TrendingUp, color: 'text-purple-500' },
         ].map((stat, i) => (
-          <div key={i} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl space-y-2 transition-colors duration-300">
+          <div key={i} className="bg-[var(--surface)] border border-[var(--border-ui)] p-3 md:p-4 rounded-2xl space-y-1 md:space-y-2 transition-colors duration-300 shadow-sm">
             <div className="flex items-center justify-between">
-              <stat.icon size={16} className={stat.color} />
-              <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{stat.label}</span>
+              <stat.icon size={14} className={stat.color} />
+              <span className="text-[8px] md:text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{stat.label}</span>
             </div>
-            <p className="text-2xl font-extrabold text-[var(--text-main)]">{stat.value}</p>
+            <p className="text-xl md:text-2xl font-bold text-[var(--text-main)]">{stat.value}</p>
           </div>
         ))}
       </div>
@@ -1242,13 +1242,13 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
               {activeTab === 'intelligence' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
             </button>
             <button
-              onClick={() => setActiveTab('history')}
+              onClick={() => setActiveTab('certificates')}
               className={`pb-4 text-xs font-black uppercase tracking-widest transition-colors relative whitespace-nowrap ${
-                activeTab === 'history' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                activeTab === 'certificates' ? 'text-[var(--primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
               }`}
             >
-              Histórico
-              {activeTab === 'history' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
+              Certificados
+              {activeTab === 'certificates' && <motion.div layoutId="tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)]" />}
             </button>
             <button
               onClick={() => setActiveTab('championships')}
@@ -1518,34 +1518,23 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   <div className="col-span-2 py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhuma postagem ainda</div>
                 )}
               </div>
-            ) : activeTab === 'history' ? (
-              <div className="space-y-4">
-                {results.length > 0 ? results.map((result) => (
-                  <div key={result.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300">
-                    <div className="flex items-center space-x-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs ${
-                        result.placement === 1 ? 'bg-yellow-500 text-black' :
-                        result.placement === 2 ? 'bg-zinc-300 text-black' :
-                        result.placement === 3 ? 'bg-amber-700 text-white' :
-                        'bg-[var(--bg)] text-[var(--text-muted)]'
-                      }`}>
-                        {result.placement === 0 ? 'P' : `${result.placement}º`}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-[var(--text-main)]">{result.competition?.name}</h4>
-                        <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest">
-                          {new Date(result.competition?.date || '').toLocaleDateString()} • {result.competition?.level}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[var(--primary)] font-black text-sm">+{Math.round(result.points_earned)}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Arena Score</p>
-                    </div>
+            ) : activeTab === 'certificates' ? (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-[var(--text-main)] italic">Meus Certificados</h3>
+                  {isOwnProfile && (
+                    <button className="p-2 bg-[var(--primary)] text-white rounded-lg hover:bg-[var(--primary-highlight)] transition-all">
+                      <Plus size={16} />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Certificates will be listed here */}
+                  <div className="col-span-full py-12 text-center border-2 border-dashed border-[var(--border-ui)] rounded-3xl">
+                    <Award size={48} className="mx-auto text-[var(--text-muted)] mb-4 opacity-20" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Nenhum certificado carregado</p>
                   </div>
-                )) : (
-                  <div className="py-12 text-center text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest">Nenhum resultado registrado</div>
-                )}
+                </div>
               </div>
             ) : activeTab === 'fights' ? (
               <div className="space-y-4">
