@@ -18,14 +18,38 @@ export const ArenaRankings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'athletes' | 'teams'>('athletes');
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
   const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState({
     scope: 'Mundial',
     modality: 'Todas',
     city: 'Todas',
-    country: 'Brasil'
+    country: 'Todas'
   });
+
+  useEffect(() => {
+    fetchAvailableCities();
+  }, []);
+
+  const fetchAvailableCities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('city')
+        .not('city', 'is', null)
+        .neq('city', '');
+      
+      if (error) throw error;
+      
+      if (data) {
+        const cities = Array.from(new Set(data.map(d => d.city.toUpperCase()))).sort();
+        setAvailableCities(cities);
+      }
+    } catch (error) {
+      console.error('Error fetching cities:', error);
+    }
+  };
 
   useEffect(() => {
     if (activeTab === 'athletes') {
@@ -50,14 +74,11 @@ export const ArenaRankings: React.FC = () => {
         query = query.ilike('modality', `%${searchPattern}%`);
       }
       
-        if (filter.scope === 'Cidade' && filter.city !== 'Todas') {
-          // Normalize city search: partial, case-insensitive
-          // Note: Accent-insensitivity is harder without Postgres extensions, 
-          // but ilike handles case-insensitivity and partial matches.
-          query = query.ilike('city', `%${filter.city}%`);
-        } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
-          query = query.eq('country', filter.country);
-        }
+      if (filter.scope === 'Cidade' && filter.city !== 'Todas') {
+        query = query.ilike('city', filter.city);
+      } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
+        query = query.ilike('country', filter.country);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -75,8 +96,8 @@ export const ArenaRankings: React.FC = () => {
       // Try to use the RPC first
       const { data, error } = await supabase.rpc('get_team_rankings', {
         p_modality: filter.modality === 'Todas' ? null : filter.modality,
-        p_country: filter.scope === 'Nacional' ? filter.country : null,
-        p_city: filter.scope === 'Cidade' && filter.city !== 'Todas' ? filter.city : null
+        p_country: (filter.scope === 'Nacional' && filter.country !== 'Todas') ? filter.country : null,
+        p_city: (filter.scope === 'Cidade' && filter.city !== 'Todas') ? filter.city : null
       });
       
       if (!error && data && data.length > 0) {
@@ -105,7 +126,7 @@ export const ArenaRankings: React.FC = () => {
         if (filter.scope === 'Cidade' && filter.city !== 'Todas') {
           query = query.ilike('city', filter.city);
         } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
-          query = query.eq('country', filter.country);
+          query = query.ilike('country', filter.country);
         }
 
         const { data: profiles, error: profilesError } = await query;
@@ -497,13 +518,19 @@ export const ArenaRankings: React.FC = () => {
         )}
 
         {filter.scope === 'Cidade' && (
-          <input 
-            type="text"
-            placeholder="Digite a cidade..."
-            value={filter.city === 'Todas' ? '' : filter.city}
-            onChange={(e) => setFilter({...filter, city: e.target.value || 'Todas'})}
-            className="bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all w-48"
-          />
+          <div className="relative group">
+            <select 
+              value={filter.city}
+              onChange={(e) => setFilter({...filter, city: e.target.value})}
+              className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
+            >
+              <option value="Todas">Todas as Cidades</option>
+              {availableCities.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+          </div>
         )}
       </div>
 
@@ -577,7 +604,7 @@ export const ArenaRankings: React.FC = () => {
                     </div>
                   </div>
                   <div className="col-span-3 md:col-span-2 text-center">
-                    <span className="text-[var(--primary)] font-black text-sm">{Math.round(athlete.arena_score)}</span>
+                    <span className="text-[var(--primary)] font-extrabold text-sm">{Math.round(athlete.arena_score)}</span>
                   </div>
                   <div className="col-span-2 text-center hidden md:block">
                     <span className="text-[var(--text-muted)] font-bold text-sm">{athlete.wins}</span>
@@ -617,7 +644,7 @@ export const ArenaRankings: React.FC = () => {
                     </div>
                   </div>
                   <div className="col-span-3 md:col-span-2 text-center">
-                    <span className="text-[var(--primary)] font-black text-sm">{Math.round(team.total_score)}</span>
+                    <span className="text-[var(--primary)] font-extrabold text-sm">{Math.round(team.total_score)}</span>
                   </div>
                   <div className="col-span-2 text-center hidden md:block">
                     <span className="text-[var(--text-muted)] font-bold text-sm">{team.athlete_count}</span>

@@ -942,7 +942,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
               <stat.icon size={16} className={stat.color} />
               <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">{stat.label}</span>
             </div>
-            <p className="text-2xl font-black text-[var(--text-main)]">{stat.value}</p>
+            <p className="text-2xl font-extrabold text-[var(--text-main)]">{stat.value}</p>
           </div>
         ))}
       </div>
@@ -956,15 +956,15 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="space-y-1">
             <p className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">Mundial</p>
-            <p className="text-2xl font-black text-[var(--text-main)]">#{rankings.world}</p>
+            <p className="text-2xl font-extrabold text-[var(--text-main)]">#{rankings.world}</p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">Nacional ({profile.country || 'N/A'})</p>
-            <p className="text-2xl font-black text-[var(--text-main)]">#{rankings.national}</p>
+            <p className="text-2xl font-extrabold text-[var(--text-main)]">#{rankings.national}</p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">Cidade ({profile.city || 'N/A'})</p>
-            <p className="text-2xl font-black text-[var(--text-main)]">#{rankings.city}</p>
+            <p className="text-2xl font-extrabold text-[var(--text-main)]">#{rankings.city}</p>
           </div>
         </div>
       </div>
