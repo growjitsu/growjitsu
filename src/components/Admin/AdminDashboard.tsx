@@ -56,6 +56,7 @@ export const AdminDashboard: React.FC = () => {
     { name: 'Storage (arena_media)', status: 'online', latency: '120ms' },
     { name: 'Autenticação', status: 'online', latency: '88ms' },
     { name: 'API de Notificações', status: 'online', latency: '150ms' },
+    { name: 'Web3 Protocol (MetaMask)', status: 'checking', latency: '0ms' },
   ]);
   const [loading, setLoading] = useState(true);
 
@@ -86,6 +87,12 @@ export const AdminDashboard: React.FC = () => {
       const { error: storageError } = await supabase.storage.getBucket('arena_media');
       setHealthChecks(prev => prev.map(c => 
         c.name.includes('Storage') ? { ...c, status: storageError ? 'degraded' : 'online', latency: '95ms' } : c
+      ));
+
+      // Check MetaMask
+      const hasMetaMask = typeof window !== 'undefined' && !!(window as any).ethereum;
+      setHealthChecks(prev => prev.map(c => 
+        c.name.includes('Web3') ? { ...c, status: hasMetaMask ? 'online' : 'offline', latency: '1ms' } : c
       ));
     } catch (error) {
       console.error('Health check error:', error);

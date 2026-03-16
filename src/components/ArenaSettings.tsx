@@ -2,17 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Mail, Lock, Shield, Eye, Bell, 
-  Moon, Sun, LogOut, Trash2, Check, AlertCircle, X
+  Moon, Sun, LogOut, Trash2, Check, AlertCircle, X, Wallet
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useTheme } from '../context/ThemeContext';
 import { ArenaProfile } from '../types';
+import { BrowserProvider } from 'ethers';
 
 export const ArenaSettings: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [connectingWallet, setConnectingWallet] = useState(false);
+
+  // ... existing state ...
   
   // Modals state
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -39,6 +43,55 @@ export const ArenaSettings: React.FC = () => {
       .single();
     
     setProfile(data);
+  };
+
+  const handleConnectWallet = async () => {
+    if (!profile) return;
+    
+    if (typeof (window as any).ethereum === 'undefined') {
+      setMessage({ type: 'error', text: 'MetaMask não detectado. Por favor, instale a extensão.' });
+      return;
+    }
+
+    setConnectingWallet(true);
+    try {
+      const provider = new BrowserProvider((window as any).ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      const address = accounts[0];
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wallet_address: address })
+        .eq('id', profile.id);
+      
+      if (error) throw error;
+      
+      setProfile({ ...profile, wallet_address: address });
+      setMessage({ type: 'success', text: 'Carteira conectada com sucesso!' });
+    } catch (error: any) {
+      console.error('Wallet connection error:', error);
+      setMessage({ type: 'error', text: error.message || 'Falha ao conectar com MetaMask.' });
+    } finally {
+      setConnectingWallet(false);
+    }
+  };
+
+  const handleDisconnectWallet = async () => {
+    if (!profile) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wallet_address: null })
+        .eq('id', profile.id);
+      
+      if (error) throw error;
+      
+      setProfile({ ...profile, wallet_address: undefined });
+      setMessage({ type: 'success', text: 'Carteira desconectada.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Erro ao desconectar carteira.' });
+    }
   };
 
   const handleUpdatePrivacy = async (field: 'perfil_publico' | 'permitir_seguidores', value: boolean) => {
@@ -157,6 +210,21 @@ export const ArenaSettings: React.FC = () => {
       ]
     },
     {
+      title: 'Web3 & Wallet',
+      icon: Wallet,
+      items: [
+        { 
+          label: profile?.wallet_address ? 'Carteira Conectada' : 'Conectar MetaMask', 
+          description: profile?.wallet_address 
+            ? `${profile.wallet_address.slice(0, 6)}...${profile.wallet_address.slice(-4)}` 
+            : 'Conecte sua carteira para recompensas e certificados Web3', 
+          action: profile?.wallet_address ? handleDisconnectWallet : handleConnectWallet,
+          danger: !!profile?.wallet_address,
+          loading: connectingWallet
+        },
+      ]
+    },
+    {
       title: 'Segurança',
       icon: Lock,
       items: [
@@ -224,13 +292,21 @@ export const ArenaSettings: React.FC = () => {
                   ) : (
                     <button 
                       onClick={item.action}
-                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                      disabled={item.loading}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center space-x-2 ${
                         item.danger 
                           ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white' 
                           : 'bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border-ui)] hover:border-[var(--primary)]'
                       }`}
                     >
-                      {item.danger ? 'Executar' : 'Configurar'}
+                      {item.loading ? (
+                        <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : null}
+                      <span>
+                        {section.title === 'Web3 & Wallet' 
+                          ? (profile?.wallet_address ? 'Desconectar' : 'Conectar')
+                          : (item.danger ? 'Executar' : 'Configurar')}
+                      </span>
                     </button>
                   )}
                 </div>

@@ -32,6 +32,7 @@ export interface ArenaProfile {
   titles?: string;
   medals?: number;
   arena_score: number;
+  wallet_address?: string;
   perfil_publico: boolean;
   permitir_seguidores: boolean;
   wins: number;

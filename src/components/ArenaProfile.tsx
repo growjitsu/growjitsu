@@ -5,7 +5,7 @@ import {
   Settings, Edit2, Save, X, Instagram, Youtube, Music, 
   User, Dumbbell, Ruler, Scale, GraduationCap, Trophy,
   Database, Plus, Trash2, MoreVertical, Archive, RotateCcw, Heart, MessageCircle, Share2,
-  Brain, Zap, Cpu, BarChart3, Shield, Info
+  Brain, Zap, Cpu, BarChart3, Shield, Info, Wallet
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaProfile, ArenaResult, ArenaPost, ArenaChampionshipResult, ArenaFight, Team } from '../types';
@@ -836,6 +836,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 </h1>
                 <div className="flex flex-col md:flex-row items-center md:space-x-4 space-y-1 md:space-y-0">
                   <p className="text-[var(--primary)] font-bold text-xs uppercase tracking-widest">@{profile.username} • {profile.modality}</p>
+                  {profile.wallet_address && (
+                    <div className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <Wallet size={10} />
+                      <span className="text-[8px] font-black uppercase tracking-widest">Web3 Verified</span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-[var(--text-muted)] text-[10px] font-black uppercase tracking-widest">
                     <span>{followerCount} Seguidores</span>
                     {profile.team && (
