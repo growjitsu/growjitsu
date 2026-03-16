@@ -929,7 +929,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       </AnimatePresence>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-12">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 pt-12">
         {[
           { label: 'Arena Score', value: Math.round(profile.arena_score), icon: Award, color: 'text-[var(--primary)]' },
           { label: 'Vitórias', value: profile.wins, icon: Target, color: 'text-blue-500' },
@@ -1093,7 +1093,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           <div className="bg-[var(--surface)] border border-[var(--border-ui)] p-6 rounded-2xl space-y-6 transition-colors duration-300">
             <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Informações Esportivas</h3>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div className="space-y-1">
                 <div className="flex items-center space-x-2 text-[var(--text-muted)]">
                   <Trophy size={12} />
@@ -1221,7 +1221,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           </div>
 
           {/* Tabs */}
-          <div className="flex space-x-8 border-b border-[var(--border-ui)] transition-colors duration-300 overflow-x-auto hide-scrollbar scroll-smooth">
+          <div className="flex flex-wrap gap-x-8 gap-y-4 border-b border-[var(--border-ui)] transition-colors duration-300">
             <button
               onClick={() => setActiveTab('posts')}
               className={`pb-4 text-xs font-black uppercase tracking-widest transition-colors relative whitespace-nowrap ${
@@ -1415,7 +1415,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 </div>
               </div>
             ) : activeTab === 'posts' ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {posts.length > 0 ? posts.map((post) => (
                     <div 
                       key={post.id} 

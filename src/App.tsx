@@ -155,7 +155,7 @@ export default function App() {
         
         {/* Mobile Header */}
         <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[var(--bg)]/60 backdrop-blur-2xl border-b border-[var(--border-ui)] flex items-center justify-between px-6 z-40 transition-all duration-500">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-700 rounded-xl flex items-center justify-center font-black text-white italic overflow-hidden shadow-lg shadow-blue-500/20 border border-white/10">
               {profile?.profile_photo || profile?.avatar_url ? (
                 <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
