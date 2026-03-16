@@ -830,14 +830,16 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 />
               </div>
             ) : (
-              <div className="space-y-1 w-full">
-                <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic break-words leading-tight">
+              <div className="space-y-1 w-full min-w-0">
+                <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic whitespace-nowrap leading-tight overflow-hidden text-ellipsis">
                   {profile.full_name} {profile.nickname && <span className="text-[var(--text-muted)] text-lg block md:inline">({profile.nickname})</span>}
                 </h1>
                 <div className="flex flex-col md:flex-row items-center md:space-x-4 space-y-2 md:space-y-0">
-                  <p className="text-[var(--primary)] font-bold text-[10px] md:text-xs uppercase tracking-widest truncate max-w-full">@{profile.username} • {profile.modality}</p>
+                  <p className="text-[var(--primary)] font-bold text-[10px] md:text-xs uppercase tracking-widest whitespace-nowrap truncate max-w-full">
+                    @{profile.username.replace(/^@/, '')} • {profile.modality}
+                  </p>
                   {profile.wallet_address && (
-                    <div className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <div className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
                       <Wallet size={10} />
                       <span className="text-[8px] font-black uppercase tracking-widest">Web3 Verified</span>
                     </div>
@@ -929,7 +931,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       </AnimatePresence>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
+      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
         {[
           { label: 'Arena Score', value: Math.round(profile.arena_score), icon: Award, color: 'text-[var(--primary)]' },
           { label: 'Vitórias', value: profile.wins, icon: Target, color: 'text-blue-500' },
@@ -937,7 +939,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           { label: 'Lutas Totais', value: totalFights, icon: History, color: 'text-zinc-500' },
           { label: 'Taxa de Vitória', value: `${winRate}%`, icon: TrendingUp, color: 'text-purple-500' },
         ].map((stat, i) => (
-          <div key={i} className="bg-[var(--surface)] border border-[var(--border-ui)] p-3 md:p-4 rounded-2xl space-y-2 transition-colors duration-300 overflow-hidden shadow-sm">
+          <div key={i} className="bg-[var(--surface)] border border-[var(--border-ui)] p-3 md:p-4 rounded-2xl space-y-2 shadow-sm" style={{ transform: 'translateZ(0)' }}>
             <div className="flex items-center justify-between gap-2">
               <stat.icon size={14} className={`${stat.color} shrink-0`} />
               <span className="text-[8px] md:text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest truncate">{stat.label}</span>
