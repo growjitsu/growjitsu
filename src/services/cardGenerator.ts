@@ -1,4 +1,5 @@
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium-min';
 import QRCode from 'qrcode';
 import Handlebars from 'handlebars';
 
@@ -206,6 +207,7 @@ export class CardGenerator {
   private static template = Handlebars.compile(CARD_TEMPLATE);
 
   static async generateAchievementCard(data: CardData): Promise<Buffer> {
+    console.log('[CardGenerator] Iniciando geração de QR Code...');
     // 1. Generate QR Code
     const qrCodeDataUrl = await QRCode.toDataURL(data.profileUrl, {
       margin: 1,
@@ -221,13 +223,18 @@ export class CardGenerator {
       qrCode: qrCodeDataUrl,
     });
 
+    console.log('[CardGenerator] Lançando Puppeteer (Core + Chromium)...');
+    
     // 3. Launch Puppeteer
     const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: (chromium as any).args,
+      defaultViewport: (chromium as any).defaultViewport,
+      executablePath: await (chromium as any).executablePath(),
+      headless: (chromium as any).headless,
     });
 
     try {
+      console.log('[CardGenerator] Abrindo nova página...');
       const page = await browser.newPage();
       
       // Set viewport to card size
@@ -237,16 +244,25 @@ export class CardGenerator {
         deviceScaleFactor: 2, // High resolution
       });
 
+      console.log('[CardGenerator] Definindo conteúdo HTML...');
       // Set content and wait for fonts/images
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
+      });
 
+      console.log('[CardGenerator] Capturando screenshot...');
       // Take screenshot
       const buffer = await page.screenshot({
         type: 'png',
         fullPage: true,
       });
 
+      console.log('[CardGenerator] Card gerado com sucesso!');
       return buffer as Buffer;
+    } catch (error) {
+      console.error('[CardGenerator] Erro durante a geração:', error);
+      throw error;
     } finally {
       await browser.close();
     }

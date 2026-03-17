@@ -1685,8 +1685,8 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 {certificates.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {certificates.map((cert) => (
-                      <div key={cert.id} className="group relative bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl overflow-hidden aspect-[4/3] flex flex-col">
-                        <div className="flex-1 relative overflow-hidden bg-[var(--bg)] flex items-center justify-center">
+                      <div key={cert.id} className="group relative bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl aspect-[4/3] flex flex-col">
+                        <div className="flex-1 relative bg-[var(--bg)] flex items-center justify-center rounded-t-2xl overflow-hidden">
                           {cert.media_type === 'image' ? (
                             <img 
                               src={cert.media_url} 
@@ -1701,67 +1701,68 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                             </div>
                           )}
                           
-                          {/* Menu Button */}
-                          <div className="absolute top-2 right-2 z-10">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuId(activeMenuId === cert.id ? null : cert.id);
-                              }}
-                              className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-black/60 transition-colors"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
-                            
-                            {activeMenuId === cert.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden py-1 z-20">
-                                <button 
-                                  onClick={() => {
-                                    window.open(cert.media_url, '_blank');
-                                    setActiveMenuId(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
-                                >
-                                  <Eye size={14} />
-                                  Visualizar
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    setAchievementData({
-                                      title: '🏆 CERTIFICADO',
-                                      athleteName: profile.full_name,
-                                      achievement: `Certificado: ${cert.name}`,
-                                      modality: profile.modality || 'ATLETA ARENACOMP',
-                                      profileUrl: `${window.location.origin}/profile/@${profile.username}`
-                                    });
-                                    setIsAchievementCardOpen(true);
-                                    setActiveMenuId(null);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-amber-500 hover:bg-zinc-800 flex items-center gap-2"
-                                >
-                                  <Share2 size={14} />
-                                  Compartilhar
-                                </button>
-                                {isOwnProfile && (
-                                  <button 
-                                    onClick={() => {
-                                      handleDeleteCertificate(cert.id, cert.media_url);
-                                      setActiveMenuId(null);
-                                    }}
-                                    className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-zinc-800 flex items-center gap-2 border-t border-zinc-800"
-                                  >
-                                    <Trash2 size={14} />
-                                    Excluir
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          
                           {/* Overlay on hover (removed old buttons) */}
                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </div>
-                        <div className="p-4 bg-[var(--surface)] border-t border-[var(--border-ui)]">
+
+                        {/* Menu Button - Moved outside overflow-hidden container */}
+                        <div className="absolute top-2 right-2 z-20">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveMenuId(activeMenuId === cert.id ? null : cert.id);
+                            }}
+                            className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-black/60 transition-all md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                          
+                          {activeMenuId === cert.id && (
+                            <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden py-1 z-30">
+                              <button 
+                                onClick={() => {
+                                  window.open(cert.media_url, '_blank');
+                                  setActiveMenuId(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                              >
+                                <Eye size={14} />
+                                Visualizar
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setAchievementData({
+                                    title: '🏆 CERTIFICADO',
+                                    athleteName: profile.full_name,
+                                    achievement: `Certificado: ${cert.name}`,
+                                    modality: profile.modality || 'ATLETA ARENACOMP',
+                                    profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                                  });
+                                  setIsAchievementCardOpen(true);
+                                  setActiveMenuId(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-amber-500 hover:bg-zinc-800 flex items-center gap-2"
+                              >
+                                <Share2 size={14} />
+                                Compartilhar
+                              </button>
+                              {isOwnProfile && (
+                                <button 
+                                  onClick={() => {
+                                    handleDeleteCertificate(cert.id, cert.media_url);
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-zinc-800 flex items-center gap-2 border-t border-zinc-800"
+                                >
+                                  <Trash2 size={14} />
+                                  Excluir
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="p-4 bg-[var(--surface)] border-t border-[var(--border-ui)] rounded-b-2xl">
                           <h4 className="text-xs font-black text-[var(--text-main)] uppercase tracking-tight truncate">{cert.name}</h4>
                           <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
                             {new Date(cert.created_at).toLocaleDateString()}
