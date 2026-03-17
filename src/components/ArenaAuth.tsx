@@ -65,10 +65,14 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
       }
 
       let data;
+      const responseText = await response.text();
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
       } catch (jsonErr) {
-        console.error("[LOG] Erro de JSON detectado ao validar equipe", jsonErr);
+        console.error("[LOG] Erro de JSON detectado ao validar equipe. Resposta bruta:", responseText);
+        if (responseText.includes('<!DOCTYPE html>') || responseText.includes('<html>')) {
+          throw new Error("Resposta do servidor não é JSON (HTML detectado). Provável erro 404 ou 500.");
+        }
         throw new Error("Erro ao validar equipe. Resposta inválida do servidor.");
       }
 
@@ -152,10 +156,11 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
               }
 
               let createData;
+              const createResponseText = await createResponse.text();
               try {
-                createData = await createResponse.json();
+                createData = JSON.parse(createResponseText);
               } catch (jsonErr) {
-                console.error("[LOG] Erro de JSON detectado ao criar equipe", jsonErr);
+                console.error("[LOG] Erro de JSON detectado ao criar equipe. Resposta bruta:", createResponseText);
                 throw new Error("Erro ao criar equipe. Resposta inválida.");
               }
 

@@ -81,6 +81,7 @@ async function startServer() {
 
   // Team Representative Validation Endpoint
   app.post("/api/auth/validate-representative", async (req, res) => {
+    console.log("[BACKEND] Recebida requisição POST em /api/auth/validate-representative");
     const { teamId } = req.body;
 
     if (!teamId) {
@@ -282,9 +283,21 @@ async function startServer() {
     });
   }
 
+  // Global Error Handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("[CRITICAL] Unhandled error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Unhandled server error",
+      message: err.message
+    });
+  });
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`ArenaComp Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("[CRITICAL] Failed to start server:", err);
+});
