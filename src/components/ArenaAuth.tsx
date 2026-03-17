@@ -46,46 +46,52 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     try {
       console.log(`[LOG] Selecionando equipe: ${team.name} (ID: ${team.id})`);
       
-      // Fetch fresh team data to be sure about the professor field
-      const { data: freshTeam, error: teamError } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('id', team.id)
-        .single();
+      // If the user wants to be a leader, we MUST validate
+      if (isTeamLeader) {
+        // Fetch fresh team data to be sure about the professor field
+        const { data: freshTeam, error: teamError } = await supabase
+          .from('teams')
+          .select('*')
+          .eq('id', team.id)
+          .single();
+        
+        if (teamError) {
+          console.error('[ERROR] Erro ao buscar dados da equipe:', teamError);
+          throw teamError;
+        }
+
+        // 1. Check if team already has a professor/leader defined in the teams table
+        const hasProfessor = freshTeam.professor && freshTeam.professor.trim() !== '';
+        console.log(`[LOG] Professor definido na tabela teams: ${hasProfessor ? freshTeam.professor : 'NÃO'}`);
+
+        // 2. Check if there's already a user with team_leader = 'true' for this team
+        const { count, error: checkError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('team_id', team.id)
+          .or('team_leader.eq.true,team_leader.eq.TRUE');
+
+        if (checkError) {
+          console.error('[ERROR] Erro ao verificar representantes:', checkError);
+        }
+
+        console.log(`[LOG] Usuários representantes encontrados: ${count || 0}`);
+
+        if (hasProfessor || (count && count > 0)) {
+          console.log(`[LOG] Conflito detectado para a equipe ${team.name}`);
+          setConflictingTeamName(team.name);
+          setSelectedTeamId(team.id); 
+          setShowTeamConflictModal(true);
+          return; // Stop here, modal will handle the rest
+        }
+      }
+
+      // If not a leader OR no conflict found
+      console.log(`[LOG] Equipe selecionada com sucesso.`);
+      setSelectedTeamId(team.id);
+      setTeamSearch(team.name);
+      setTeamResults([]);
       
-      if (teamError) {
-        console.error('[ERROR] Erro ao buscar dados da equipe:', teamError);
-        throw teamError;
-      }
-
-      // 1. Check if team already has a professor/leader defined in the teams table
-      const hasProfessor = freshTeam.professor && freshTeam.professor.trim() !== '';
-      console.log(`[LOG] Professor definido na tabela teams: ${hasProfessor ? freshTeam.professor : 'NÃO'}`);
-
-      // 2. Check if there's already a user with team_leader = 'true' for this team
-      const { count, error: checkError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('team_id', team.id)
-        .or('team_leader.eq.true,team_leader.eq.TRUE');
-
-      if (checkError) {
-        console.error('[ERROR] Erro ao verificar representantes:', checkError);
-      }
-
-      console.log(`[LOG] Usuários representantes encontrados: ${count || 0}`);
-
-      if (hasProfessor || (count && count > 0)) {
-        console.log(`[LOG] Conflito detectado para a equipe ${team.name}`);
-        setConflictingTeamName(team.name);
-        setSelectedTeamId(team.id); 
-        setShowTeamConflictModal(true);
-      } else {
-        console.log(`[LOG] Equipe disponível para representação.`);
-        setSelectedTeamId(team.id);
-        setTeamSearch(team.name);
-        setTeamResults([]);
-      }
     } catch (err: any) {
       console.error('[ERROR] Erro ao selecionar equipe:', err);
       setError('Erro ao validar equipe. Tente novamente.');
@@ -94,16 +100,53 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     }
   };
 
+  const handleToggleTeamLeader = async (checked: boolean) => {
+    if (checked && selectedTeamId) {
+      // If user is trying to become a leader for an already selected team, validate now
+      setLoading(true);
+      try {
+        const { data: teamData, error: teamError } = await supabase
+          .from('teams')
+          .select('professor, name')
+          .eq('id', selectedTeamId)
+          .single();
+        
+        if (teamError) throw teamError;
+        const hasProfessor = teamData.professor && teamData.professor.trim() !== '';
+
+        const { count, error: checkError } = await supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('team_id', selectedTeamId)
+          .or('team_leader.eq.true,team_leader.eq.TRUE');
+        
+        if (checkError) throw checkError;
+
+        if (hasProfessor || (count && count > 0)) {
+          setConflictingTeamName(teamData.name);
+          setShowTeamConflictModal(true);
+          // We don't set isTeamLeader to true yet, the modal will handle it
+          return;
+        }
+      } catch (err) {
+        console.error('Erro ao validar liderança:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    setIsTeamLeader(checked);
+  };
+
   const handleContinueWithoutTeam = () => {
     setIsTeamLeader(false);
-    setSelectedTeamId(null);
-    setTeamSearch('');
+    // Keep the selectedTeamId so they can still join as an athlete
     setShowTeamConflictModal(false);
   };
 
   const handleCancelTeamSelection = () => {
     setSelectedTeamId(null);
     setTeamSearch('');
+    setIsTeamLeader(false);
     setShowTeamConflictModal(false);
   };
 
@@ -248,54 +291,54 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                   />
                 </div>
                 
-                <div className="space-y-3 p-4 bg-[var(--bg)]/30 rounded-2xl border border-[var(--border-ui)]">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isTeamLeader ? 'bg-[var(--primary)] border-[var(--primary)]' : 'border-[var(--border-ui)] group-hover:border-[var(--primary)]'}`}>
-                      {isTeamLeader && <CheckCircle2 size={14} className="text-white" />}
-                    </div>
+                <div className="space-y-4 p-4 bg-[var(--bg)]/30 rounded-2xl border border-[var(--border-ui)]">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase text-[var(--primary)] tracking-widest">Selecione sua Equipe</p>
+                    <div className="relative">
                       <input
-                        type="checkbox"
-                        className="hidden"
-                        checked={isTeamLeader}
-                        onChange={(e) => setIsTeamLeader(e.target.checked)}
+                        type="text"
+                        placeholder="Buscar equipe..."
+                        value={teamSearch}
+                        onChange={(e) => searchTeams(e.target.value)}
+                        className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
                       />
-                    <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-tight">Sou líder ou responsável por equipe</span>
-                  </label>
-
-                  {isTeamLeader && (
-                    <div className="space-y-2 pt-2 border-t border-[var(--border-ui)]">
-                      <p className="text-[10px] font-black uppercase text-[var(--primary)] tracking-widest">Selecione sua Equipe</p>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Buscar equipe..."
-                          value={teamSearch}
-                          onChange={(e) => searchTeams(e.target.value)}
-                          className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
-                        />
-                        {teamResults.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-[var(--surface)] border border-[var(--border-ui)] rounded-xl shadow-xl overflow-hidden">
-                            {teamResults.map(team => (
-                              <button
-                                key={team.id}
-                                type="button"
-                                onClick={() => handleSelectTeam(team)}
-                                className="w-full px-4 py-2 text-left text-xs hover:bg-[var(--primary)] hover:text-white transition-colors border-b border-[var(--border-ui)] last:border-0"
-                              >
-                                {team.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {selectedTeamId && (
-                        <div className="flex items-center gap-2 text-[10px] text-emerald-500 font-bold uppercase">
-                          <CheckCircle2 size={12} />
-                          Equipe selecionada com sucesso
+                      {teamResults.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-[var(--surface)] border border-[var(--border-ui)] rounded-xl shadow-xl overflow-hidden">
+                          {teamResults.map(team => (
+                            <button
+                              key={team.id}
+                              type="button"
+                              onClick={() => handleSelectTeam(team)}
+                              className="w-full px-4 py-2 text-left text-xs hover:bg-[var(--primary)] hover:text-white transition-colors border-b border-[var(--border-ui)] last:border-0"
+                            >
+                              {team.name}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
-                  )}
+                    {selectedTeamId && (
+                      <div className="flex items-center gap-2 text-[10px] text-emerald-500 font-bold uppercase">
+                        <CheckCircle2 size={12} />
+                        Equipe selecionada com sucesso
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-3 border-t border-[var(--border-ui)]">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isTeamLeader ? 'bg-[var(--primary)] border-[var(--primary)]' : 'border-[var(--border-ui)] group-hover:border-[var(--primary)]'}`}>
+                        {isTeamLeader && <CheckCircle2 size={14} className="text-white" />}
+                      </div>
+                        <input
+                          type="checkbox"
+                          className="hidden"
+                          checked={isTeamLeader}
+                          onChange={(e) => handleToggleTeamLeader(e.target.checked)}
+                        />
+                      <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-tight">Sou líder ou responsável por equipe</span>
+                    </label>
+                  </div>
                 </div>
               </>
             )}
