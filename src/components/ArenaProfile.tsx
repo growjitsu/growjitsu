@@ -758,18 +758,22 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
     setUploading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
+      // Usar getUser() para garantir que temos os dados mais recentes e válidos do servidor
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (!user) throw new Error('Sessão expirada ou usuário não autenticado. Por favor, faça login novamente.');
+      if (authError || !user) {
+        throw new Error('Sessão inválida ou expirada. Por favor, saia e entre novamente no sistema.');
+      }
 
-      // Segurança extra: Garantir que o usuário só poste no seu próprio perfil
+      console.log('Iniciando upload de certificado para o atleta:', user.id);
+
+      // Segurança: Validar se o usuário está no seu próprio perfil
       if (user.id !== profile.id) {
-        throw new Error('Ação não permitida: Você só pode adicionar certificados ao seu próprio perfil.');
+        throw new Error('Você só pode adicionar certificados ao seu próprio perfil de atleta.');
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `certificates/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -784,16 +788,20 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
       const mediaType = file.type.includes('pdf') ? 'pdf' : 'image';
 
+      // Inserção no banco com athlete_id garantido pelo auth.getUser()
       const { error: dbError } = await supabase
         .from('certificates')
         .insert([{
-          athlete_id: user.id, // Usando ID da sessão para garantir RLS
+          athlete_id: user.id,
           name: file.name.split('.')[0].toUpperCase(),
           media_url: publicUrl,
           media_type: mediaType
         }]);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('Erro detalhado do banco:', dbError);
+        throw dbError;
+      }
 
       // Refresh certificates
       const { data: certData } = await supabase
