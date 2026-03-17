@@ -770,8 +770,9 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `certificates/${fileName}`;
+      // O caminho DEVE começar com certificates/ seguido do ID do usuário para bater com a Policy
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `certificates/${user.id}/${fileName}`;
 
       // 3. Upload para o Storage
       const { error: uploadError } = await supabase.storage
