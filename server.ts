@@ -4,10 +4,19 @@ import Database from "better-sqlite3";
 import path from "path";
 import { createClient } from '@supabase/supabase-js';
 import { CardGenerator, CardData } from "./src/services/cardGenerator";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
 
 // Supabase Configuration (Backend)
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://vfefztzaiqhpsfnvpkba.supabase.co';
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmZWZ6dHphaXFocHNmbnZwa2JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzM1MzEsImV4cCI6MjA4NzAwOTUzMX0.G2AVN2yvCaGGtR7fK0nim2eRBAow2C57eeIaOEz1LDQ';
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("[BACKEND] Supabase configuration missing!");
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const db = new Database("arenacomp.db");
@@ -80,16 +89,21 @@ async function startServer() {
     }
 
     try {
-      // SELECT COUNT(*) FROM profiles WHERE team_id = ? AND team_leader = 'true'
+      // Check if team_leader is 'true' or 'TRUE' (string) or true (boolean)
+      // We use .in() for better compatibility
       const { count, error } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('team_id', teamId)
-        .or('team_leader.eq.true,team_leader.eq.TRUE');
+        .in('team_leader', ['true', 'TRUE', true as any]);
 
       if (error) {
-        console.error("[BACKEND] Erro ao consultar Supabase:", error);
-        throw error;
+        console.error("[BACKEND] Erro ao consultar Supabase:", error.message, error.details);
+        return res.status(500).json({ 
+          error: "Database query failed", 
+          message: error.message,
+          details: error.details 
+        });
       }
 
       console.log(`[BACKEND] Resultado para equipe ${teamId}: ${count} representantes`);
@@ -104,7 +118,10 @@ async function startServer() {
       res.json({ status: "ok", message: "Equipe disponível" });
     } catch (error: any) {
       console.error("[BACKEND] Erro na validação de representante:", error);
-      res.status(500).json({ error: "Internal server error during validation" });
+      res.status(500).json({ 
+        error: "Internal server error during validation",
+        message: error.message 
+      });
     }
   });
 

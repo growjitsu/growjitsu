@@ -71,7 +71,8 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
       setTeamResults([]);
     } catch (err: any) {
       console.error('[ERROR] Erro ao selecionar equipe:', err);
-      setError('Erro ao validar equipe. Tente novamente.');
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+      setError(`Erro ao validar equipe: ${errorMessage}. Tente novamente.`);
     } finally {
       setLoading(false);
     }
