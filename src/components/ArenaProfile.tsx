@@ -758,29 +758,30 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
     setUploading(true);
     try {
-      // Usar getUser() para garantir que temos os dados mais recentes e válidos do servidor
+      // 1. Validar autenticação antes de qualquer ação
       const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
       if (authError || !user) {
-        throw new Error('Sessão inválida ou expirada. Por favor, saia e entre novamente no sistema.');
+        throw new Error('Sessão inválida. Por favor, faça login novamente.');
       }
 
-      console.log('Iniciando upload de certificado para o atleta:', user.id);
-
-      // Segurança: Validar se o usuário está no seu próprio perfil
+      // 2. Validar se o usuário é o dono do perfil (Prevenção de UI)
       if (user.id !== profile.id) {
-        throw new Error('Você só pode adicionar certificados ao seu próprio perfil de atleta.');
+        throw new Error('Permissão negada: Você só pode adicionar certificados ao seu próprio perfil.');
       }
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `certificates/${fileName}`;
 
+      // 3. Upload para o Storage
       const { error: uploadError } = await supabase.storage
         .from('posts')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Erro no Storage:', uploadError);
+        throw new Error(`Falha no upload do arquivo: ${uploadError.message}`);
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('posts')
@@ -788,7 +789,9 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
       const mediaType = file.type.includes('pdf') ? 'pdf' : 'image';
 
-      // Inserção no banco com athlete_id garantido pelo auth.getUser()
+      // 4. Inserção no Banco de Dados
+      // O Trigger no banco garantirá que o athlete_id seja o correto, 
+      // mas enviamos aqui para manter a consistência do código.
       const { error: dbError } = await supabase
         .from('certificates')
         .insert([{
@@ -799,8 +802,9 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
         }]);
 
       if (dbError) {
-        console.error('Erro detalhado do banco:', dbError);
-        throw dbError;
+        console.error('Erro de RLS/Banco:', dbError);
+        // Se o erro persistir aqui, o log mostrará exatamente o que o banco rejeitou
+        throw new Error(`Erro ao registrar certificado: ${dbError.message}`);
       }
 
       // Refresh certificates
