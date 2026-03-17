@@ -48,7 +48,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('team_id', team.id)
-        .eq('team_leader', true);
+        .or('team_leader.eq.true,team_leader.eq.TRUE');
 
       if (error) throw error;
 
@@ -99,7 +99,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
             .from('profiles')
             .select('*', { count: 'exact', head: true })
             .eq('team_id', selectedTeamId)
-            .eq('team_leader', true);
+            .or('team_leader.eq.true,team_leader.eq.TRUE');
           
           if (checkError) throw checkError;
           
@@ -124,7 +124,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
               username: username.toLowerCase(),
               full_name: fullName.toUpperCase(),
               role: 'athlete',
-              team_leader: isTeamLeader,
+              team_leader: isTeamLeader ? 'true' : 'false',
               team_id: selectedTeamId,
               perfil_publico: true,
               permitir_seguidores: true

@@ -112,6 +112,7 @@ export const AdminAthletes: React.FC = () => {
         country: editData.country?.toUpperCase(),
         team: editData.team?.toUpperCase(),
         titles: editData.titles?.toUpperCase(),
+        team_leader: editData.team_leader ? 'true' : 'false',
       };
 
       const { error } = await supabase
@@ -366,12 +367,12 @@ export const AdminAthletes: React.FC = () => {
                       <div className="relative">
                         <input
                           type="checkbox"
-                          checked={editData.team_leader}
+                          checked={editData.team_leader === 'true' || editData.team_leader === true}
                           onChange={(e) => setEditData({ ...editData, team_leader: e.target.checked })}
                           className="sr-only"
                         />
-                        <div className={`w-10 h-5 rounded-full transition-colors ${editData.team_leader ? 'bg-emerald-500' : 'bg-white/10'}`} />
-                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${editData.team_leader ? 'translate-x-5' : 'translate-x-0'}`} />
+                        <div className={`w-10 h-5 rounded-full transition-colors ${(editData.team_leader === 'true' || editData.team_leader === true) ? 'bg-emerald-500' : 'bg-white/10'}`} />
+                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${(editData.team_leader === 'true' || editData.team_leader === true) ? 'translate-x-5' : 'translate-x-0'}`} />
                       </div>
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 group-hover:text-white transition-colors">Representante de Equipe</span>
                     </label>

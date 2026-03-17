@@ -24,7 +24,7 @@ export interface ArenaProfile {
   profile_photo?: string;
   team?: string;
   team_id?: string;
-  team_leader?: boolean;
+  team_leader?: string | boolean;
   bio?: string;
   instagram_url?: string;
   youtube_url?: string;
