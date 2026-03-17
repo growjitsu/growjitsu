@@ -54,6 +54,14 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
     modality: '',
     profileUrl: ''
   });
+
+  useEffect(() => {
+    const handleClickOutside = () => setActiveMenuId(null);
+    if (activeMenuId) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [activeMenuId]);
   
   const [allTeams, setAllTeams] = useState<Team[]>([]);
 
@@ -1693,41 +1701,65 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                             </div>
                           )}
                           
-                          {/* Overlay on hover */}
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-3">
+                          {/* Menu Button */}
+                          <div className="absolute top-2 right-2 z-10">
                             <button 
-                              onClick={() => window.open(cert.media_url, '_blank')}
-                              className="p-3 bg-white/20 backdrop-blur-md rounded-xl text-white hover:bg-white/30 transition-colors"
-                              title="Visualizar"
-                            >
-                              <Eye size={20} />
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setAchievementData({
-                                  title: '🏆 CERTIFICADO',
-                                  athleteName: profile.full_name,
-                                  achievement: `Certificado: ${cert.name}`,
-                                  modality: profile.modality || 'ATLETA ARENACOMP',
-                                  profileUrl: `${window.location.origin}/profile/@${profile.username}`
-                                });
-                                setIsAchievementCardOpen(true);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuId(activeMenuId === cert.id ? null : cert.id);
                               }}
-                              className="p-3 bg-amber-500/20 backdrop-blur-md rounded-xl text-amber-500 hover:bg-amber-500/30 transition-colors"
-                              title="Compartilhar"
+                              className="p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-black/60 transition-colors"
                             >
-                              <Share2 size={20} />
+                              <MoreVertical size={16} />
                             </button>
-                            {isOwnProfile && (
-                              <button 
-                                onClick={() => handleDeleteCertificate(cert.id, cert.media_url)}
-                                className="p-3 bg-rose-500/20 backdrop-blur-md rounded-xl text-rose-500 hover:bg-rose-500/30 transition-colors"
-                                title="Excluir"
-                              >
-                                <Trash2 size={20} />
-                              </button>
+                            
+                            {activeMenuId === cert.id && (
+                              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden py-1 z-20">
+                                <button 
+                                  onClick={() => {
+                                    window.open(cert.media_url, '_blank');
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-zinc-300 hover:bg-zinc-800 flex items-center gap-2"
+                                >
+                                  <Eye size={14} />
+                                  Visualizar
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setAchievementData({
+                                      title: '🏆 CERTIFICADO',
+                                      athleteName: profile.full_name,
+                                      achievement: `Certificado: ${cert.name}`,
+                                      modality: profile.modality || 'ATLETA ARENACOMP',
+                                      profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                                    });
+                                    setIsAchievementCardOpen(true);
+                                    setActiveMenuId(null);
+                                  }}
+                                  className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-amber-500 hover:bg-zinc-800 flex items-center gap-2"
+                                >
+                                  <Share2 size={14} />
+                                  Compartilhar
+                                </button>
+                                {isOwnProfile && (
+                                  <button 
+                                    onClick={() => {
+                                      handleDeleteCertificate(cert.id, cert.media_url);
+                                      setActiveMenuId(null);
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest text-rose-500 hover:bg-zinc-800 flex items-center gap-2 border-t border-zinc-800"
+                                  >
+                                    <Trash2 size={14} />
+                                    Excluir
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </div>
+                          
+                          {/* Overlay on hover (removed old buttons) */}
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         </div>
                         <div className="p-4 bg-[var(--surface)] border-t border-[var(--border-ui)]">
                           <h4 className="text-xs font-black text-[var(--text-main)] uppercase tracking-tight truncate">{cert.name}</h4>

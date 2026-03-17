@@ -19,13 +19,23 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
   const [cardUrl, setCardUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setCardUrl(null);
+      setLoading(false);
+    }
+  }, [isOpen]);
+
   const handleGenerate = async () => {
+    console.log('Iniciando geração de card com dados:', data);
     setLoading(true);
     try {
       const url = await generateCard(data);
+      console.log('Card gerado com sucesso:', url);
       setCardUrl(url);
-    } catch (error) {
-      console.error('Error generating card:', error);
+    } catch (error: any) {
+      console.error('Erro ao gerar card:', error);
+      alert('Falha ao gerar o card. Por favor, tente novamente.\nErro: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }

@@ -66,14 +66,16 @@ async function startServer() {
 
   // Card Generation Endpoint
   app.post("/api/cards/generate", async (req, res) => {
+    console.log('Recebida requisição para gerar card:', req.body);
     try {
       const cardData: CardData = req.body;
       
       if (!cardData.athleteName || !cardData.achievement) {
+        console.warn('Dados incompletos para geração de card:', cardData);
         return res.status(400).json({ error: "Missing required card data" });
       }
 
-      console.log(`Generating card for ${cardData.athleteName}: ${cardData.achievement}`);
+      console.log(`Gerando card para ${cardData.athleteName}: ${cardData.achievement}`);
       
       const buffer = await CardGenerator.generateAchievementCard({
         ...cardData,
@@ -83,11 +85,12 @@ async function startServer() {
         profileUrl: cardData.profileUrl || "https://arenacomp.com.br"
       });
 
+      console.log('Card gerado com sucesso, enviando buffer...');
       res.set('Content-Type', 'image/png');
       res.send(buffer);
-    } catch (error) {
-      console.error("Error generating card:", error);
-      res.status(500).json({ error: "Failed to generate card" });
+    } catch (error: any) {
+      console.error("Erro crítico na geração de card:", error);
+      res.status(500).json({ error: "Failed to generate card: " + error.message });
     }
   });
 
