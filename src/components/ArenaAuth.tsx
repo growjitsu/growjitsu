@@ -42,31 +42,53 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
 
   const handleSelectTeam = async (team: any) => {
     setLoading(true);
+    setError(null);
     try {
-      // 1. Check if team already has a professor/leader defined in the teams table
-      const hasProfessor = team.professor && team.professor.trim() !== '';
+      console.log(`[LOG] Selecionando equipe: ${team.name} (ID: ${team.id})`);
+      
+      // Fetch fresh team data to be sure about the professor field
+      const { data: freshTeam, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', team.id)
+        .single();
+      
+      if (teamError) {
+        console.error('[ERROR] Erro ao buscar dados da equipe:', teamError);
+        throw teamError;
+      }
 
-      // 2. Check if team already has a representative user in the profiles table
-      const { count, error } = await supabase
+      // 1. Check if team already has a professor/leader defined in the teams table
+      const hasProfessor = freshTeam.professor && freshTeam.professor.trim() !== '';
+      console.log(`[LOG] Professor definido na tabela teams: ${hasProfessor ? freshTeam.professor : 'NÃO'}`);
+
+      // 2. Check if there's already a user with team_leader = 'true' for this team
+      const { count, error: checkError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('team_id', team.id)
         .or('team_leader.eq.true,team_leader.eq.TRUE');
 
-      if (error) throw error;
+      if (checkError) {
+        console.error('[ERROR] Erro ao verificar representantes:', checkError);
+      }
+
+      console.log(`[LOG] Usuários representantes encontrados: ${count || 0}`);
 
       if (hasProfessor || (count && count > 0)) {
+        console.log(`[LOG] Conflito detectado para a equipe ${team.name}`);
         setConflictingTeamName(team.name);
         setSelectedTeamId(team.id); 
         setShowTeamConflictModal(true);
       } else {
+        console.log(`[LOG] Equipe disponível para representação.`);
         setSelectedTeamId(team.id);
         setTeamSearch(team.name);
         setTeamResults([]);
       }
-    } catch (err) {
-      console.error('Error checking team representative:', err);
-      setError('Erro ao verificar disponibilidade da equipe.');
+    } catch (err: any) {
+      console.error('[ERROR] Erro ao selecionar equipe:', err);
+      setError('Erro ao validar equipe. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -95,9 +117,16 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
+        // VALIDATION: If registering as team leader, MUST select a team
+        if (isTeamLeader && !selectedTeamId) {
+          setError('Para se cadastrar como representante, você deve selecionar uma equipe da lista.');
+          setLoading(false);
+          return;
+        }
+
         // FINAL BACKEND-LIKE CHECK BEFORE SIGNUP
         if (isTeamLeader && selectedTeamId) {
-          console.log(`[LOG] Verificando representantes da equipe ${selectedTeamId}`);
+          console.log(`[LOG] Verificação final de representantes da equipe ${selectedTeamId}`);
           
           // 1. Check teams table for professor
           const { data: teamData, error: teamError } = await supabase
@@ -108,7 +137,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
           
           if (teamError) throw teamError;
           const hasProfessor = teamData.professor && teamData.professor.trim() !== '';
-
+          
           // 2. Check profiles table for existing representative user
           const { count, error: checkError } = await supabase
             .from('profiles')
@@ -118,10 +147,11 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
           
           if (checkError) throw checkError;
           
-          console.log(`[LOG] Professor definido: ${hasProfessor}, Usuários representantes: ${count}`);
+          console.log(`[LOG] Resultado final: Professor=${hasProfessor}, Representantes=${count}`);
           
           if (hasProfessor || (count && count > 0)) {
             console.log(`[LOG] Bloqueando inserção automática - Equipe já tem líder ou professor`);
+            setError(`A equipe ${teamData.name} já possui um representante oficial.`);
             setConflictingTeamName(teamData.name || teamSearch);
             setShowTeamConflictModal(true);
             setLoading(false);

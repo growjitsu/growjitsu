@@ -112,7 +112,7 @@ export const AdminAthletes: React.FC = () => {
         country: editData.country?.toUpperCase(),
         team: editData.team?.toUpperCase(),
         titles: editData.titles?.toUpperCase(),
-        team_leader: editData.team_leader ? 'true' : 'false',
+        team_leader: (editData.team_leader === true || editData.team_leader === 'true') ? 'true' : 'false',
       };
 
       const { error } = await supabase
@@ -120,7 +120,13 @@ export const AdminAthletes: React.FC = () => {
         .update(standardizedData)
         .eq('id', selectedAthlete?.id);
       
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('TEAM_HAS_REPRESENTATIVE')) {
+          alert('Erro: Esta equipe já possui um representante oficial (Professor ou Líder).');
+          return;
+        }
+        throw error;
+      }
       
       setAthletes(prev => prev.map(a => a.id === selectedAthlete?.id ? { ...a, ...standardizedData } : a));
       setIsEditModalOpen(false);
