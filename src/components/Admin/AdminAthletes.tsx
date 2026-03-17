@@ -361,6 +361,21 @@ export const AdminAthletes: React.FC = () => {
                       <option value="Preta">Preta</option>
                     </select>
                   </div>
+                  <div className="space-y-2 flex items-center pt-6">
+                    <label className="flex items-center space-x-3 cursor-pointer group">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={editData.team_leader}
+                          onChange={(e) => setEditData({ ...editData, team_leader: e.target.checked })}
+                          className="sr-only"
+                        />
+                        <div className={`w-10 h-5 rounded-full transition-colors ${editData.team_leader ? 'bg-emerald-500' : 'bg-white/10'}`} />
+                        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${editData.team_leader ? 'translate-x-5' : 'translate-x-0'}`} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 group-hover:text-white transition-colors">Representante de Equipe</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 

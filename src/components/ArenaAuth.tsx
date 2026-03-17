@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, User, Trophy, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 
@@ -17,6 +17,8 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamSearch, setTeamSearch] = useState('');
   const [teamResults, setTeamResults] = useState<any[]>([]);
+  const [showTeamConflictModal, setShowTeamConflictModal] = useState(false);
+  const [conflictingTeamName, setConflictingTeamName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +38,48 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     if (!error && data) {
       setTeamResults(data);
     }
+  };
+
+  const handleSelectTeam = async (team: any) => {
+    setLoading(true);
+    try {
+      // Check if team already has a representative
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', team.id)
+        .eq('team_leader', true);
+
+      if (error) throw error;
+
+      if (count && count > 0) {
+        setConflictingTeamName(team.name);
+        setSelectedTeamId(team.id); // Keep it temporarily to know which team was selected
+        setShowTeamConflictModal(true);
+      } else {
+        setSelectedTeamId(team.id);
+        setTeamSearch(team.name);
+        setTeamResults([]);
+      }
+    } catch (err) {
+      console.error('Error checking team representative:', err);
+      setError('Erro ao verificar disponibilidade da equipe.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContinueWithoutTeam = () => {
+    setIsTeamLeader(false);
+    setSelectedTeamId(null);
+    setTeamSearch('');
+    setShowTeamConflictModal(false);
+  };
+
+  const handleCancelTeamSelection = () => {
+    setSelectedTeamId(null);
+    setTeamSearch('');
+    setShowTeamConflictModal(false);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -164,11 +208,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                               <button
                                 key={team.id}
                                 type="button"
-                                onClick={() => {
-                                  setSelectedTeamId(team.id);
-                                  setTeamSearch(team.name);
-                                  setTeamResults([]);
-                                }}
+                                onClick={() => handleSelectTeam(team)}
                                 className="w-full px-4 py-2 text-left text-xs hover:bg-[var(--primary)] hover:text-white transition-colors border-b border-[var(--border-ui)] last:border-0"
                               >
                                 {team.name}
@@ -234,6 +274,50 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
             </div>
           )}
         </motion.div>
+
+        {/* Team Conflict Modal */}
+        <AnimatePresence>
+          {showTeamConflictModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-[var(--surface)] border border-[var(--border-ui)] p-8 rounded-3xl max-w-sm w-full space-y-6 shadow-2xl"
+              >
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 bg-rose-500/10 rounded-2xl mx-auto flex items-center justify-center text-rose-500">
+                    <Trophy size={32} />
+                  </div>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-[var(--text-main)] italic">Equipe já representada</h3>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                    A equipe <span className="text-[var(--primary)] font-bold">{conflictingTeamName}</span> já tem um representante. 
+                    Caso você também seja representante dessa mesma equipe, encaminhe um e-mail solicitando a adição do seu nome como representante também dessa equipe.
+                  </p>
+                  <div className="pt-4 border-t border-[var(--border-ui)]">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-main)] mb-4">Deseja continuar o cadastro sem representar uma equipe?</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={handleContinueWithoutTeam}
+                        className="bg-[var(--primary)] text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[var(--primary-highlight)] transition-all"
+                      >
+                        Continuar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelTeamSelection}
+                        className="bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border-ui)] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[var(--surface)] transition-all"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
