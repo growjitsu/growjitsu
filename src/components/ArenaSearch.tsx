@@ -80,8 +80,12 @@ export const ArenaSearch: React.FC = () => {
                           )}
                         </div>
                         <div>
-                          <h4 className="font-black text-base text-[var(--text-main)] uppercase tracking-tighter italic">{athlete.full_name}</h4>
-                          <p className="text-[var(--primary)] font-bold text-xs">@{athlete.username}</p>
+                          <h4 className="font-black text-base text-[var(--text-main)] uppercase tracking-tighter italic">
+                            {athlete.full_name} {athlete.nickname && <span className="text-[var(--text-muted)] text-xs font-normal lowercase">(@{athlete.nickname.replace(/^@/, '')})</span>}
+                          </h4>
+                          {athlete.nickname ? (
+                            <p className="text-[var(--primary)] font-bold text-xs">@{athlete.nickname.replace(/^@/, '')}</p>
+                          ) : null}
                           <div className="flex items-center space-x-3 mt-1">
                             <span className="text-[10px] text-[var(--text-muted)] uppercase font-black tracking-widest">{athlete.modality}</span>
                             {athlete.country && (

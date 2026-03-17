@@ -25,7 +25,8 @@ import { useTheme } from './context/ThemeContext';
 
 const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
   const { userId, username } = useParams();
-  return <ArenaProfileView userId={userId} username={username} forceEdit={forceEdit} />;
+  const location = useLocation();
+  return <ArenaProfileView key={`${userId}-${username}-${location.pathname}`} userId={userId} username={username} forceEdit={forceEdit} />;
 };
 
 export default function App() {

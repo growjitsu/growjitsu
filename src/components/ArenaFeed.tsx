@@ -889,13 +889,20 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     {post.author?.full_name || 'Atleta'}
+                                    {post.author?.nickname && (
+                                      <span className="ml-1 text-[10px] text-[var(--text-muted)] lowercase font-normal">
+                                        (@{post.author.nickname.replace(/^@/, '')})
+                                      </span>
+                                    )}
                                   </Link>
                                   <div className="px-2 py-0.5 rounded-md bg-[var(--bg)] border border-[var(--border-ui)] text-[9px] font-mono font-bold text-[var(--primary)]">
                                     LVL {Math.floor((post.author?.arena_score || 0) / 100) + 1}
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-3 mt-1.5">
-                                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tight">@{post.author?.username}</span>
+                                  {post.author?.nickname ? (
+                                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tight">@{post.author.nickname.replace(/^@/, '')}</span>
+                                  ) : null}
                                   <span className="w-1 h-1 rounded-full bg-[var(--primary)]/40" />
                                   <span className="text-[10px] font-black text-[var(--primary)] uppercase tracking-[0.2em]">{post.author?.modality || 'Geral'}</span>
                                 </div>

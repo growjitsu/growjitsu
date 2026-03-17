@@ -280,7 +280,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
       }
     };
     fetchAllTeams();
-  }, [userId, forceEdit]);
+  }, [userId, username, forceEdit]);
 
   const handleArchive = async (postId: string, archive: boolean = true) => {
     try {
@@ -976,11 +976,11 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
             ) : (
               <div className="space-y-1 w-full min-w-0">
                 <h1 className="text-2xl md:text-4xl font-black text-[var(--text-main)] uppercase tracking-tighter italic whitespace-nowrap leading-tight overflow-hidden text-ellipsis">
-                  {profile.full_name} {profile.nickname && <span className="text-[var(--text-muted)] text-lg block md:inline">({profile.nickname})</span>}
+                  {profile.full_name} {profile.nickname && <span className="text-[var(--text-muted)] text-lg block md:inline">(@{profile.nickname.replace(/^@/, '')})</span>}
                 </h1>
                 <div className="flex flex-col md:flex-row items-center md:space-x-4 space-y-2 md:space-y-0">
                   <p className="text-[var(--primary)] font-bold text-[10px] md:text-xs uppercase tracking-widest whitespace-nowrap truncate max-w-full">
-                    @{profile.username.replace(/^@/, '')} • {profile.modality}
+                    {profile.modality}
                   </p>
                   {profile.wallet_address && (
                     <div className="flex items-center space-x-1 bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full border border-emerald-500/20 shrink-0">
