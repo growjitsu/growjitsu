@@ -31,8 +31,11 @@ export const AdminTeams: React.FC = () => {
     city: '',
     state: '',
     logo_url: '',
-    professor: ''
+    representative_id: ''
   });
+  const [userSearch, setUserSearch] = useState('');
+  const [userResults, setUserResults] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [teamStats, setTeamStats] = useState<Record<string, number>>({});
@@ -150,6 +153,31 @@ export const AdminTeams: React.FC = () => {
     }
   };
 
+  const searchUsers = async (query: string) => {
+    setUserSearch(query);
+    if (query.length < 2) {
+      setUserResults([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, username')
+      .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+      .limit(5);
+    
+    if (!error && data) {
+      setUserResults(data);
+    }
+  };
+
+  const handleSelectUser = (user: any) => {
+    setSelectedUser(user);
+    setFormData(prev => ({ ...prev, representative_id: user.id }));
+    setUserSearch(user.full_name);
+    setUserResults([]);
+  };
+
   const handleSaveTeam = async () => {
     try {
       // Standardize text to uppercase
@@ -157,9 +185,10 @@ export const AdminTeams: React.FC = () => {
         name: formData.name?.toUpperCase(),
         city: formData.city?.toUpperCase(),
         state: formData.state?.toUpperCase()?.substring(0, 2),
-        professor: formData.professor?.toUpperCase(),
         logo_url: formData.logo_url
       };
+
+      let teamId = selectedTeam?.id;
 
       if (selectedTeam) {
         const { error } = await supabase
@@ -169,12 +198,46 @@ export const AdminTeams: React.FC = () => {
         if (error) throw error;
         setTeams(prev => prev.map(t => t.id === selectedTeam.id ? { ...t, ...standardizedData } : t));
       } else {
-        const { error } = await supabase
+        const { data: newTeam, error } = await supabase
           .from('teams')
-          .insert([standardizedData]);
+          .insert([standardizedData])
+          .select()
+          .single();
         if (error) throw error;
+        teamId = newTeam.id;
         fetchTeams();
       }
+
+      // Update representative in team_members if selected
+      if (formData.representative_id && teamId) {
+        // First, remove any existing representative for this team
+        await supabase
+          .from('team_members')
+          .delete()
+          .eq('team_id', teamId)
+          .eq('role', 'representative');
+
+        // Then insert the new one
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .insert({
+            team_id: teamId,
+            user_id: formData.representative_id,
+            role: 'representative'
+          });
+        
+        if (memberError) {
+          console.error('Error updating representative:', memberError);
+          alert('Equipe salva, mas erro ao vincular representante.');
+        } else {
+          // Also update profiles for legacy support
+          await supabase
+            .from('profiles')
+            .update({ team_leader: 'true', team_id: teamId })
+            .eq('id', formData.representative_id);
+        }
+      }
+
       setIsModalOpen(false);
       alert(`Equipe ${selectedTeam ? 'atualizada' : 'criada'} com sucesso.`);
     } catch (error) {
@@ -388,14 +451,37 @@ export const AdminTeams: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Responsável pela Equipe</label>
-                  <input
-                    type="text"
-                    value={formData.professor}
-                    onChange={(e) => setFormData({ ...formData, professor: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
-                    placeholder="Nome do Professor / Líder"
-                  />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Responsável pela Equipe (Usuário)</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => searchUsers(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                      placeholder="Buscar usuário por nome ou username..."
+                    />
+                    {userResults.length > 0 && (
+                      <div className="absolute z-20 w-full mt-1 bg-[#0f0f0f] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                        {userResults.map(user => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => handleSelectUser(user)}
+                            className="w-full px-4 py-3 text-left text-xs hover:bg-blue-600 hover:text-white transition-colors border-b border-white/5 last:border-0"
+                          >
+                            <div className="font-black uppercase">{user.full_name}</div>
+                            <div className="text-[9px] text-gray-500">@{user.username}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedUser && (
+                    <div className="flex items-center gap-2 text-[9px] text-emerald-500 font-black uppercase tracking-widest mt-1">
+                      <Check size={12} />
+                      Selecionado: {selectedUser.full_name}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Logo da Equipe</label>

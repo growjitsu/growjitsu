@@ -82,44 +82,141 @@ async function startServer() {
   // Team Representative Validation Endpoint
   app.post("/api/auth/validate-representative", async (req, res) => {
     const { teamId } = req.body;
-    console.log(`[BACKEND] Validando representante para equipe: ${teamId}`);
 
     if (!teamId) {
-      return res.status(400).json({ error: "Team ID is required" });
+      console.error("[BACKEND] ID da equipe ausente na validação");
+      return res.status(400).json({ 
+        success: false,
+        error: "Missing teamId", 
+        message: "O ID da equipe é obrigatório." 
+      });
     }
 
+    console.log(`[BACKEND] Validando equipe ID: ${teamId}`);
+
     try {
-      // Check if team_leader is 'true' or 'TRUE' (string) or true (boolean)
-      // We use .in() for better compatibility
+      // Check if team has a representative in team_members
       const { count, error } = await supabase
-        .from('profiles')
+        .from('team_members')
         .select('*', { count: 'exact', head: true })
         .eq('team_id', teamId)
-        .in('team_leader', ['true', 'TRUE', true as any]);
+        .eq('role', 'representative');
 
       if (error) {
-        console.error("[BACKEND] Erro ao consultar Supabase:", error.message, error.details);
+        console.error("[BACKEND] Erro ao consultar team_members:", error.message, error.details);
         return res.status(500).json({ 
+          success: false,
           error: "Database query failed", 
           message: error.message,
           details: error.details 
         });
       }
 
-      console.log(`[BACKEND] Resultado para equipe ${teamId}: ${count} representantes`);
+      console.log(`[BACKEND] Representantes encontrados para equipe ${teamId}: ${count}`);
 
       if (count && count > 0) {
         return res.status(400).json({ 
+          success: false,
           error: "Equipe já representada", 
           message: "Esta equipe já possui um representante oficial cadastrado." 
         });
       }
 
-      res.json({ status: "ok", message: "Equipe disponível" });
+      return res.status(200).json({ 
+        success: true,
+        status: "ok", 
+        message: "Equipe disponível",
+        hasRepresentative: false
+      });
     } catch (error: any) {
       console.error("[BACKEND] Erro na validação de representante:", error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
+        success: false,
         error: "Internal server error during validation",
+        message: error.message 
+      });
+    }
+  });
+
+  // Endpoint for creating a team and automatically linking the creator as representative
+  app.post("/api/teams/create", async (req, res) => {
+    const { name, city, state, imageUrl, userId } = req.body;
+
+    if (!name || !userId) {
+      console.error("[BACKEND] Dados incompletos para criação de equipe");
+      return res.status(400).json({ 
+        success: false,
+        error: "Missing required fields", 
+        message: "Nome da equipe e ID do usuário são obrigatórios." 
+      });
+    }
+
+    console.log(`[BACKEND] Criando equipe: ${name} para usuário: ${userId}`);
+
+    try {
+      // 1. Create the team
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          name,
+          city,
+          state,
+          logo_url: imageUrl,
+          created_by: userId
+        })
+        .select()
+        .single();
+
+      if (teamError) {
+        console.error("[BACKEND] Erro ao criar equipe:", teamError.message);
+        return res.status(400).json({ 
+          success: false,
+          error: "Team creation failed", 
+          message: teamError.message 
+        });
+      }
+
+      console.log(`[BACKEND] Equipe criada com ID: ${team.id}. Vinculando usuário como representante.`);
+
+      // 2. Link user as representative in team_members
+      const { error: memberError } = await supabase
+        .from('team_members')
+        .insert({
+          team_id: team.id,
+          user_id: userId,
+          role: 'representative'
+        });
+
+      if (memberError) {
+        console.error("[BACKEND] Erro ao vincular representante:", memberError.message);
+        return res.status(500).json({ 
+          success: false,
+          error: "Member linking failed", 
+          message: "Equipe criada, mas falhou ao vincular representante. Contate o suporte." 
+        });
+      }
+
+      // 3. Update profile as well (legacy support)
+      await supabase
+        .from('profiles')
+        .update({
+          team_id: team.id,
+          team_leader: 'true'
+        })
+        .eq('id', userId);
+
+      console.log(`[BACKEND] Fluxo de criação de equipe concluído com sucesso para ${name}`);
+
+      return res.status(201).json({ 
+        success: true,
+        message: "Equipe criada e representante vinculado com sucesso",
+        teamId: team.id 
+      });
+    } catch (error: any) {
+      console.error("[BACKEND] Erro interno na criação de equipe:", error);
+      return res.status(500).json({ 
+        success: false,
+        error: "Internal server error during team creation",
         message: error.message 
       });
     }

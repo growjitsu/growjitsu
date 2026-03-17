@@ -16,6 +16,9 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
   const [isTeamLeader, setIsTeamLeader] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamCity, setNewTeamCity] = useState('');
+  const [newTeamState, setNewTeamState] = useState('');
+  const [newTeamImage, setNewTeamImage] = useState('');
   const [isCreatingNewTeam, setIsCreatingNewTeam] = useState(false);
   const [teamSearch, setTeamSearch] = useState('');
   const [teamResults, setTeamResults] = useState<any[]>([]);
@@ -47,7 +50,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     setError(null);
     setIsCreatingNewTeam(false);
     try {
-      console.log(`[LOG] Verificando equipe via backend: ${team.name} (ID: ${team.id})`);
+      console.log(`[LOG] Validando equipe ID: ${team.id}`);
       
       // Call the backend validation endpoint
       const response = await fetch('/api/auth/validate-representative', {
@@ -56,16 +59,28 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
         body: JSON.stringify({ teamId: team.id })
       });
 
+      if (!response || response.status === 204) {
+        console.error("[LOG] Erro de JSON detectado: Resposta vazia");
+        throw new Error("Resposta vazia do servidor");
+      }
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        console.error("[LOG] Erro de JSON detectado ao validar equipe", jsonErr);
+        throw new Error("Erro ao validar equipe. Resposta inválida do servidor.");
+      }
+
       if (!response.ok) {
-        const data = await response.json();
-        console.log(`[LOG] Bloqueado pelo backend: ${data.message || 'Equipe já representada'}`);
+        console.log(`[LOG] Representantes encontrados: ${data.count || 'Bloqueado'}`);
         setConflictingTeamName(team.name);
         setSelectedTeamId(team.id); 
         setShowTeamConflictModal(true);
         return;
       }
 
-      console.log(`[LOG] Permitido pelo backend: Equipe disponível.`);
+      console.log(`[LOG] Validando equipe ID: ${team.id} - Sucesso`);
       setSelectedTeamId(team.id);
       setTeamSearch(team.name);
       setTeamResults([]);
@@ -110,58 +125,66 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        // FINAL BACKEND-LIKE CHECK BEFORE SIGNUP
-        let finalTeamId = selectedTeamId;
-
-        if (isTeamLeader) {
-          if (isCreatingNewTeam && newTeamName) {
-            console.log(`[LOG] Criando nova equipe: ${newTeamName}`);
-            const { data: teamData, error: teamError } = await supabase
-              .from('teams')
-              .insert({ name: newTeamName })
-              .select()
-              .single();
-            
-            if (teamError) {
-              if (teamError.message.includes('unique')) {
-                setError('Uma equipe com este nome já existe. Por favor, selecione-a na lista.');
-              } else {
-                throw teamError;
-              }
-              setLoading(false);
-              return;
-            }
-            finalTeamId = teamData.id;
-            console.log(`[LOG] Equipe criada com sucesso: ${finalTeamId}`);
-          } else if (selectedTeamId) {
-            console.log(`[LOG] Verificação final via backend para equipe ${selectedTeamId}`);
-            
-            const response = await fetch('/api/auth/validate-representative', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ teamId: selectedTeamId })
-            });
-            
-            if (!response.ok) {
-              const data = await response.json();
-              console.log(`[LOG] Bloqueio final pelo backend: ${data.message}`);
-              setError(data.message || 'Esta equipe já possui um representante oficial.');
-              setShowTeamConflictModal(true);
-              setLoading(false);
-              return;
-            }
-            
-            console.log(`[LOG] Resultado final: Equipe disponível`);
-          } else {
-            setError('Para se cadastrar como representante, você deve selecionar ou criar uma equipe.');
-            setLoading(false);
-            return;
-          }
-        }
-
         const { data: { user }, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) throw signUpError;
+        
         if (user) {
+          let finalTeamId = selectedTeamId;
+
+          if (isTeamLeader) {
+            if (isCreatingNewTeam && newTeamName) {
+              console.log(`[LOG] Criando equipe: ${newTeamName}`);
+              
+              const createResponse = await fetch('/api/teams/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: newTeamName,
+                  userId: user.id,
+                  city: newTeamCity.toUpperCase(), 
+                  state: newTeamState.toUpperCase().substring(0, 2),
+                  imageUrl: newTeamImage
+                })
+              });
+
+              if (!createResponse || createResponse.status === 204) {
+                throw new Error("Erro ao criar equipe: Resposta vazia");
+              }
+
+              let createData;
+              try {
+                createData = await createResponse.json();
+              } catch (jsonErr) {
+                console.error("[LOG] Erro de JSON detectado ao criar equipe", jsonErr);
+                throw new Error("Erro ao criar equipe. Resposta inválida.");
+              }
+
+              if (!createResponse.ok) {
+                throw new Error(createData.message || 'Falha ao criar equipe');
+              }
+
+              finalTeamId = createData.teamId;
+              console.log(`[LOG] Criando equipe - Sucesso. ID: ${finalTeamId}`);
+              console.log(`[LOG] Vinculando usuário como representante - Sucesso`);
+            } else if (selectedTeamId) {
+              console.log(`[LOG] Validando equipe ID: ${selectedTeamId} (Final)`);
+              
+              const response = await fetch('/api/auth/validate-representative', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ teamId: selectedTeamId })
+              });
+              
+              if (!response.ok) {
+                const data = await response.json();
+                setError(data.message || 'Esta equipe já possui um representante oficial.');
+                setShowTeamConflictModal(true);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+
           const { error: profileError } = await supabase
             .from('profiles')
             .insert({
@@ -305,9 +328,43 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                         </div>
                       )}
                       {isCreatingNewTeam && (
-                        <div className="flex items-center gap-2 text-[10px] text-blue-500 font-bold uppercase">
-                          <CheckCircle2 size={12} />
-                          Nova equipe será criada: {newTeamName}
+                        <div className="space-y-3 pt-2 border-t border-white/5">
+                          <div className="flex items-center gap-2 text-[10px] text-blue-500 font-bold uppercase">
+                            <CheckCircle2 size={12} />
+                            Nova equipe será criada: {newTeamName}
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="col-span-2">
+                              <input
+                                type="text"
+                                placeholder="Cidade"
+                                value={newTeamCity}
+                                onChange={(e) => setNewTeamCity(e.target.value)}
+                                className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
+                                required={isCreatingNewTeam}
+                              />
+                            </div>
+                            <div>
+                              <input
+                                type="text"
+                                placeholder="UF"
+                                maxLength={2}
+                                value={newTeamState}
+                                onChange={(e) => setNewTeamState(e.target.value)}
+                                className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all text-center"
+                                required={isCreatingNewTeam}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <input
+                              type="url"
+                              placeholder="URL do Logo da Equipe (Opcional)"
+                              value={newTeamImage}
+                              onChange={(e) => setNewTeamImage(e.target.value)}
+                              className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
