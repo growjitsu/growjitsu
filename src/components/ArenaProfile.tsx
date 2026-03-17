@@ -758,8 +758,15 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuário não autenticado');
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      
+      if (!user) throw new Error('Sessão expirada ou usuário não autenticado. Por favor, faça login novamente.');
+
+      // Segurança extra: Garantir que o usuário só poste no seu próprio perfil
+      if (user.id !== profile.id) {
+        throw new Error('Ação não permitida: Você só pode adicionar certificados ao seu próprio perfil.');
+      }
 
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Math.random()}.${fileExt}`;
@@ -780,7 +787,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
       const { error: dbError } = await supabase
         .from('certificates')
         .insert([{
-          athlete_id: user.id,
+          athlete_id: user.id, // Usando ID da sessão para garantir RLS
           name: file.name.split('.')[0].toUpperCase(),
           media_url: publicUrl,
           media_type: mediaType
