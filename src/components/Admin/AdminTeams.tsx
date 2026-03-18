@@ -28,12 +28,16 @@ export const AdminTeams: React.FC = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
-    city: '',
-    state: '',
+    country_id: '',
+    state_id: '',
+    city_id: '',
     logo_url: '',
     professor: '',
     representative_id: ''
   });
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [userResults, setUserResults] = useState<any[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -43,14 +47,36 @@ export const AdminTeams: React.FC = () => {
 
   useEffect(() => {
     fetchTeams();
+    fetchCountries();
   }, [page]);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setStates(data);
+    setCities([]);
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setCities(data);
+  };
 
   const fetchTeams = async () => {
     setLoading(true);
     try {
       let query = supabase
         .from('teams')
-        .select('*', { count: 'exact' });
+        .select(`
+          *,
+          countries(name),
+          states(name),
+          cities(name)
+        `, { count: 'exact' });
 
       if (search) {
         query = query.ilike('name', `%${search}%`);
@@ -132,6 +158,18 @@ export const AdminTeams: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.');
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Arquivo muito grande. Máximo 2MB.');
+      return;
+    }
+
     // Preview
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -140,17 +178,14 @@ export const AdminTeams: React.FC = () => {
     reader.readAsDataURL(file);
 
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `teams/${fileName}`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `logos/${fileName}`;
 
     setUploading(true);
     try {
       const { error: uploadError } = await supabase.storage
-        .from('arena_media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        .from('team-logos')
+        .upload(filePath, file);
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
@@ -158,7 +193,7 @@ export const AdminTeams: React.FC = () => {
         setFormData(prev => ({ ...prev, logo_url: reader.result as string }));
       } else {
         const { data: { publicUrl } } = supabase.storage
-          .from('arena_media')
+          .from('team-logos')
           .getPublicUrl(filePath);
 
         setFormData(prev => ({ ...prev, logo_url: publicUrl }));
@@ -166,7 +201,6 @@ export const AdminTeams: React.FC = () => {
     } catch (error) {
       console.error('Error uploading logo:', error);
       alert('Erro ao fazer upload do logo. Tentando usar versão local...');
-      // Even if it fails, we have the previewUrl from the reader
     } finally {
       setUploading(false);
     }
@@ -197,10 +231,16 @@ export const AdminTeams: React.FC = () => {
       // Standardize text to uppercase
       const standardizedData = {
         name: formData.name?.toUpperCase(),
-        city: formData.city?.toUpperCase(),
-        state: formData.state?.toUpperCase()?.substring(0, 2),
+        country_id: formData.country_id,
+        state_id: formData.state_id,
+        city_id: formData.city_id,
         logo_url: formData.logo_url
       };
+
+      if (!standardizedData.name || !standardizedData.country_id || !standardizedData.state_id || !standardizedData.city_id) {
+        alert('Por favor, preencha todos os campos obrigatórios (Nome, País, Estado e Cidade).');
+        return;
+      }
 
       let teamId = selectedTeam?.id;
 
@@ -317,7 +357,7 @@ export const AdminTeams: React.FC = () => {
                       <div className="flex items-center space-x-1 text-gray-500">
                         <MapPin size={10} />
                         <span className="text-[9px] font-bold uppercase tracking-widest">
-                          {team.city ? `${team.city}${team.state ? `, ${team.state}` : ''}` : 'Sem Localização'}
+                          {team.cities?.name ? `${team.cities.name}${team.states?.name ? `, ${team.states.name}` : ''}` : 'Sem Localização'}
                         </span>
                       </div>
                       {team.representative ? (
@@ -436,27 +476,56 @@ export const AdminTeams: React.FC = () => {
                     placeholder="Ex: Alliance Jiu-Jitsu"
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Cidade</label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
-                      placeholder="Ex: São Paulo"
-                    />
-                  </div>
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Estado</label>
-                    <input
-                      type="text"
-                      maxLength={2}
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">País</label>
+                    <select
+                      value={formData.country_id}
+                      onChange={(e) => {
+                        setFormData({ ...formData, country_id: e.target.value, state_id: '', city_id: '' });
+                        fetchStates(e.target.value);
+                      }}
                       className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
-                      placeholder="SP"
-                    />
+                    >
+                      <option value="">Selecionar País</option>
+                      {countries.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Estado</label>
+                      <select
+                        value={formData.state_id}
+                        disabled={!formData.country_id}
+                        onChange={(e) => {
+                          setFormData({ ...formData, state_id: e.target.value, city_id: '' });
+                          fetchCities(e.target.value);
+                        }}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
+                      >
+                        <option value="">Selecionar Estado</option>
+                        {states.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Cidade</label>
+                      <select
+                        value={formData.city_id}
+                        disabled={!formData.state_id}
+                        onChange={(e) => setFormData({ ...formData, city_id: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
+                      >
+                        <option value="">Selecionar Cidade</option>
+                        {cities.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-2">

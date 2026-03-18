@@ -48,11 +48,18 @@ export interface Team {
   id: string;
   name: string;
   professor?: string;
-  city?: string;
-  state?: string;
-  country?: string;
+  country_id?: string;
+  state_id?: string;
+  city_id?: string;
+  countries?: { name: string };
+  states?: { name: string };
+  cities?: { name: string };
   logo_url?: string;
   created_at: string;
+  representative?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface ArenaFight {

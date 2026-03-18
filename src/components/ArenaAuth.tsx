@@ -20,9 +20,42 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
   const [showTeamConflictModal, setShowTeamConflictModal] = useState(false);
   const [conflictingTeamName, setConflictingTeamName] = useState('');
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
-  const [newTeamData, setNewTeamData] = useState({ name: '', city: '', state: '', logo_url: '' });
+  const [newTeamData, setNewTeamData] = useState({ 
+    name: '', 
+    country_id: '', 
+    state_id: '', 
+    city_id: '', 
+    logo_url: '' 
+  });
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isCreatingTeam) {
+      fetchCountries();
+    }
+  }, [isCreatingTeam]);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setStates(data);
+    setCities([]);
+    setNewTeamData(prev => ({ ...prev, country_id: countryId, state_id: '', city_id: '' }));
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setCities(data);
+    setNewTeamData(prev => ({ ...prev, state_id: stateId, city_id: '' }));
+  };
 
   const searchTeams = async (query: string) => {
     setTeamSearch(query);
@@ -33,7 +66,12 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
 
     const { data, error } = await supabase
       .from('teams')
-      .select('*')
+      .select(`
+        *,
+        countries(name),
+        states(name),
+        cities(name)
+      `)
       .ilike('name', `%${query}%`)
       .limit(5);
     
@@ -138,16 +176,20 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
-      console.log('[LOG] handleAuth iniciado', { isLogin, email, isTeamLeader, selectedTeamId, isCreatingTeam });
+      console.log("[LOG] Submit iniciado");
+      console.log("[LOG] isLogin:", isLogin);
+      console.log("[LOG] isTeamLeader:", isTeamLeader);
+      console.log("[LOG] selectedTeamId:", selectedTeamId);
+      console.log("[LOG] isCreatingTeam:", isCreatingTeam);
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
         // VALIDATION: If registering as team leader, MUST select or create a team
         if (isTeamLeader && !selectedTeamId && !isCreatingTeam) {
-          console.log('[LOG] Validação falhou: Líder sem equipe');
+          console.log("[LOG] Validação falhou: Líder sem equipe selecionada");
           setError('Para se cadastrar como representante, você deve selecionar uma equipe ou cadastrar uma nova.');
           setLoading(false);
           return;
@@ -169,7 +211,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
           }
           
           const representativesCount = Number(count || 0);
-          console.log("[LOG] Contagem de representantes:", representativesCount);
+          console.log("[LOG] Representantes encontrados:", representativesCount);
           
           if (representativesCount > 0) {
             const { data: teamData } = await supabase.from('teams').select('name').eq('id', selectedTeamId).single();
@@ -184,7 +226,16 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
         }
 
         console.log('[LOG] Chamando supabase.auth.signUp');
-        const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+        const { data, error: signUpError } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              username: username.toLowerCase()
+            }
+          }
+        });
         
         if (signUpError) {
           console.error('[ERROR] Erro no signUp:', signUpError);
@@ -209,12 +260,19 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
           // Part 4: Create new team if requested
           if (isCreatingTeam && newTeamData.name) {
             console.log('[LOG] Criando nova equipe:', newTeamData.name);
+            
+            // Validate required fields for new team
+            if (!newTeamData.country_id || !newTeamData.state_id || !newTeamData.city_id) {
+              throw new Error('Por favor, preencha todos os campos da equipe (País, Estado e Cidade).');
+            }
+
             const { data: team, error: teamError } = await supabase
               .from('teams')
               .insert([{
                 name: newTeamData.name.toUpperCase(),
-                city: newTeamData.city.toUpperCase(),
-                state: newTeamData.state.toUpperCase().substring(0, 2),
+                country_id: newTeamData.country_id,
+                state_id: newTeamData.state_id,
+                city_id: newTeamData.city_id,
                 logo_url: newTeamData.logo_url
               }])
               .select()
@@ -269,9 +327,6 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
             
             if (memberError) {
               console.error('[ERROR] Erro ao vincular equipe:', memberError);
-              // Se falhar aqui, o perfil já foi criado, mas o vínculo não.
-              // Vamos avisar o usuário mas não necessariamente travar tudo se o perfil já foi criado.
-              // No entanto, para o líder, o vínculo é CRUCIAL.
               if (isTeamLeader) {
                 throw new Error(`Usuário criado, mas houve um erro ao vincular como representante: ${memberError.message}`);
               }
@@ -293,24 +348,38 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.');
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Arquivo muito grande. Máximo 2MB.');
+      return;
+    }
+
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `teams/${fileName}`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `logos/${fileName}`;
 
     try {
+      console.log("[LOG] Iniciando upload do logo:", filePath);
       const { error: uploadError } = await supabase.storage
-        .from('arena_media')
+        .from('team-logos')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('arena_media')
+        .from('team-logos')
         .getPublicUrl(filePath);
 
+      console.log("[LOG] Upload realizado:", publicUrl);
       setNewTeamData(prev => ({ ...prev, logo_url: publicUrl }));
     } catch (error) {
-      console.error('Error uploading logo:', error);
+      console.error('[ERROR] Erro ao fazer upload do logo:', error);
       alert('Erro ao fazer upload do logo.');
     }
   };
@@ -390,7 +459,12 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                                 onClick={() => handleSelectTeam(team)}
                                 className="w-full px-4 py-2 text-left text-xs hover:bg-[var(--primary)] hover:text-white transition-colors border-b border-[var(--border-ui)] last:border-0"
                               >
-                                {team.name}
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{team.name}</span>
+                                  <span className="text-[9px] opacity-70">
+                                    {team.cities?.name ? `${team.cities.name}, ${team.states?.name}` : 'Sem Localização'}
+                                  </span>
+                                </div>
                               </button>
                             ))}
                           </div>
@@ -433,22 +507,44 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                         onChange={(e) => setNewTeamData(prev => ({ ...prev, name: e.target.value }))}
                         className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] outline-none"
                       />
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Cidade"
-                          value={newTeamData.city}
-                          onChange={(e) => setNewTeamData(prev => ({ ...prev, city: e.target.value }))}
+                      
+                      <div className="space-y-2">
+                        <select
+                          value={newTeamData.country_id}
+                          onChange={(e) => fetchStates(e.target.value)}
                           className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] outline-none"
-                        />
-                        <input
-                          type="text"
-                          placeholder="UF"
-                          maxLength={2}
-                          value={newTeamData.state}
-                          onChange={(e) => setNewTeamData(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
-                          className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] outline-none"
-                        />
+                        >
+                          <option value="">Selecionar País</option>
+                          {countries.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={newTeamData.state_id}
+                            onChange={(e) => fetchCities(e.target.value)}
+                            disabled={!newTeamData.country_id}
+                            className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] outline-none disabled:opacity-50"
+                          >
+                            <option value="">Estado</option>
+                            {states.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={newTeamData.city_id}
+                            onChange={(e) => setNewTeamData(prev => ({ ...prev, city_id: e.target.value }))}
+                            disabled={!newTeamData.state_id}
+                            className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-xs text-[var(--text-main)] outline-none disabled:opacity-50"
+                          >
+                            <option value="">Cidade</option>
+                            {cities.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-[var(--bg)] border border-[var(--border-ui)] flex items-center justify-center overflow-hidden">
