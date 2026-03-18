@@ -64,18 +64,21 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
       return;
     }
 
+    console.log("[LOG] Buscando equipes com query:", query);
     const { data, error } = await supabase
       .from('teams')
-      .select(`
-        *,
-        countries(name),
-        states(name),
-        cities(name)
-      `)
+      .select('*')
       .ilike('name', `%${query}%`)
       .limit(5);
     
+    if (error) {
+      console.error("[ERROR] Erro ao buscar equipes:", error);
+    }
+
+    console.log("[LOG] Resultado da busca de equipes:", data);
+    
     if (!error && data) {
+      // Fetch location names separately or assume they are not needed for the list
       setTeamResults(data);
     }
   };
@@ -438,7 +441,8 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                   />
                 </div>
                 
-                <div className="space-y-4 p-4 bg-[var(--bg)]/30 rounded-2xl border border-[var(--border-ui)]">
+                {isTeamLeader && (
+                  <div className="space-y-4 p-4 bg-[var(--bg)]/30 rounded-2xl border border-[var(--border-ui)]">
                   {!isCreatingTeam ? (
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-[var(--primary)] tracking-widest">Selecione sua Equipe</p>
@@ -563,8 +567,10 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                       </div>
                     </div>
                   )}
+                </div>
+              )}
 
-                  <div className="pt-3 border-t border-[var(--border-ui)]">
+              <div className="pt-3 border-t border-[var(--border-ui)]">
                     <label className="flex items-center gap-3 cursor-pointer group">
                       <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isTeamLeader ? 'bg-[var(--primary)] border-[var(--primary)]' : 'border-[var(--border-ui)] group-hover:border-[var(--primary)]'}`}>
                         {isTeamLeader && <CheckCircle2 size={14} className="text-white" />}
@@ -578,7 +584,6 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                       <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-tight">Sou líder ou responsável por equipe</span>
                     </label>
                   </div>
-                </div>
               </>
             )}
             <div className="relative">

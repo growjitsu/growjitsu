@@ -68,22 +68,24 @@ export const AdminTeams: React.FC = () => {
 
   const fetchTeams = async () => {
     setLoading(true);
+    console.log("[LOG] Admin: Buscando equipes...");
     try {
+      // Test query without joins
+      const { count: simpleCount, error: simpleError } = await supabase
+        .from('teams')
+        .select('*', { count: 'exact', head: true });
+      console.log("[LOG] Admin: Contagem simples de equipes:", simpleCount, "Erro:", simpleError);
+
       let query = supabase
         .from('teams')
-        .select(`
-          *,
-          countries(name),
-          states(name),
-          cities(name)
-        `, { count: 'exact' });
+        .select('*', { count: 'exact' });
 
       if (search) {
         query = query.ilike('name', `%${search}%`);
       }
 
       const { data, count, error } = await query
-        .order('name', { ascending: true })
+        .order('created_at', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1);
 
       if (error) throw error;
@@ -110,6 +112,7 @@ export const AdminTeams: React.FC = () => {
       })) || [];
 
       setTeams(teamsWithReps);
+      console.log("[LOG] Admin: Equipes encontradas:", teamsWithReps);
       setTotalCount(count || 0);
 
       // Fetch athlete counts for these teams
