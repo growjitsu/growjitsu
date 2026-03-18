@@ -125,6 +125,62 @@ select {
   text-transform: uppercase;
 }
 
+/* Dark Mode Select Dropdown Fix */
+select {
+  color-scheme: dark;
+  background-color: #111827; /* Dark gray background */
+  color: #FFFFFF;
+  border: 1px solid #374151; /* High contrast border */
+  border-radius: 1rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  outline: none;
+}
+
+.light select {
+  background-color: #FFFFFF;
+  color: #111827;
+  border-color: rgba(15, 23, 42, 0.1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+select option {
+  background-color: #111827; /* Dark gray background for dropdown */
+  color: #FFFFFF;
+  padding: 12px;
+  font-size: 14px;
+}
+
+/* Hover/Selection states for options (Note: Browser support varies) */
+select option:hover,
+select option:focus,
+select option:active,
+select option:checked {
+  background-color: var(--primary) !important;
+  color: #FFFFFF !important;
+}
+
+.light select option {
+  background-color: #FFFFFF;
+  color: #111827;
+}
+
+/* Ensure input-standard selects also have the custom arrow */
+select.input-standard {
+  background-position: right 1rem center;
+}
+
 input::placeholder,
 textarea::placeholder {
   text-transform: none;
