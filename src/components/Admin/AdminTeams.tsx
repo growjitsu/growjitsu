@@ -28,11 +28,13 @@ export const AdminTeams: React.FC = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
-    city: '',
-    state: '',
+    city_id: null,
+    state_id: null,
     logo_url: '',
     representative_id: ''
   });
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [userResults, setUserResults] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -43,7 +45,31 @@ export const AdminTeams: React.FC = () => {
 
   useEffect(() => {
     fetchTeams();
+    fetchStates();
   }, [page]);
+
+  const fetchStates = async () => {
+    try {
+      const { data, error } = await supabase.from('states').select('*').order('name');
+      if (!error) setStates(data || []);
+    } catch (err) {
+      console.error('Error fetching states:', err);
+    }
+  };
+
+  const fetchCities = async (stateId: number) => {
+    try {
+      const { data, error } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+      if (!error) setCities(data || []);
+    } catch (err) {
+      console.error('Error fetching cities:', err);
+    }
+  };
+
+  const handleStateChange = (stateId: number) => {
+    setFormData(prev => ({ ...prev, state_id: stateId, city_id: null }));
+    fetchCities(stateId);
+  };
 
   const fetchTeams = async () => {
     setLoading(true);
@@ -107,7 +133,7 @@ export const AdminTeams: React.FC = () => {
     setUploading(true);
     try {
       const { error: uploadError } = await supabase.storage
-        .from('arena_media')
+        .from('team-logos')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -119,7 +145,7 @@ export const AdminTeams: React.FC = () => {
         setFormData(prev => ({ ...prev, logo_url: reader.result as string }));
       } else {
         const { data: { publicUrl } } = supabase.storage
-          .from('arena_media')
+          .from('team-logos')
           .getPublicUrl(filePath);
 
         setFormData(prev => ({ ...prev, logo_url: publicUrl }));
@@ -183,8 +209,8 @@ export const AdminTeams: React.FC = () => {
       // Standardize text to uppercase
       const standardizedData = {
         name: formData.name?.toUpperCase(),
-        city: formData.city?.toUpperCase(),
-        state: formData.state?.toUpperCase()?.substring(0, 2),
+        city_id: formData.city_id,
+        state_id: formData.state_id,
         logo_url: formData.logo_url,
         representative_id: formData.representative_id || null
       };
@@ -264,7 +290,9 @@ export const AdminTeams: React.FC = () => {
         <button
           onClick={() => {
             setSelectedTeam(null);
-            setFormData({ name: '', city: '', state: '', logo_url: '', professor: '' });
+            setFormData({ name: '', city_id: null, state_id: null, logo_url: '', representative_id: '' });
+            setSelectedUser(null);
+            setUserSearch('');
             setIsModalOpen(true);
           }}
           className="w-full md:w-auto bg-blue-600 text-white px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center space-x-2"
@@ -334,6 +362,10 @@ export const AdminTeams: React.FC = () => {
                       setSelectedUser(null);
                       setUserSearch('');
                       
+                      if (team.state_id) {
+                        fetchCities(team.state_id);
+                      }
+
                       // Fetch current representative
                       const { data: repData } = await supabase
                         .from('team_members')
@@ -449,27 +481,33 @@ export const AdminTeams: React.FC = () => {
                     placeholder="Ex: Alliance Jiu-Jitsu"
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Cidade</label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
-                      placeholder="Ex: São Paulo"
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Estado</label>
-                    <input
-                      type="text"
-                      maxLength={2}
-                      value={formData.state}
-                      onChange={(e) => setFormData({ ...formData, state: e.target.value.toUpperCase() })}
+                    <select
+                      value={formData.state_id || ''}
+                      onChange={(e) => handleStateChange(Number(e.target.value))}
                       className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
-                      placeholder="SP"
-                    />
+                    >
+                      <option value="">Selecione</option>
+                      {states.map(s => (
+                        <option key={s.id} value={s.id}>{s.uf} - {s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Cidade</label>
+                    <select
+                      value={formData.city_id || ''}
+                      onChange={(e) => setFormData({ ...formData, city_id: Number(e.target.value) })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                      disabled={!formData.state_id}
+                    >
+                      <option value="">Selecione</option>
+                      {cities.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div className="space-y-2">

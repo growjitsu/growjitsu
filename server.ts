@@ -79,6 +79,39 @@ async function startServer() {
     res.json({ status: "ok", message: "ArenaComp API is running" });
   });
 
+  // Location Endpoints
+  app.get("/api/locations/states", async (req, res) => {
+    try {
+      const { data, error } = await supabase
+        .from('states')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("[BACKEND] Erro ao buscar estados:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.get("/api/locations/cities/:stateId", async (req, res) => {
+    const { stateId } = req.params;
+    try {
+      const { data, error } = await supabase
+        .from('cities')
+        .select('*')
+        .eq('state_id', stateId)
+        .order('name');
+
+      if (error) throw error;
+      return res.json({ success: true, data });
+    } catch (error: any) {
+      console.error("[BACKEND] Erro ao buscar cidades:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // Team Representative Validation Endpoint
   app.post("/api/auth/validate-representative", async (req, res) => {
     console.log("[BACKEND] Recebida requisição POST em /api/auth/validate-representative");
@@ -141,7 +174,7 @@ async function startServer() {
 
   // Endpoint for creating a team and automatically linking the creator as representative
   app.post("/api/teams/create", async (req, res) => {
-    const { name, city, state, imageUrl, userId } = req.body;
+    const { name, cityId, stateId, imageUrl, userId } = req.body;
 
     if (!name || !userId) {
       console.error("[BACKEND] Dados incompletos para criação de equipe");
@@ -160,9 +193,9 @@ async function startServer() {
         .from('teams')
         .insert({
           name,
-          city,
-          state,
-          logo_url: imageUrl,
+          city_id: cityId,
+          state_id: stateId,
+          logo_url: imageUrl, // Using logo_url to store the uploaded image URL
           created_by: userId
         })
         .select()
@@ -259,14 +292,32 @@ async function startServer() {
 
   // Mock Championship Data
   app.get("/api/championships", (req, res) => {
-    const championships = db.prepare("SELECT * FROM championships").all();
-    res.json(championships);
+    try {
+      const championships = db.prepare("SELECT * FROM championships").all();
+      res.json({ success: true, data: championships });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
   });
 
   app.post("/api/championships", (req, res) => {
-    const { name, date, location } = req.body;
-    const info = db.prepare("INSERT INTO championships (name, date, location) VALUES (?, ?, ?)").run(name, date, location);
-    res.json({ id: info.lastInsertRowid });
+    try {
+      const { name, date, location } = req.body;
+      const info = db.prepare("INSERT INTO championships (name, date, location) VALUES (?, ?, ?)").run(name, date, location);
+      res.json({ success: true, id: info.lastInsertRowid });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // Global Error Handler (Standardizing all errors to JSON)
+  app.use((err: any, req: any, res: any, next: any) => {
+    console.error("[GLOBAL ERROR]", err);
+    res.status(err.status || 500).json({
+      success: false,
+      error: err.message || "Internal Server Error",
+      path: req.path
+    });
   });
 
   // Vite middleware for development

@@ -16,9 +16,11 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
   const [isTeamLeader, setIsTeamLeader] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
-  const [newTeamCity, setNewTeamCity] = useState('');
-  const [newTeamState, setNewTeamState] = useState('');
-  const [newTeamImage, setNewTeamImage] = useState('');
+  const [newTeamCityId, setNewTeamCityId] = useState<number | null>(null);
+  const [newTeamStateId, setNewTeamStateId] = useState<number | null>(null);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isCreatingNewTeam, setIsCreatingNewTeam] = useState(false);
   const [teamSearch, setTeamSearch] = useState('');
   const [teamResults, setTeamResults] = useState<any[]>([]);
@@ -26,6 +28,59 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
   const [conflictingTeamName, setConflictingTeamName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetchStates();
+  }, []);
+
+  const fetchStates = async () => {
+    try {
+      const response = await fetch('/api/locations/states');
+      const data = await response.json();
+      if (data.success) setStates(data.data);
+    } catch (err) {
+      console.error("Erro ao carregar estados", err);
+    }
+  };
+
+  const fetchCities = async (stateId: number) => {
+    try {
+      const response = await fetch(`/api/locations/cities/${stateId}`);
+      const data = await response.json();
+      if (data.success) setCities(data.data);
+    } catch (err) {
+      console.error("Erro ao carregar cidades", err);
+    }
+  };
+
+  const handleStateChange = (stateId: number) => {
+    setNewTeamStateId(stateId);
+    setNewTeamCityId(null);
+    fetchCities(stateId);
+  };
+
+  const handleFileUpload = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('team-logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('team-logos')
+        .getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (err) {
+      console.error("Erro no upload:", err);
+      return null;
+    }
+  };
 
   const searchTeams = async (query: string) => {
     setTeamSearch(query);
@@ -139,15 +194,21 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
             if (isCreatingNewTeam && newTeamName) {
               console.log(`[LOG] Criando equipe: ${newTeamName}`);
               
+              let uploadedImageUrl = null;
+              if (logoFile) {
+                uploadedImageUrl = await handleFileUpload(logoFile);
+                console.log(`[LOG] Upload realizado: ${uploadedImageUrl}`);
+              }
+
               const createResponse = await fetch('/api/teams/create', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   name: newTeamName,
                   userId: user.id,
-                  city: newTeamCity.toUpperCase(), 
-                  state: newTeamState.toUpperCase().substring(0, 2),
-                  imageUrl: newTeamImage
+                  cityId: newTeamCityId, 
+                  stateId: newTeamStateId,
+                  imageUrl: uploadedImageUrl
                 })
               });
 
@@ -338,37 +399,46 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
                             <CheckCircle2 size={12} />
                             Nova equipe será criada: {newTeamName}
                           </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div className="col-span-2">
-                              <input
-                                type="text"
-                                placeholder="Cidade"
-                                value={newTeamCity}
-                                onChange={(e) => setNewTeamCity(e.target.value)}
-                                className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
-                                required={isCreatingNewTeam}
-                              />
-                            </div>
-                            <div>
-                              <input
-                                type="text"
-                                placeholder="UF"
-                                maxLength={2}
-                                value={newTeamState}
-                                onChange={(e) => setNewTeamState(e.target.value)}
-                                className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all text-center"
-                                required={isCreatingNewTeam}
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <input
-                              type="url"
-                              placeholder="URL do Logo da Equipe (Opcional)"
-                              value={newTeamImage}
-                              onChange={(e) => setNewTeamImage(e.target.value)}
+                          <div className="grid grid-cols-2 gap-2">
+                            <select
+                              value={newTeamStateId || ''}
+                              onChange={(e) => handleStateChange(Number(e.target.value))}
                               className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
-                            />
+                              required={isCreatingNewTeam}
+                            >
+                              <option value="">Estado</option>
+                              {states.map(s => (
+                                <option key={s.id} value={s.id}>{s.uf}</option>
+                              ))}
+                            </select>
+                            <select
+                              value={newTeamCityId || ''}
+                              onChange={(e) => setNewTeamCityId(Number(e.target.value))}
+                              className="w-full bg-[var(--bg)]/50 border border-[var(--border-ui)] rounded-xl py-2 px-4 text-[10px] text-[var(--text-main)] focus:border-[var(--primary)] outline-none transition-all"
+                              required={isCreatingNewTeam}
+                              disabled={!newTeamStateId}
+                            >
+                              <option value="">Cidade</option>
+                              {cities.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="relative">
+                            <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-[var(--border-ui)] rounded-xl cursor-pointer hover:border-[var(--primary)] transition-all bg-[var(--bg)]/30">
+                              <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                                <Trophy size={20} className="text-[var(--text-muted)] mb-1" />
+                                <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase">
+                                  {logoFile ? logoFile.name : 'Upload Logo da Equipe'}
+                                </p>
+                              </div>
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                              />
+                            </label>
                           </div>
                         </div>
                       )}
