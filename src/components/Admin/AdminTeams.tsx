@@ -28,6 +28,7 @@ export const AdminTeams: React.FC = () => {
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [formData, setFormData] = useState<any>({
     name: '',
+    description: '',
     country_id: '',
     state_id: '',
     city_id: '',
@@ -234,6 +235,7 @@ export const AdminTeams: React.FC = () => {
       // Standardize text to uppercase
       const standardizedData = {
         name: formData.name?.toUpperCase(),
+        description: formData.description,
         country_id: formData.country_id,
         state_id: formData.state_id,
         city_id: formData.city_id,
@@ -248,11 +250,16 @@ export const AdminTeams: React.FC = () => {
       let teamId = selectedTeam?.id;
 
       if (selectedTeam) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('teams')
           .update(standardizedData)
-          .eq('id', selectedTeam.id);
+          .eq('id', selectedTeam.id)
+          .select();
+        
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('Nenhuma linha foi atualizada. Verifique as permissões (RLS).');
+        }
       } else {
         const { data, error } = await supabase
           .from('teams')
@@ -480,6 +487,16 @@ export const AdminTeams: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Descrição da Equipe</label>
+                    <textarea
+                      value={formData.description || ''}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500 min-h-[100px] resize-none"
+                      placeholder="Descreva a história ou foco da equipe..."
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">País</label>
                     <select

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS teams (
 ALTER TABLE teams ADD COLUMN IF NOT EXISTS country_id UUID REFERENCES countries(id);
 ALTER TABLE teams ADD COLUMN IF NOT EXISTS state_id UUID REFERENCES states(id);
 ALTER TABLE teams ADD COLUMN IF NOT EXISTS city_id UUID REFERENCES cities(id);
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS description TEXT;
 
 -- 3. Inserir dados básicos (Brasil) para evitar erros de busca
 DO $$
@@ -78,5 +79,37 @@ ALTER TABLE teams ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow read teams" ON teams;
 CREATE POLICY "Allow read teams" ON teams FOR SELECT USING (true);
 
--- 5. Verificar status
+DROP POLICY IF EXISTS "Allow insert teams" ON teams;
+CREATE POLICY "Allow insert teams" ON teams FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update teams" ON teams;
+CREATE POLICY "Allow update teams" ON teams FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow delete teams" ON teams;
+CREATE POLICY "Allow delete teams" ON teams FOR DELETE USING (true);
+
+-- 5. Configurar RLS para team_members (necessário para salvar representantes)
+CREATE TABLE IF NOT EXISTS team_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id UUID REFERENCES teams(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'member',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(team_id, user_id)
+);
+
+ALTER TABLE team_members ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow read team_members" ON team_members;
+CREATE POLICY "Allow read team_members" ON team_members FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow insert team_members" ON team_members;
+CREATE POLICY "Allow insert team_members" ON team_members FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow update team_members" ON team_members;
+CREATE POLICY "Allow update team_members" ON team_members FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow delete team_members" ON team_members;
+CREATE POLICY "Allow delete team_members" ON team_members FOR DELETE USING (true);
+
+-- 6. Verificar status
 SELECT 'Sucesso! Tabelas e permissões configuradas.' as status;
