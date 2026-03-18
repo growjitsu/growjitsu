@@ -58,6 +58,24 @@ export const authService = {
         throw new Error(`Erro no banco de dados (perfil): ${profileError.message}`);
       }
 
+      // 2.1 Insert into 'profiles' table for ArenaComp features
+      const { error: arenaProfileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          username: data.name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substring(2, 7),
+          full_name: data.name.toUpperCase(),
+          email: data.email.toLowerCase(),
+          role: data.userType === 'atleta' ? 'athlete' : 'coach',
+          perfil_publico: true,
+          permitir_seguidores: true
+        }, { onConflict: 'id' });
+
+      if (arenaProfileError) {
+        console.warn('Erro ao salvar perfil Arena (profiles):', arenaProfileError.message);
+        // Don't throw here as the main profile was saved
+      }
+
       // 3. If user is an athlete, insert into 'atletas' table
       if (data.userType === 'atleta') {
         const { error: athleteError } = await supabase

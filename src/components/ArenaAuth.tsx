@@ -297,6 +297,7 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
               id: user.id,
               username: username.toLowerCase(),
               full_name: fullName.toUpperCase(),
+              email: email.toLowerCase(),
               role: 'athlete',
               team_leader: isTeamLeader ? 'true' : 'false',
               team_id: finalTeamId,

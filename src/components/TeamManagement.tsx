@@ -20,10 +20,10 @@ export default function TeamManagement() {
       if (!session) return;
 
       const { data, error } = await supabase
-        .from('equipes')
+        .from('teams')
         .select('*')
-        .eq('responsavel_id', session.user.id)
-        .order('nome', { ascending: true });
+        .eq('representative_id', session.user.id)
+        .order('name', { ascending: true });
 
       if (error) throw error;
       setTeams(data || []);
@@ -64,12 +64,12 @@ export default function TeamManagement() {
 
       const formData = new FormData(e.currentTarget);
       const newTeam = {
-        nome: formData.get('nome') as string,
-        filiacao: formData.get('filiacao') as string,
-        responsavel_id: session.user.id
+        name: (formData.get('nome') as string).toUpperCase(),
+        description: (formData.get('filiacao') as string).toUpperCase(),
+        representative_id: session.user.id
       };
 
-      const { error } = await supabase.from('equipes').insert(newTeam);
+      const { error } = await supabase.from('teams').insert(newTeam);
       if (error) throw error;
 
       setShowAddModal(false);
@@ -123,8 +123,8 @@ export default function TeamManagement() {
                     <ShieldCheck size={24} />
                   </div>
                   <div>
-                    <h4 className="font-black text-[var(--text-main)] uppercase">{team.nome}</h4>
-                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-tighter">{team.filiacao || 'Sem Filiação'}</p>
+                    <h4 className="font-black text-[var(--text-main)] uppercase">{team.name}</h4>
+                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-tighter">{team.description || 'Sem Filiação'}</p>
                   </div>
                 </div>
               </div>
@@ -147,8 +147,8 @@ export default function TeamManagement() {
               <div className="card-surface p-8 bg-emerald-500/5 border-emerald-500/20">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-2xl font-black text-[var(--text-main)] uppercase">{selectedTeam.nome}</h3>
-                    <p className="text-sm text-emerald-500 font-bold uppercase tracking-widest">{selectedTeam.filiacao}</p>
+                    <h3 className="text-2xl font-black text-[var(--text-main)] uppercase">{selectedTeam.name}</h3>
+                    <p className="text-sm text-emerald-500 font-bold uppercase tracking-widest">{selectedTeam.description}</p>
                   </div>
                   <div className="flex gap-2">
                     <button className="p-2 hover:bg-emerald-500/10 rounded-lg text-emerald-500 transition-colors">

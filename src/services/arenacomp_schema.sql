@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     username TEXT UNIQUE NOT NULL,
     full_name TEXT NOT NULL,
+    email TEXT,
     nickname TEXT,
     role user_role DEFAULT 'athlete',
     modality TEXT, -- Primary modality

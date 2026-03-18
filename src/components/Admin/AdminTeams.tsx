@@ -153,20 +153,37 @@ export const AdminTeams: React.FC = () => {
     }
 
     console.log("[LOG] Admin: Buscando usuário:", query);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, email')
-      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
-      .limit(10);
-    
-    if (error) {
-      console.error("[LOG] Admin: Erro ao buscar usuários:", error);
-      return;
-    }
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, username')
+        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%,username.ilike.%${query}%`)
+        .limit(10);
+      
+      if (error) {
+        console.error("[LOG] Admin: Erro ao buscar usuários:", error);
+        // If email search fails (column might not exist yet), try without it
+        if (error.message.includes('column "email" does not exist')) {
+          console.log("[LOG] Admin: Tentando busca sem coluna 'email'...");
+          const { data: retryData, error: retryError } = await supabase
+            .from('profiles')
+            .select('id, full_name, username')
+            .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+            .limit(10);
+          
+          if (retryError) throw retryError;
+          setUserResults(retryData || []);
+          return;
+        }
+        throw error;
+      }
 
-    console.log("[LOG] Admin: Resultado da busca de usuários:", data);
-    if (data) {
-      setUserResults(data);
+      console.log("[LOG] Admin: Resultado da busca de usuários:", data);
+      if (data) {
+        setUserResults(data);
+      }
+    } catch (err: any) {
+      console.error("[LOG] Admin: Falha na busca de usuários:", err);
     }
   };
 

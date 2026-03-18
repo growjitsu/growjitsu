@@ -36,9 +36,9 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
   const fetchTeams = async () => {
     try {
       const { data, error } = await supabase
-        .from('equipes')
+        .from('teams')
         .select('*')
-        .order('nome', { ascending: true });
+        .order('name', { ascending: true });
       if (error) throw error;
       setTeams(data || []);
     } catch (err) {
@@ -275,14 +275,14 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
                     setProfile({ 
                       ...profile, 
                       equipe_id: e.target.value,
-                      equipe: team?.nome || ''
+                      equipe: team?.name || ''
                     });
                   }}
                   className="input-standard pl-12"
                 >
                   <option value="">Selecione sua equipe...</option>
                   {teams.map(team => (
-                    <option key={team.id} value={team.id}>{team.nome}</option>
+                    <option key={team.id} value={team.id}>{team.name}</option>
                   ))}
                 </select>
               </div>
