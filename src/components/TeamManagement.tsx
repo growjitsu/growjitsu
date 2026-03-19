@@ -13,29 +13,6 @@ export default function TeamManagement() {
   const [teamAthletes, setTeamAthletes] = useState<any[]>([]);
   const [loadingAthletes, setLoadingAthletes] = useState(false);
 
-  const [countries, setCountries] = useState<any[]>([]);
-  const [states, setStates] = useState<any[]>([]);
-  const [cities, setCities] = useState<any[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-
-  const fetchCountries = async () => {
-    const { data } = await supabase.from('countries').select('*').order('name');
-    if (data) setCountries(data);
-  };
-
-  const fetchStates = async (countryId: string) => {
-    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
-    if (data) setStates(data);
-    setCities([]);
-  };
-
-  const fetchCities = async (stateId: string) => {
-    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
-    if (data) setCities(data);
-  };
-
   const fetchTeams = async () => {
     setLoading(true);
     try {
@@ -44,12 +21,7 @@ export default function TeamManagement() {
 
       const { data, error } = await supabase
         .from('teams')
-        .select(`
-          *,
-          countries(name),
-          states(name),
-          cities(name)
-        `)
+        .select('*')
         .eq('representative_id', session.user.id)
         .order('name', { ascending: true });
 
@@ -81,7 +53,6 @@ export default function TeamManagement() {
 
   useEffect(() => {
     fetchTeams();
-    fetchCountries();
   }, []);
 
   const handleAddTeam = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -95,44 +66,11 @@ export default function TeamManagement() {
       const newTeam = {
         name: (formData.get('nome') as string).toUpperCase(),
         description: (formData.get('filiacao') as string).toUpperCase(),
-        representative_id: session.user.id,
-        country_id: selectedCountry,
-        state_id: selectedState,
-        city_id: selectedCity,
-        // Keep text version for ranking compatibility
-        country: countries.find(c => c.id === selectedCountry)?.name?.toUpperCase(),
-        state: states.find(s => s.id === selectedState)?.name?.toUpperCase(),
-        city: cities.find(c => c.id === selectedCity)?.name?.toUpperCase()
+        representative_id: session.user.id
       };
 
-      if (!newTeam.country_id || !newTeam.state_id || !newTeam.city_id) {
-        throw new Error('Por favor, selecione País, Estado e Cidade.');
-      }
-
-      const { data: teamData, error: teamError } = await supabase
-        .from('teams')
-        .insert(newTeam)
-        .select()
-        .single();
-      
-      if (teamError) throw teamError;
-
-      // 1. SALVAMENTO DO REPRESENTANTE (OBRIGATÓRIO)
-      if (teamData) {
-        const { error: repError } = await supabase
-          .from('team_members')
-          .insert({
-            team_id: teamData.id,
-            user_id: session.user.id,
-            role: 'representative'
-          });
-        
-        if (repError) {
-          console.error("Erro ao salvar representante na team_members:", repError);
-          // Não lançamos erro aqui para não travar a criação da equipe, 
-          // mas o ideal seria uma transação se o Supabase suportasse via client
-        }
-      }
+      const { error } = await supabase.from('teams').insert(newTeam);
+      if (error) throw error;
 
       setShowAddModal(false);
       fetchTeams();
@@ -186,11 +124,7 @@ export default function TeamManagement() {
                   </div>
                   <div>
                     <h4 className="font-black text-[var(--text-main)] uppercase">{team.name}</h4>
-                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-tighter">
-                      {(team as any).cities?.name && (team as any).states?.name && (team as any).countries?.name
-                        ? `${(team as any).cities.name}, ${(team as any).states.name} - ${(team as any).countries.name}`
-                        : team.description || 'Sem Localização'}
-                    </p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-tighter">{team.description || 'Sem Filiação'}</p>
                   </div>
                 </div>
               </div>
@@ -214,11 +148,7 @@ export default function TeamManagement() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-2xl font-black text-[var(--text-main)] uppercase">{selectedTeam.name}</h3>
-                    <p className="text-sm text-emerald-500 font-bold uppercase tracking-widest">
-                      {(selectedTeam as any).cities?.name && (selectedTeam as any).states?.name && (selectedTeam as any).countries?.name
-                        ? `${(selectedTeam as any).cities.name}, ${(selectedTeam as any).states.name} - ${(selectedTeam as any).countries.name}`
-                        : selectedTeam.description}
-                    </p>
+                    <p className="text-sm text-emerald-500 font-bold uppercase tracking-widest">{selectedTeam.description}</p>
                   </div>
                   <div className="flex gap-2">
                     <button className="p-2 hover:bg-emerald-500/10 rounded-lg text-emerald-500 transition-colors">
@@ -311,63 +241,13 @@ export default function TeamManagement() {
                     placeholder="Ex: GRACIE BARRA" 
                   />
                 </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="label-standard">País</label>
-                    <select 
-                      required
-                      value={selectedCountry}
-                      onChange={(e) => {
-                        setSelectedCountry(e.target.value);
-                        fetchStates(e.target.value);
-                        setSelectedState('');
-                        setSelectedCity('');
-                      }}
-                      className="input-standard py-4 px-6 bg-transparent"
-                    >
-                      <option value="">Selecionar País</option>
-                      {countries.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="label-standard">Estado</label>
-                      <select 
-                        required
-                        disabled={!selectedCountry}
-                        value={selectedState}
-                        onChange={(e) => {
-                          setSelectedState(e.target.value);
-                          fetchCities(e.target.value);
-                          setSelectedCity('');
-                        }}
-                        className="input-standard py-4 px-6 bg-transparent disabled:opacity-50"
-                      >
-                        <option value="">Estado</option>
-                        {states.map(s => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="label-standard">Cidade</label>
-                      <select 
-                        required
-                        disabled={!selectedState}
-                        value={selectedCity}
-                        onChange={(e) => setSelectedCity(e.target.value)}
-                        className="input-standard py-4 px-6 bg-transparent disabled:opacity-50"
-                      >
-                        <option value="">Cidade</option>
-                        {cities.map(c => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <label className="label-standard">Filiação / Matriz</label>
+                  <input 
+                    name="filiacao" 
+                    className="input-standard py-4 px-6" 
+                    placeholder="Ex: GB BRASIL" 
+                  />
                 </div>
                 <button 
                   disabled={saving}

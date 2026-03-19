@@ -268,10 +268,6 @@ export const AdminTeams: React.FC = () => {
         country_id: formData.country_id,
         state_id: formData.state_id,
         city_id: formData.city_id,
-        // Keep text version for ranking compatibility
-        country: formData.country?.toUpperCase(),
-        state: formData.state?.toUpperCase(),
-        city: formData.city?.toUpperCase(),
         logo_url: formData.logo_url
       };
 
@@ -303,18 +299,16 @@ export const AdminTeams: React.FC = () => {
         teamId = data.id;
       }
 
-      // 1. SALVAMENTO DO REPRESENTANTE (OBRIGATÓRIO)
+      // Save representative in team_members
       if (teamId && formData.representative_id) {
-        console.log("[LOG] Admin: Salvando representante...", formData.representative_id);
-        
-        // 1. Remover representante atual (Garantir apenas um)
+        // First remove any existing representative for this team
         await supabase
           .from('team_members')
           .delete()
           .eq('team_id', teamId)
           .eq('role', 'representative');
 
-        // 2. Inserir novo representante
+        // Add new representative
         const { error: repError } = await supabase
           .from('team_members')
           .insert({
@@ -323,10 +317,7 @@ export const AdminTeams: React.FC = () => {
             role: 'representative'
           });
         
-        if (repError) {
-          console.error("Erro ao salvar representante:", repError);
-          throw repError;
-        }
+        if (repError) console.error('Error saving representative:', repError);
       }
 
       fetchTeams();
@@ -413,9 +404,7 @@ export const AdminTeams: React.FC = () => {
                       {team.representative ? (
                         <div className="flex items-center space-x-1 text-blue-500">
                           <User size={10} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">
-                            Líder: {team.representative.name}
-                          </span>
+                          <span className="text-[9px] font-black uppercase tracking-widest">Líder: {team.representative.name}</span>
                         </div>
                       ) : null}
                     </div>
@@ -430,11 +419,6 @@ export const AdminTeams: React.FC = () => {
                         representative_id: team.representative?.id || ''
                       });
                       setUserSearch(team.representative?.name || '');
-                      
-                      // Carregar estados e cidades se houver IDs
-                      if (team.country_id) fetchStates(team.country_id);
-                      if (team.state_id) fetchCities(team.state_id);
-                      
                       setIsModalOpen(true);
                     }}
                     className="p-2 text-gray-500 hover:text-blue-500 transition-colors"
