@@ -16,6 +16,9 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [teams, setTeams] = useState<Equipe[]>([]);
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
   const [profile, setProfile] = useState<Partial<AthleteProfile>>({
     usuario_id: userId,
     nome_completo: '',
@@ -25,13 +28,33 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
     peso_kg: 0,
     equipe: '',
     equipe_id: '',
+    country_id: '',
+    state_id: '',
+    city_id: '',
     perfil_completo: false
   });
 
   useEffect(() => {
     fetchProfile();
     fetchTeams();
+    fetchCountries();
   }, [userId]);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setStates(data);
+    setCities([]);
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setCities(data);
+  };
 
   const fetchTeams = async () => {
     try {
@@ -59,6 +82,8 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
       
       if (data) {
         setProfile(data);
+        if (data.country_id) fetchStates(data.country_id);
+        if (data.state_id) fetchCities(data.state_id);
       }
     } catch (err: any) {
       console.error('Erro ao buscar perfil do atleta:', err);
@@ -91,6 +116,10 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
     }
     if (!profile.equipe?.trim()) {
       setError('A Equipe é obrigatória.');
+      return;
+    }
+    if (!profile.country_id || !profile.state_id || !profile.city_id) {
+      setError('País, Estado e Cidade são obrigatórios.');
       return;
     }
 
@@ -289,6 +318,75 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
               <p className="mt-2 text-[10px] text-[var(--text-muted)]">
                 Se sua equipe não aparece, peça ao seu professor para cadastrá-la como Responsável.
               </p>
+            </div>
+
+            {/* Localização */}
+            <div>
+              <label className="label-standard">País</label>
+              <select
+                value={profile.country_id || ''}
+                onChange={(e) => {
+                  const country = countries.find(c => c.id === e.target.value);
+                  setProfile({ 
+                    ...profile, 
+                    country_id: e.target.value,
+                    // @ts-ignore - backward compatibility
+                    country: country?.name || ''
+                  });
+                  fetchStates(e.target.value);
+                }}
+                className="input-standard"
+              >
+                <option value="">Selecione o País</option>
+                {countries.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label-standard">Estado</label>
+              <select
+                value={profile.state_id || ''}
+                onChange={(e) => {
+                  const state = states.find(s => s.id === e.target.value);
+                  setProfile({ 
+                    ...profile, 
+                    state_id: e.target.value,
+                    // @ts-ignore - backward compatibility
+                    state: state?.name || ''
+                  });
+                  fetchCities(e.target.value);
+                }}
+                className="input-standard"
+              >
+                <option value="">Selecione o Estado</option>
+                {states.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="label-standard">Cidade</label>
+              <select
+                value={profile.city_id || ''}
+                onChange={(e) => {
+                  const city = cities.find(c => c.id === e.target.value);
+                  setProfile({ 
+                    ...profile, 
+                    city_id: e.target.value,
+                    // @ts-ignore - backward compatibility
+                    city: city?.name || ''
+                  });
+                }}
+                className="input-standard"
+              >
+                <option value="">Selecione a Cidade</option>
+                {cities.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 

@@ -64,8 +64,49 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   }, [activeMenuId]);
   
   const [allTeams, setAllTeams] = useState<Team[]>([]);
+  const [dbCountries, setDbCountries] = useState<any[]>([]);
+  const [dbStates, setDbStates] = useState<any[]>([]);
+  const [dbCities, setDbCities] = useState<any[]>([]);
 
   const [error, setError] = useState<string | null>(null);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setDbCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setDbStates(data);
+    setDbCities([]);
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setDbCities(data);
+  };
+
+  useEffect(() => {
+    fetchCountries();
+  }, []);
+
+  useEffect(() => {
+    if (isEditing && editData.country && dbCountries.length > 0) {
+      const country = dbCountries.find(c => c.name.toUpperCase() === editData.country?.toUpperCase());
+      if (country) {
+        fetchStates(country.id);
+      }
+    }
+  }, [isEditing, dbCountries]);
+
+  useEffect(() => {
+    if (isEditing && editData.state && dbStates.length > 0) {
+      const state = dbStates.find(s => s.name.toUpperCase() === editData.state?.toUpperCase());
+      if (state) {
+        fetchCities(state.id);
+      }
+    }
+  }, [isEditing, dbStates]);
 
   async function fetchFollowerCount(targetId: string) {
     try {
@@ -371,6 +412,7 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         full_name: editData.full_name?.toUpperCase(),
         nickname: editData.nickname?.toUpperCase(),
         bio: editData.bio?.toUpperCase(),
+        city: editData.city?.toUpperCase(),
         state: editData.state?.toUpperCase(),
         country: editData.country?.toUpperCase(),
         modality: editData.modality?.toUpperCase(),
@@ -1131,29 +1173,53 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)] min-h-[100px]"
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">País</label>
                     <select 
                       value={editData.country || ''} 
-                      onChange={e => setEditData({...editData, country: e.target.value, state: ''})}
+                      onChange={e => {
+                        const countryName = e.target.value;
+                        setEditData({...editData, country: countryName, state: '', city: ''});
+                        const country = dbCountries.find(c => c.name === countryName);
+                        if (country) fetchStates(country.id);
+                      }}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
                     >
                       <option value="">Selecionar País</option>
-                      {countries.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      {dbCountries.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Estado</label>
                     <select 
                       value={editData.state || ''} 
-                      onChange={e => setEditData({...editData, state: e.target.value})}
+                      onChange={e => {
+                        const stateName = e.target.value;
+                        setEditData({...editData, state: stateName, city: ''});
+                        const state = dbStates.find(s => s.name === stateName);
+                        if (state) fetchCities(state.id);
+                      }}
                       disabled={!editData.country}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)] disabled:opacity-50"
                     >
                       <option value="">Selecionar Estado</option>
-                      {countries.find(c => c.name === editData.country)?.states.map(s => (
-                        <option key={s} value={s}>{s}</option>
+                      {dbStates.map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Cidade</label>
+                    <select 
+                      value={editData.city || ''} 
+                      onChange={e => setEditData({...editData, city: e.target.value})}
+                      disabled={!editData.state}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)] disabled:opacity-50"
+                    >
+                      <option value="">Selecionar Cidade</option>
+                      {dbCities.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
                       ))}
                     </select>
                   </div>
@@ -1165,7 +1231,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 <div className="space-y-3 pt-4 border-t border-[var(--border-ui)]">
                   <div className="flex items-center space-x-3 text-[var(--text-muted)]">
                     <MapPin size={14} />
-                    <span className="text-xs font-bold break-words">{profile.state ? `${profile.state}` : ''}{profile.country ? ` • ${profile.country}` : ''}</span>
+                    <span className="text-xs font-bold break-words">{profile.city ? `${profile.city} • ` : ''}{profile.state ? `${profile.state}` : ''}{profile.country ? ` • ${profile.country}` : ''}</span>
                   </div>
                   <div className="flex items-center space-x-3 text-[var(--text-muted)]">
                     <Calendar size={14} />

@@ -48,9 +48,11 @@ export interface Team {
   id: string;
   name: string;
   professor?: string;
+  description?: string;
   country_id?: string;
   state_id?: string;
   city_id?: string;
+  representative_id?: string;
   countries?: { name: string };
   states?: { name: string };
   cities?: { name: string };
@@ -208,8 +210,12 @@ export interface AthleteProfile {
 export interface Equipe {
   id: string;
   nome: string;
-  responsavel_id: string;
+  representative_id: string;
   filiacao?: string;
+  description?: string;
+  country_id?: string;
+  state_id?: string;
+  city_id?: string;
   created_at: string;
 }
 

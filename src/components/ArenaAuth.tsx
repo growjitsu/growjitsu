@@ -67,7 +67,12 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     console.log("[LOG] Buscando equipes com query:", query);
     const { data, error } = await supabase
       .from('teams')
-      .select('*')
+      .select(`
+        *,
+        countries(name),
+        states(name),
+        cities(name)
+      `)
       .ilike('name', `%${query}%`)
       .limit(5);
     

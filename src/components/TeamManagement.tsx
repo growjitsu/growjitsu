@@ -12,6 +12,38 @@ export default function TeamManagement() {
   const [selectedTeam, setSelectedTeam] = useState<Equipe | null>(null);
   const [teamAthletes, setTeamAthletes] = useState<any[]>([]);
   const [loadingAthletes, setLoadingAthletes] = useState(false);
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [locationData, setLocationData] = useState({
+    country_id: '',
+    state_id: '',
+    city_id: ''
+  });
+
+  useEffect(() => {
+    if (showAddModal) {
+      fetchCountries();
+    }
+  }, [showAddModal]);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setStates(data);
+    setCities([]);
+    setLocationData(prev => ({ ...prev, country_id: countryId, state_id: '', city_id: '' }));
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setCities(data);
+    setLocationData(prev => ({ ...prev, state_id: stateId, city_id: '' }));
+  };
 
   const fetchTeams = async () => {
     setLoading(true);
@@ -21,7 +53,12 @@ export default function TeamManagement() {
 
       const { data, error } = await supabase
         .from('teams')
-        .select('*')
+        .select(`
+          *,
+          countries(name),
+          states(name),
+          cities(name)
+        `)
         .eq('representative_id', session.user.id)
         .order('name', { ascending: true });
 
@@ -66,11 +103,34 @@ export default function TeamManagement() {
       const newTeam = {
         name: (formData.get('nome') as string).toUpperCase(),
         description: (formData.get('filiacao') as string).toUpperCase(),
-        representative_id: session.user.id
+        representative_id: session.user.id,
+        country_id: locationData.country_id || null,
+        state_id: locationData.state_id || null,
+        city_id: locationData.city_id || null
       };
 
-      const { error } = await supabase.from('teams').insert(newTeam);
-      if (error) throw error;
+      const { data: teamData, error: teamError } = await supabase
+        .from('teams')
+        .insert(newTeam)
+        .select()
+        .single();
+      
+      if (teamError) throw teamError;
+
+      if (teamData) {
+        // Also add to team_members as representative
+        const { error: memberError } = await supabase
+          .from('team_members')
+          .insert({
+            team_id: teamData.id,
+            user_id: session.user.id,
+            role: 'representative'
+          });
+        
+        if (memberError) {
+          console.error("Erro ao salvar representante em team_members:", memberError);
+        }
+      }
 
       setShowAddModal(false);
       fetchTeams();
@@ -124,7 +184,12 @@ export default function TeamManagement() {
                   </div>
                   <div>
                     <h4 className="font-black text-[var(--text-main)] uppercase">{team.name}</h4>
-                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-tighter">{team.description || 'Sem Filiação'}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-tighter">
+                      {team.description || 'Sem Filiação'}
+                      {team.cities?.name && ` • ${team.cities.name}`}
+                      {team.states?.name && ` • ${team.states.name}`}
+                      {team.countries?.name && ` • ${team.countries.name}`}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -249,6 +314,54 @@ export default function TeamManagement() {
                     placeholder="Ex: GB BRASIL" 
                   />
                 </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <label className="label-standard">País</label>
+                    <select 
+                      className="input-standard py-4 px-6"
+                      value={locationData.country_id}
+                      onChange={(e) => fetchStates(e.target.value)}
+                    >
+                      <option value="">Selecione o País</option>
+                      {countries.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="label-standard">Estado</label>
+                      <select 
+                        disabled={!locationData.country_id}
+                        className="input-standard py-4 px-6 disabled:opacity-50"
+                        value={locationData.state_id}
+                        onChange={(e) => fetchCities(e.target.value)}
+                      >
+                        <option value="">Estado</option>
+                        {states.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-standard">Cidade</label>
+                      <select 
+                        disabled={!locationData.state_id}
+                        className="input-standard py-4 px-6 disabled:opacity-50"
+                        value={locationData.city_id}
+                        onChange={(e) => setLocationData(prev => ({ ...prev, city_id: e.target.value }))}
+                      >
+                        <option value="">Cidade</option>
+                        {cities.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 <button 
                   disabled={saving}
                   type="submit" 

@@ -52,19 +52,31 @@ export const AdminTeams: React.FC = () => {
   }, [page]);
 
   const fetchCountries = async () => {
-    const { data } = await supabase.from('countries').select('*').order('name');
-    if (data) setCountries(data);
+    const { data } = await supabase
+      .from('countries')
+      .select('*')
+      .order('name');
+
+    setCountries(data || []);
   };
 
   const fetchStates = async (countryId: string) => {
-    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
-    if (data) setStates(data);
+    const { data } = await supabase
+      .from('states')
+      .select('*')
+      .eq('country_id', countryId);
+
+    setStates(data || []);
     setCities([]);
   };
 
   const fetchCities = async (stateId: string) => {
-    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
-    if (data) setCities(data);
+    const { data } = await supabase
+      .from('cities')
+      .select('*')
+      .eq('state_id', stateId);
+
+    setCities(data || []);
   };
 
   const fetchTeams = async () => {
@@ -268,7 +280,8 @@ export const AdminTeams: React.FC = () => {
         country_id: formData.country_id,
         state_id: formData.state_id,
         city_id: formData.city_id,
-        logo_url: formData.logo_url
+        logo_url: formData.logo_url,
+        representative_id: formData.representative_id || null
       };
 
       if (!standardizedData.name || !standardizedData.country_id || !standardizedData.state_id || !standardizedData.city_id) {
@@ -301,23 +314,35 @@ export const AdminTeams: React.FC = () => {
 
       // Save representative in team_members
       if (teamId && formData.representative_id) {
-        // First remove any existing representative for this team
-        await supabase
+        console.log("Salvando representante:", formData.representative_id);
+
+        // remover representante atual
+        const { error: deleteError } = await supabase
           .from('team_members')
           .delete()
           .eq('team_id', teamId)
           .eq('role', 'representative');
 
-        // Add new representative
-        const { error: repError } = await supabase
+        if (deleteError) {
+          console.error("Erro ao remover representante:", deleteError);
+          throw deleteError;
+        }
+
+        // inserir novo representante
+        const { error: insertError } = await supabase
           .from('team_members')
           .insert({
             team_id: teamId,
             user_id: formData.representative_id,
             role: 'representative'
           });
-        
-        if (repError) console.error('Error saving representative:', repError);
+
+        if (insertError) {
+          console.error("Erro ao salvar representante:", insertError);
+          throw insertError;
+        }
+
+        console.log("Representante salvo com sucesso");
       }
 
       fetchTeams();
