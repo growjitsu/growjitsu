@@ -20,6 +20,9 @@ export interface ArenaProfile {
   city?: string;
   state?: string;
   country?: string;
+  country_id?: string;
+  state_id?: string;
+  city_id?: string;
   avatar_url?: string;
   profile_photo?: string;
   team?: string;
@@ -200,6 +203,9 @@ export interface AthleteProfile {
   peso_kg: number;
   equipe: string;
   equipe_id?: string;
+  country_id?: string;
+  state_id?: string;
+  city_id?: string;
   perfil_completo: boolean;
   foto_url?: string;
   atualizado_em: string;

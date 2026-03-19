@@ -30,6 +30,9 @@ export const AdminAthletes: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [teams, setTeams] = useState<any[]>([]);
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
   const [selectedAthlete, setSelectedAthlete] = useState<ArenaProfile | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editData, setEditData] = useState<any>(null);
@@ -38,7 +41,24 @@ export const AdminAthletes: React.FC = () => {
   useEffect(() => {
     fetchAthletes();
     fetchTeams();
+    fetchCountries();
   }, [page, filters]);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setStates(data);
+    setCities([]);
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setCities(data);
+  };
 
   const fetchTeams = async () => {
     const { data, error } = await supabase.from('teams').select('id, name').order('name');
@@ -118,9 +138,14 @@ export const AdminAthletes: React.FC = () => {
         graduation: editData.graduation?.toUpperCase(),
         gym_name: editData.gym_name?.toUpperCase(),
         professor: editData.professor?.toUpperCase(),
+        // Keep text version for ranking compatibility
         city: editData.city?.toUpperCase(),
         state: editData.state?.toUpperCase(),
         country: editData.country?.toUpperCase(),
+        // Save IDs for consistency
+        country_id: editData.country_id,
+        state_id: editData.state_id,
+        city_id: editData.city_id,
         team: selectedTeamObj?.name || editData.team?.toUpperCase(),
         team_id: teamId,
         titles: editData.titles?.toUpperCase(),
@@ -288,6 +313,8 @@ export const AdminAthletes: React.FC = () => {
                             setSelectedAthlete(athlete);
                             setEditData({ ...athlete });
                             setIsEditModalOpen(true);
+                            if (athlete.country_id) fetchStates(athlete.country_id);
+                            if (athlete.state_id) fetchCities(athlete.state_id);
                           }}
                           className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
                         >
@@ -405,6 +432,60 @@ export const AdminAthletes: React.FC = () => {
                       <option value="">Sem Equipe</option>
                       {teams.map(team => (
                         <option key={team.id} value={team.id}>{team.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Localização */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">País</label>
+                    <select
+                      value={editData.country_id || ''}
+                      onChange={(e) => {
+                        const country = countries.find(c => c.id === e.target.value);
+                        setEditData({ ...editData, country_id: e.target.value, country: country?.name || '' });
+                        fetchStates(e.target.value);
+                      }}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecione o País</option>
+                      {countries.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Estado</label>
+                    <select
+                      value={editData.state_id || ''}
+                      onChange={(e) => {
+                        const state = states.find(s => s.id === e.target.value);
+                        setEditData({ ...editData, state_id: e.target.value, state: state?.name || '' });
+                        fetchCities(e.target.value);
+                      }}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecione o Estado</option>
+                      {states.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Cidade</label>
+                    <select
+                      value={editData.city_id || ''}
+                      onChange={(e) => {
+                        const city = cities.find(c => c.id === e.target.value);
+                        setEditData({ ...editData, city_id: e.target.value, city: city?.name || '' });
+                      }}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecione a Cidade</option>
+                      {cities.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
                     </select>
                   </div>
