@@ -19,6 +19,7 @@ export const ArenaRankings: React.FC = () => {
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
   const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
   const [availableLocations, setAvailableLocations] = useState<{city: string, country: string}[]>([]);
+  const [dbCountries, setDbCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState({
@@ -30,7 +31,24 @@ export const ArenaRankings: React.FC = () => {
 
   useEffect(() => {
     fetchAvailableLocations();
+    fetchDbCountries();
   }, []);
+
+  const fetchDbCountries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('countries')
+        .select('name')
+        .order('name');
+      
+      if (error) throw error;
+      if (data) {
+        setDbCountries(data.map(c => c.name));
+      }
+    } catch (error) {
+      console.error('Error fetching countries:', error);
+    }
+  };
 
   const fetchAvailableLocations = async () => {
     try {
@@ -62,11 +80,13 @@ export const ArenaRankings: React.FC = () => {
     }
   };
 
-  const countriesWithCities = Array.from(new Set(availableLocations.map(l => l.country))).sort();
-  const citiesForSelectedCountry = availableLocations
-    .filter(l => l.country === filter.country)
-    .map(l => l.city)
-    .sort();
+  const countriesList = dbCountries.length > 0 
+    ? dbCountries 
+    : Array.from(new Set(availableLocations.map(l => l.country))).sort();
+
+  const citiesList = Array.from(new Set(availableLocations
+    .filter(l => filter.country === 'Todas' || l.country === filter.country)
+    .map(l => l.city))).sort();
 
   useEffect(() => {
     if (activeTab === 'athletes') {
@@ -91,11 +111,12 @@ export const ArenaRankings: React.FC = () => {
         query = query.ilike('modality', `%${searchPattern}%`);
       }
       
-      if (filter.scope === 'Cidade') {
-        if (filter.country !== 'Todas') query = query.ilike('country', filter.country);
-        if (filter.city !== 'Todas') query = query.ilike('city', filter.city);
-      } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
+      if (filter.country !== 'Todas') {
         query = query.ilike('country', filter.country);
+      }
+      
+      if (filter.city !== 'Todas') {
+        query = query.ilike('city', filter.city);
       }
 
       const { data, error } = await query;
@@ -115,7 +136,7 @@ export const ArenaRankings: React.FC = () => {
       const { data, error } = await supabase.rpc('get_team_rankings', {
         p_modality: filter.modality === 'Todas' ? null : filter.modality,
         p_country: (filter.country !== 'Todas') ? filter.country : null,
-        p_city: (filter.scope === 'Cidade' && filter.city !== 'Todas') ? filter.city : null
+        p_city: (filter.city !== 'Todas') ? filter.city : null
       });
       
       if (!error && data && data.length > 0) {
@@ -141,11 +162,12 @@ export const ArenaRankings: React.FC = () => {
           query = query.ilike('modality', `%${searchPattern}%`);
         }
         
-        if (filter.scope === 'Cidade') {
-          if (filter.country !== 'Todas') query = query.ilike('country', filter.country);
-          if (filter.city !== 'Todas') query = query.ilike('city', filter.city);
-        } else if (filter.scope === 'Nacional' && filter.country !== 'Todas') {
+        if (filter.country !== 'Todas') {
           query = query.ilike('country', filter.country);
+        }
+        
+        if (filter.city !== 'Todas') {
+          query = query.ilike('city', filter.city);
         }
 
         const { data: profiles, error: profilesError } = await query;
@@ -306,7 +328,16 @@ export const ArenaRankings: React.FC = () => {
         <div className="relative group">
           <select 
             value={filter.scope}
-            onChange={(e) => setFilter({...filter, scope: e.target.value})}
+            onChange={(e) => {
+              const newScope = e.target.value;
+              if (newScope === 'Mundial') {
+                setFilter({...filter, scope: newScope, country: 'Todas', city: 'Todas'});
+              } else if (newScope === 'Nacional') {
+                setFilter({...filter, scope: newScope, city: 'Todas'});
+              } else {
+                setFilter({...filter, scope: newScope});
+              }
+            }}
             className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
           >
             <option>Mundial</option>
@@ -334,11 +365,19 @@ export const ArenaRankings: React.FC = () => {
           <div className="relative group">
             <select 
               value={filter.country}
-              onChange={(e) => setFilter({...filter, country: e.target.value, city: 'Todas'})}
+              onChange={(e) => {
+                const newCountry = e.target.value;
+                setFilter({
+                  ...filter, 
+                  country: newCountry, 
+                  city: 'Todas',
+                  scope: newCountry === 'Todas' ? 'Mundial' : filter.scope
+                });
+              }}
               className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
             >
               <option value="Todas">Selecionar País</option>
-              {countriesWithCities.map(country => (
+              {countriesList.map(country => (
                 <option key={country} value={country}>{country}</option>
               ))}
             </select>
@@ -346,7 +385,7 @@ export const ArenaRankings: React.FC = () => {
           </div>
         )}
 
-        {filter.scope === 'Cidade' && filter.country !== 'Todas' && (
+        {filter.scope === 'Cidade' && (
           <div className="relative group">
             <select 
               value={filter.city}
@@ -354,7 +393,7 @@ export const ArenaRankings: React.FC = () => {
               className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
             >
               <option value="Todas">Todas as Cidades</option>
-              {citiesForSelectedCountry.map(city => (
+              {citiesList.map(city => (
                 <option key={city} value={city}>{city}</option>
               ))}
             </select>
