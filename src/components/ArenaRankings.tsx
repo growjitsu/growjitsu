@@ -61,8 +61,15 @@ export const ArenaRankings: React.FC = () => {
       
       if (error) throw error;
       if (data) {
-        // Normalize names to uppercase to match profile data format and ensure uniqueness
-        const uniqueCities = Array.from(new Set(data.map((c: any) => c.name.toUpperCase()))).sort();
+        // Keep original casing for better matching but ensure uniqueness case-insensitively
+        const cityMap = new Map();
+        data.forEach((c: any) => {
+          const upper = c.name.toUpperCase();
+          if (!cityMap.has(upper)) {
+            cityMap.set(upper, c.name);
+          }
+        });
+        const uniqueCities = Array.from(cityMap.values()).sort();
         setDbCities(uniqueCities);
       }
     } catch (error) {
@@ -100,13 +107,20 @@ export const ArenaRankings: React.FC = () => {
       
       if (data) {
         const locations = data.map(d => ({
-          city: d.city.toUpperCase(),
-          country: d.country.toUpperCase()
+          city: d.city,
+          country: d.country
         }));
         
-        // Unique locations
-        const uniqueLocations = Array.from(new Set(locations.map(l => JSON.stringify(l))))
-          .map(s => JSON.parse(s))
+        // Unique locations case-insensitively
+        const locationMap = new Map();
+        locations.forEach(l => {
+          const key = `${l.city.toUpperCase()}|${l.country.toUpperCase()}`;
+          if (!locationMap.has(key)) {
+            locationMap.set(key, l);
+          }
+        });
+        
+        const uniqueLocations = Array.from(locationMap.values())
           .sort((a, b) => a.city.localeCompare(b.city));
           
         setAvailableLocations(uniqueLocations);
@@ -150,11 +164,11 @@ export const ArenaRankings: React.FC = () => {
       }
       
       if (filter.country !== 'Todas') {
-        query = query.ilike('country', filter.country);
+        query = query.ilike('country', `%${filter.country}%`);
       }
       
       if (filter.city !== 'Todas') {
-        query = query.ilike('city', filter.city);
+        query = query.ilike('city', `%${filter.city}%`);
       }
 
       const { data, error } = await query;
@@ -201,11 +215,11 @@ export const ArenaRankings: React.FC = () => {
         }
         
         if (filter.country !== 'Todas') {
-          query = query.ilike('country', filter.country);
+          query = query.ilike('country', `%${filter.country}%`);
         }
         
         if (filter.city !== 'Todas') {
-          query = query.ilike('city', filter.city);
+          query = query.ilike('city', `%${filter.city}%`);
         }
 
         const { data: profiles, error: profilesError } = await query;
