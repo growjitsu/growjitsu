@@ -26,6 +26,7 @@ export const AdminTeams: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [representatives, setRepresentatives] = useState<any[]>([]);
   const [formData, setFormData] = useState<any>({
     name: '',
     description: '',
@@ -124,17 +125,18 @@ export const AdminTeams: React.FC = () => {
         .in('team_id', teamIds)
         .eq('role', 'representative');
 
-      const repsMap: Record<string, any> = {};
+      const repsMap: Record<string, any[]> = {};
       repsData?.forEach(r => {
-        repsMap[r.team_id] = {
+        if (!repsMap[r.team_id]) repsMap[r.team_id] = [];
+        repsMap[r.team_id].push({
           id: r.user_id,
           name: (r.profiles as any)?.full_name
-        };
+        });
       });
 
       const teamsWithReps = data?.map(t => ({
         ...t,
-        representative: repsMap[t.id]
+        representatives: repsMap[t.id] || []
       })) || [];
 
       setTeams(teamsWithReps);
@@ -320,37 +322,49 @@ export const AdminTeams: React.FC = () => {
         teamId = data.id;
       }
 
-      // Save representative in team_members
-      if (teamId && formData.representative_id) {
-        console.log("Salvando representante:", formData.representative_id);
+      // Save representatives in team_members
+      if (teamId) {
+        console.log("Salvando representantes:", representatives);
 
-        // remover representante atual
-        const { error: deleteError } = await supabase
+        // Obter representantes atuais no banco
+        const { data: currentReps } = await supabase
           .from('team_members')
-          .delete()
+          .select('user_id')
           .eq('team_id', teamId)
           .eq('role', 'representative');
+        
+        const currentRepIds = currentReps?.map(r => r.user_id) || [];
+        const newRepIds = representatives.map(r => r.id);
 
-        if (deleteError) {
-          console.error("Erro ao remover representante:", deleteError);
-          throw deleteError;
+        // Representatives to remove
+        const toRemove = currentRepIds.filter(id => !newRepIds.includes(id));
+        // Representatives to add
+        const toAdd = newRepIds.filter(id => !currentRepIds.includes(id));
+
+        if (toRemove.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('team_members')
+            .delete()
+            .eq('team_id', teamId)
+            .eq('role', 'representative')
+            .in('user_id', toRemove);
+          
+          if (deleteError) throw deleteError;
         }
 
-        // inserir novo representante
-        const { error: insertError } = await supabase
-          .from('team_members')
-          .insert({
-            team_id: teamId,
-            user_id: formData.representative_id,
-            role: 'representative'
-          });
-
-        if (insertError) {
-          console.error("Erro ao salvar representante:", insertError);
-          throw insertError;
+        if (toAdd.length > 0) {
+          const { error: insertError } = await supabase
+            .from('team_members')
+            .insert(toAdd.map(userId => ({
+              team_id: teamId,
+              user_id: userId,
+              role: 'representative'
+            })));
+          
+          if (insertError) throw insertError;
         }
 
-        console.log("Representante salvo com sucesso");
+        console.log("Representantes atualizados com sucesso");
       }
 
       fetchTeams();
@@ -440,10 +454,14 @@ export const AdminTeams: React.FC = () => {
                           <span className="text-[9px] font-bold uppercase tracking-widest">Professor: {team.professor}</span>
                         </div>
                       )}
-                      {team.representative ? (
-                        <div className="flex items-center space-x-1 text-blue-500">
-                          <User size={10} />
-                          <span className="text-[9px] font-black uppercase tracking-widest">Líder: {team.representative.name}</span>
+                      {team.representatives && team.representatives.length > 0 ? (
+                        <div className="flex flex-col space-y-0.5 mt-1">
+                          {team.representatives.map((rep: any) => (
+                            <div key={rep.id} className="flex items-center space-x-1 text-blue-500">
+                              <Shield size={10} />
+                              <span className="text-[9px] font-black uppercase tracking-widest">Líder: {rep.name}</span>
+                            </div>
+                          ))}
                         </div>
                       ) : null}
                     </div>
@@ -456,9 +474,9 @@ export const AdminTeams: React.FC = () => {
                       setFormData({ 
                         ...team,
                         professor: team.professor || '',
-                        representative_id: team.representative?.id || ''
                       });
-                      setUserSearch(team.representative?.name || '');
+                      setRepresentatives(team.representatives || []);
+                      setUserSearch('');
                       setIsModalOpen(true);
                     }}
                     className="p-2 text-gray-500 hover:text-blue-500 transition-colors"
@@ -633,31 +651,39 @@ export const AdminTeams: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Responsável pela Equipe</label>
-                  <div className="relative">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                        <input
-                          type="text"
-                          value={userSearch}
-                          onChange={(e) => searchUsers(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-sm outline-none focus:border-blue-500"
-                          placeholder="Buscar usuário por nome..."
-                        />
-                      </div>
-                      {formData.representative_id && (
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Responsáveis pela Equipe</label>
+                  
+                  {/* List of current representatives */}
+                  <div className="space-y-2">
+                    {representatives.map(rep => (
+                      <div key={rep.id} className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-xl">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center">
+                            <User size={14} className="text-blue-500" />
+                          </div>
+                          <span className="text-xs font-bold uppercase tracking-tight">{rep.name}</span>
+                        </div>
                         <button 
-                          onClick={() => {
-                            setFormData({ ...formData, representative_id: '' });
-                            setUserSearch('');
-                          }}
-                          className="p-4 bg-rose-500/10 text-rose-500 rounded-xl hover:bg-rose-500/20 transition-all"
+                          onClick={() => setRepresentatives(prev => prev.filter(r => r.id !== rep.id))}
+                          className="p-2 text-gray-500 hover:text-rose-500 transition-colors"
                         >
-                          <Trash2 size={16} />
+                          <X size={14} />
                         </button>
-                      )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                      <input
+                        type="text"
+                        value={userSearch}
+                        onChange={(e) => searchUsers(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-sm outline-none focus:border-blue-500"
+                        placeholder="Adicionar novo responsável..."
+                      />
                     </div>
 
                     {userResults.length > 0 && (
@@ -665,30 +691,23 @@ export const AdminTeams: React.FC = () => {
                         {userResults.map(user => (
                           <button
                             key={user.id}
+                            disabled={representatives.some(r => r.id === user.id)}
                             onClick={() => {
-                              setFormData({ 
-                                ...formData, 
-                                representative_id: user.id,
-                                professor: user.full_name 
-                              });
-                              setUserSearch(user.full_name);
+                              if (!representatives.some(r => r.id === user.id)) {
+                                setRepresentatives(prev => [...prev, { id: user.id, name: user.full_name }]);
+                              }
+                              setUserSearch('');
                               setUserResults([]);
                             }}
-                            className="w-full px-4 py-3 text-left text-xs hover:bg-blue-600 transition-colors border-b border-white/5 last:border-0 flex flex-col"
+                            className="w-full px-4 py-3 text-left text-xs hover:bg-blue-600 transition-colors border-b border-white/5 last:border-0 flex flex-col disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             <span className="font-black uppercase tracking-tight">{user.full_name}</span>
-                            <span className="text-[9px] text-gray-500">{user.email}</span>
+                            <span className="text-[9px] text-gray-500">{user.email || user.username}</span>
                           </button>
                         ))}
                       </div>
                     )}
                   </div>
-                  {formData.representative_id && (
-                    <div className="flex items-center gap-2 text-[9px] text-emerald-500 font-bold uppercase mt-1 ml-1">
-                      <Check size={12} />
-                      Usuário selecionado como responsável
-                    </div>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Logo da Equipe</label>

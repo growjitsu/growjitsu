@@ -30,6 +30,10 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
   const [editData, setEditData] = useState<Partial<ArenaProfile>>({});
   const [saving, setSaving] = useState(false);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [isTeamRepresentative, setIsTeamRepresentative] = useState(false);
+  const [teamData, setTeamData] = useState<Team | null>(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [teamEditData, setTeamEditData] = useState<Partial<Team>>({});
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [uploading, setUploading] = useState(false);
@@ -223,6 +227,31 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
 
       setProfile(profileData);
       setEditData(profileData || {});
+
+      // Check if user is team representative
+      if (profileData?.team_id && user) {
+        const { data: repData } = await supabase
+          .from('team_members')
+          .select('role')
+          .eq('team_id', profileData.team_id)
+          .eq('user_id', user.id)
+          .eq('role', 'representative')
+          .maybeSingle();
+        
+        setIsTeamRepresentative(!!repData);
+
+        // Fetch full team data
+        const { data: tData } = await supabase
+          .from('teams')
+          .select('*, countries(name), states(name), cities(name)')
+          .eq('id', profileData.team_id)
+          .single();
+        
+        if (tData) {
+          setTeamData(tData);
+          setTeamEditData(tData);
+        }
+      }
 
       // Fetch Rankings
       if (profileData) {
@@ -922,6 +951,76 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
     }
   };
 
+  const handleSaveTeam = async () => {
+    if (!teamData) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({
+          name: teamEditData.name?.toUpperCase(),
+          description: teamEditData.description,
+          professor: teamEditData.professor?.toUpperCase(),
+          country_id: teamEditData.country_id,
+          state_id: teamEditData.state_id,
+          city_id: teamEditData.city_id,
+          logo_url: teamEditData.logo_url
+        })
+        .eq('id', teamData.id);
+
+      if (error) throw error;
+      
+      // Refresh data
+      const { data: updatedTeam } = await supabase
+        .from('teams')
+        .select('*, countries(name), states(name), cities(name)')
+        .eq('id', teamData.id)
+        .single();
+      
+      if (updatedTeam) {
+        setTeamData(updatedTeam);
+        setTeamEditData(updatedTeam);
+      }
+      
+      setIsTeamModalOpen(false);
+      alert('Equipe atualizada com sucesso!');
+    } catch (err: any) {
+      console.error('Error saving team:', err);
+      alert('Erro ao salvar equipe: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTeamLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('team-logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('team-logos')
+        .getPublicUrl(filePath);
+
+      setTeamEditData(prev => ({ ...prev, logo_url: publicUrl }));
+    } catch (error: any) {
+      console.error('Error uploading logo:', error);
+      alert('Erro ao fazer upload do logo: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleFollow = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -1069,6 +1168,15 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
           {isOwnProfile && !isEditing && (
             <div className="pb-4 flex flex-wrap gap-2">
+              {isTeamRepresentative && (
+                <button
+                  onClick={() => setIsTeamModalOpen(true)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 flex items-center space-x-2"
+                >
+                  <Shield size={14} />
+                  <span>Gerenciar Equipe</span>
+                </button>
+              )}
               <button
                 onClick={() => setIsRegisterFightModalOpen(true)}
                 className="px-6 py-2 bg-[var(--surface)] border border-[var(--border-ui)] text-[var(--text-main)] rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[var(--primary)]/10 transition-all flex items-center space-x-2"
@@ -2139,6 +2247,171 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
           </div>
         </div>
       </div>
+
+      {/* Team Management Modal */}
+      <AnimatePresence>
+        {isTeamModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsTeamModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 border-b border-white/10 flex items-center justify-between">
+                <h3 className="text-xl font-black uppercase italic tracking-tight">
+                  Gerenciar Equipe
+                </h3>
+                <button onClick={() => setIsTeamModalOpen(false)} className="p-2 text-gray-400 hover:text-white transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Nome da Equipe</label>
+                  <input
+                    type="text"
+                    value={teamEditData.name || ''}
+                    onChange={(e) => setTeamEditData({ ...teamEditData, name: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                    placeholder="Ex: Alliance Jiu-Jitsu"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Professor Responsável</label>
+                  <input
+                    type="text"
+                    value={teamEditData.professor || ''}
+                    onChange={(e) => setTeamEditData({ ...teamEditData, professor: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                    placeholder="Ex: Mestre Hélio Gracie"
+                  />
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Descrição da Equipe</label>
+                    <textarea
+                      value={teamEditData.description || ''}
+                      onChange={(e) => setTeamEditData({ ...teamEditData, description: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500 min-h-[100px] resize-none"
+                      placeholder="Descreva a história ou foco da equipe..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">País</label>
+                    <select
+                      value={teamEditData.country_id || ''}
+                      onChange={(e) => {
+                        const countryId = e.target.value;
+                        setTeamEditData({ ...teamEditData, country_id: countryId, state_id: '', city_id: '' });
+                        setDbStates([]);
+                        setDbCities([]);
+                        if (countryId) fetchStates(countryId);
+                      }}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500"
+                    >
+                      <option value="">Selecionar País</option>
+                      {dbCountries.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Estado</label>
+                      <select
+                        value={teamEditData.state_id || ''}
+                        disabled={!teamEditData.country_id}
+                        onChange={(e) => {
+                          const stateId = e.target.value;
+                          setTeamEditData({ ...teamEditData, state_id: stateId, city_id: '' });
+                          setDbCities([]);
+                          if (stateId) fetchCities(stateId);
+                        }}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
+                      >
+                        <option value="">{teamEditData.country_id ? (dbStates.length === 0 ? 'Carregando estados...' : 'Selecionar Estado') : 'Selecione um País'}</option>
+                        {dbStates.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Cidade</label>
+                      <select
+                        value={teamEditData.city_id || ''}
+                        disabled={!teamEditData.state_id}
+                        onChange={(e) => setTeamEditData({ ...teamEditData, city_id: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm outline-none focus:border-blue-500 disabled:opacity-50"
+                      >
+                        <option value="">{teamEditData.state_id ? (dbCities.length === 0 ? 'Nenhuma cidade encontrada' : 'Selecionar Cidade') : 'Selecione um Estado'}</option>
+                        {dbCities.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-1">Logo da Equipe</label>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                      {teamEditData.logo_url ? (
+                        <img src={teamEditData.logo_url} alt="Preview" className="w-full h-full object-contain" />
+                      ) : (
+                        <Shield className="w-8 h-8 text-gray-700" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp"
+                        onChange={handleTeamLogoUpload}
+                        className="hidden"
+                        id="team-logo-upload"
+                      />
+                      <label
+                        htmlFor="team-logo-upload"
+                        className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg border border-white/10 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-white/5 transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''}`}
+                      >
+                        <Plus size={14} />
+                        <span>{uploading ? 'Enviando...' : 'Fazer Upload'}</span>
+                      </label>
+                      <p className="text-[8px] text-gray-500 mt-2 uppercase font-bold tracking-widest">PNG, JPG ou WEBP. Máx 2MB.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-8 border-t border-white/10 bg-white/5 flex items-center justify-end space-x-4">
+                <button
+                  onClick={() => setIsTeamModalOpen(false)}
+                  className="px-6 py-3 text-xs font-black uppercase tracking-widest text-gray-500 hover:text-white transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveTeam}
+                  disabled={saving}
+                  className="bg-blue-600 text-white px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
+                >
+                  {saving ? 'Salvando...' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {isPostModalOpen && selectedPost && (
         <PostModal 
