@@ -14,20 +14,25 @@ interface TeamRanking {
   athlete_count: number;
 }
 
+interface LocationItem {
+  id: string;
+  name: string;
+}
+
 export const ArenaRankings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'athletes' | 'teams'>('athletes');
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
   const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
-  const [availableLocations, setAvailableLocations] = useState<{city: string, country: string}[]>([]);
-  const [dbCountries, setDbCountries] = useState<string[]>([]);
-  const [dbCities, setDbCities] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<{city: string, country: string, cityId: string, countryId: string}[]>([]);
+  const [dbCountries, setDbCountries] = useState<LocationItem[]>([]);
+  const [dbCities, setDbCities] = useState<LocationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [filter, setFilter] = useState({
     scope: 'Mundial',
     modality: 'Todas',
-    city: 'Todas',
-    country: 'Todas'
+    cityId: 'Todas',
+    countryId: 'Todas'
   });
 
   useEffect(() => {
@@ -36,34 +41,24 @@ export const ArenaRankings: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (filter.country !== 'Todas') {
-      fetchCitiesByCountry(filter.country);
+    if (filter.countryId !== 'Todas') {
+      fetchCitiesByCountry(filter.countryId);
     } else {
       setDbCities([]);
     }
-  }, [filter.country]);
+  }, [filter.countryId]);
 
-  const fetchCitiesByCountry = async (countryName: string) => {
+  const fetchCitiesByCountry = async (countryId: string) => {
     try {
-      // Fetch cities using a join through states to countries
       const { data, error } = await supabase
         .from('cities')
-        .select(`
-          name,
-          states!inner(
-            countries!inner(
-              name
-            )
-          )
-        `)
-        .eq('states.countries.name', countryName)
+        .select('id, name')
+        .eq('country_id', countryId)
         .order('name');
       
       if (error) throw error;
       if (data) {
-        // Normalize names to uppercase to match profile data format and ensure uniqueness
-        const uniqueCities = Array.from(new Set(data.map((c: any) => c.name.toUpperCase()))).sort();
-        setDbCities(uniqueCities);
+        setDbCities(data);
       }
     } catch (error) {
       console.error('Error fetching cities for country:', error);
@@ -74,12 +69,12 @@ export const ArenaRankings: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('countries')
-        .select('name')
+        .select('id, name')
         .order('name');
       
       if (error) throw error;
       if (data) {
-        setDbCountries(data.map(c => c.name));
+        setDbCountries(data);
       }
     } catch (error) {
       console.error('Error fetching countries:', error);
@@ -90,19 +85,19 @@ export const ArenaRankings: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('city, country')
-        .not('city', 'is', null)
-        .neq('city', '')
-        .not('country', 'is', null)
-        .neq('country', '');
+        .select('city, country, city_id, country_id')
+        .not('city_id', 'is', null)
+        .not('country_id', 'is', null);
       
       if (error) throw error;
       
       if (data) {
         const locations = data.map(d => ({
-          city: d.city.toUpperCase(),
-          country: d.country.toUpperCase()
-        }));
+          city: d.city?.toUpperCase() || '',
+          country: d.country?.toUpperCase() || '',
+          cityId: d.city_id || '',
+          countryId: d.country_id || ''
+        })).filter(l => l.cityId && l.countryId);
         
         // Unique locations
         const uniqueLocations = Array.from(new Set(locations.map(l => JSON.stringify(l))))
@@ -118,13 +113,17 @@ export const ArenaRankings: React.FC = () => {
 
   const countriesList = dbCountries.length > 0 
     ? dbCountries 
-    : Array.from(new Set(availableLocations.map(l => l.country))).sort();
+    : Array.from(new Set(availableLocations.map(l => JSON.stringify({id: l.countryId, name: l.country}))))
+        .map((s: string) => JSON.parse(s) as LocationItem)
+        .sort((a, b) => a.name.localeCompare(b.name));
 
   const citiesList = dbCities.length > 0
     ? dbCities
     : Array.from(new Set(availableLocations
-        .filter(l => filter.country === 'Todas' || l.country === filter.country)
-        .map(l => l.city))).sort();
+        .filter(l => filter.countryId === 'Todas' || l.countryId === filter.countryId)
+        .map(l => JSON.stringify({id: l.cityId, name: l.city}))))
+        .map((s: string) => JSON.parse(s) as LocationItem)
+        .sort((a, b) => a.name.localeCompare(b.name));
 
   useEffect(() => {
     if (activeTab === 'athletes') {
@@ -149,12 +148,12 @@ export const ArenaRankings: React.FC = () => {
         query = query.ilike('modality', `%${searchPattern}%`);
       }
       
-      if (filter.country !== 'Todas') {
-        query = query.ilike('country', filter.country);
+      if (filter.countryId !== 'Todas') {
+        query = query.eq('country_id', filter.countryId);
       }
       
-      if (filter.city !== 'Todas') {
-        query = query.ilike('city', filter.city);
+      if (filter.cityId !== 'Todas') {
+        query = query.eq('city_id', filter.cityId);
       }
 
       const { data, error } = await query;
@@ -173,8 +172,8 @@ export const ArenaRankings: React.FC = () => {
       // Try to use the RPC first
       const { data, error } = await supabase.rpc('get_team_rankings', {
         p_modality: filter.modality === 'Todas' ? null : filter.modality,
-        p_country: (filter.country !== 'Todas') ? filter.country : null,
-        p_city: (filter.city !== 'Todas') ? filter.city : null
+        p_country_id: (filter.countryId !== 'Todas') ? filter.countryId : null,
+        p_city_id: (filter.cityId !== 'Todas') ? filter.cityId : null
       });
       
       if (!error && data && data.length > 0) {
@@ -200,12 +199,12 @@ export const ArenaRankings: React.FC = () => {
           query = query.ilike('modality', `%${searchPattern}%`);
         }
         
-        if (filter.country !== 'Todas') {
-          query = query.ilike('country', filter.country);
+        if (filter.countryId !== 'Todas') {
+          query = query.eq('country_id', filter.countryId);
         }
         
-        if (filter.city !== 'Todas') {
-          query = query.ilike('city', filter.city);
+        if (filter.cityId !== 'Todas') {
+          query = query.eq('city_id', filter.cityId);
         }
 
         const { data: profiles, error: profilesError } = await query;
@@ -369,9 +368,9 @@ export const ArenaRankings: React.FC = () => {
             onChange={(e) => {
               const newScope = e.target.value;
               if (newScope === 'Mundial') {
-                setFilter({...filter, scope: newScope, country: 'Todas', city: 'Todas'});
+                setFilter({...filter, scope: newScope, countryId: 'Todas', cityId: 'Todas'});
               } else if (newScope === 'Nacional') {
-                setFilter({...filter, scope: newScope, city: 'Todas'});
+                setFilter({...filter, scope: newScope, cityId: 'Todas'});
               } else {
                 setFilter({...filter, scope: newScope});
               }
@@ -402,21 +401,21 @@ export const ArenaRankings: React.FC = () => {
         {(filter.scope === 'Nacional' || filter.scope === 'Cidade') && (
           <div className="relative group">
             <select 
-              value={filter.country}
+              value={filter.countryId}
               onChange={(e) => {
-                const newCountry = e.target.value;
+                const newCountryId = e.target.value;
                 setFilter({
                   ...filter, 
-                  country: newCountry, 
-                  city: 'Todas',
-                  scope: newCountry === 'Todas' ? 'Mundial' : filter.scope
+                  countryId: newCountryId, 
+                  cityId: 'Todas',
+                  scope: newCountryId === 'Todas' ? 'Mundial' : filter.scope
                 });
               }}
               className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
             >
               <option value="Todas">Selecionar País</option>
               {countriesList.map(country => (
-                <option key={country} value={country}>{country}</option>
+                <option key={country.id} value={country.id}>{country.name}</option>
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
@@ -426,13 +425,13 @@ export const ArenaRankings: React.FC = () => {
         {filter.scope === 'Cidade' && (
           <div className="relative group">
             <select 
-              value={filter.city}
-              onChange={(e) => setFilter({...filter, city: e.target.value})}
+              value={filter.cityId}
+              onChange={(e) => setFilter({...filter, cityId: e.target.value})}
               className="appearance-none bg-[var(--surface)] border border-[var(--border-ui)] rounded-full px-6 py-2 text-xs font-bold uppercase tracking-widest text-[var(--text-main)] focus:border-[var(--primary)] outline-none cursor-pointer pr-10 transition-colors duration-300"
             >
               <option value="Todas">Todas as Cidades</option>
               {citiesList.map(city => (
-                <option key={city} value={city}>{city}</option>
+                <option key={city.id} value={city.id}>{city.name}</option>
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />

@@ -20,6 +20,9 @@ export interface ArenaProfile {
   city?: string;
   state?: string;
   country?: string;
+  city_id?: string;
+  state_id?: string;
+  country_id?: string;
   avatar_url?: string;
   profile_photo?: string;
   team?: string;
