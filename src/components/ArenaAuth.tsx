@@ -392,23 +392,37 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `logos/${fileName}`;
 
+    // Preview and fallback
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // We can use this as a fallback if upload fails
+    };
+    reader.readAsDataURL(file);
+
     try {
       console.log("[LOG] Iniciando upload do logo:", filePath);
       const { error: uploadError } = await supabase.storage
         .from('team-logos')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        // Fallback to base64 if storage fails (e.g. bucket not found)
+        setNewTeamData(prev => ({ ...prev, logo_url: reader.result as string }));
+        console.log("[LOG] Usando fallback base64 devido a erro no storage");
+      } else {
+        const { data: { publicUrl } } = supabase.storage
+          .from('team-logos')
+          .getPublicUrl(filePath);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('team-logos')
-        .getPublicUrl(filePath);
-
-      console.log("[LOG] Upload realizado:", publicUrl);
-      setNewTeamData(prev => ({ ...prev, logo_url: publicUrl }));
+        console.log("[LOG] Upload realizado:", publicUrl);
+        setNewTeamData(prev => ({ ...prev, logo_url: publicUrl }));
+      }
     } catch (error) {
       console.error('[ERROR] Erro ao fazer upload do logo:', error);
-      alert('Erro ao fazer upload do logo.');
+      // Final fallback
+      setNewTeamData(prev => ({ ...prev, logo_url: reader.result as string }));
+      alert('Erro ao processar upload do logo. Usando versão local temporária.');
     }
   };
 

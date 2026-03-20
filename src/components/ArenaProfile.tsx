@@ -996,6 +996,25 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert('Tipo de arquivo inválido. Use JPG, PNG ou WEBP.');
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Arquivo muito grande. Máximo 2MB.');
+      return;
+    }
+
+    // Preview and fallback
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // We can use this as a fallback if upload fails
+    };
+    reader.readAsDataURL(file);
+
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
@@ -1006,16 +1025,23 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
         .from('team-logos')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        // Fallback to base64 if storage fails (e.g. bucket not found)
+        setTeamEditData(prev => ({ ...prev, logo_url: reader.result as string }));
+        alert('Erro ao fazer upload para o servidor. Usando versão local temporária. Por favor, salve as alterações.');
+      } else {
+        const { data: { publicUrl } } = supabase.storage
+          .from('team-logos')
+          .getPublicUrl(filePath);
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('team-logos')
-        .getPublicUrl(filePath);
-
-      setTeamEditData(prev => ({ ...prev, logo_url: publicUrl }));
+        setTeamEditData(prev => ({ ...prev, logo_url: publicUrl }));
+      }
     } catch (error: any) {
       console.error('Error uploading logo:', error);
-      alert('Erro ao fazer upload do logo: ' + error.message);
+      // Final fallback
+      setTeamEditData(prev => ({ ...prev, logo_url: reader.result as string }));
+      alert('Erro ao processar upload. Usando versão local temporária.');
     } finally {
       setUploading(false);
     }
