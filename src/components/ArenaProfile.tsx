@@ -2200,8 +2200,8 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   <div key={champ.id} className="bg-[var(--surface)] border border-[var(--border-ui)] rounded-[2rem] overflow-hidden transition-colors duration-300">
                     <div className="flex flex-col md:flex-row">
                       {champ.foto_podio_url && (
-                        <div className="w-full md:w-48 h-48 md:h-auto overflow-hidden flex-shrink-0">
-                          <img src={champ.foto_podio_url} alt="Pódio" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <div className="w-full md:w-48 h-48 md:h-auto overflow-hidden flex-shrink-0 bg-black/10 flex items-center justify-center">
+                          <img src={champ.foto_podio_url} alt="Pódio" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                         </div>
                       )}
                       <div className="p-6 flex-1 space-y-4">
