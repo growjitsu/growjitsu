@@ -666,7 +666,11 @@ export const AdminTeams: React.FC = () => {
                           <button
                             key={user.id}
                             onClick={() => {
-                              setFormData({ ...formData, representative_id: user.id });
+                              setFormData({ 
+                                ...formData, 
+                                representative_id: user.id,
+                                professor: user.full_name 
+                              });
                               setUserSearch(user.full_name);
                               setUserResults([]);
                             }}

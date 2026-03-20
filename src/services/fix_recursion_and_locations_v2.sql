@@ -160,7 +160,48 @@ BEGIN
         -- Tokyo
         INSERT INTO states (country_id, name, code) VALUES (v_country_id, 'Tokyo', 'TK')
         ON CONFLICT (country_id, code) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO v_state_id;
-        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'Shinjuku'), (v_state_id, 'Shibuya') ON CONFLICT DO NOTHING;
+        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'Shinjuku'), (v_state_id, 'Shibuya'), (v_state_id, 'Minato') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- ESPANHA (ES)
+    SELECT id INTO v_country_id FROM countries WHERE code = 'ES';
+    IF v_country_id IS NOT NULL THEN
+        -- Madrid
+        INSERT INTO states (country_id, name, code) VALUES (v_country_id, 'Madrid', 'MD')
+        ON CONFLICT (country_id, code) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO v_state_id;
+        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'Madrid'), (v_state_id, 'Getafe') ON CONFLICT DO NOTHING;
+        
+        -- Cataluña
+        INSERT INTO states (country_id, name, code) VALUES (v_country_id, 'Cataluña', 'CT')
+        ON CONFLICT (country_id, code) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO v_state_id;
+        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'Barcelona'), (v_state_id, 'Badalona') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- FRANÇA (FR)
+    SELECT id INTO v_country_id FROM countries WHERE code = 'FR';
+    IF v_country_id IS NOT NULL THEN
+        -- Île-de-France
+        INSERT INTO states (country_id, name, code) VALUES (v_country_id, 'Île-de-France', 'IF')
+        ON CONFLICT (country_id, code) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO v_state_id;
+        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'Paris'), (v_state_id, 'Boulogne-Billancourt') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- ITÁLIA (IT)
+    SELECT id INTO v_country_id FROM countries WHERE code = 'IT';
+    IF v_country_id IS NOT NULL THEN
+        -- Lazio
+        INSERT INTO states (country_id, name, code) VALUES (v_country_id, 'Lazio', 'LZ')
+        ON CONFLICT (country_id, code) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO v_state_id;
+        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'Roma') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- REINO UNIDO (GB)
+    SELECT id INTO v_country_id FROM countries WHERE code = 'GB';
+    IF v_country_id IS NOT NULL THEN
+        -- England
+        INSERT INTO states (country_id, name, code) VALUES (v_country_id, 'England', 'EN')
+        ON CONFLICT (country_id, code) DO UPDATE SET name = EXCLUDED.name RETURNING id INTO v_state_id;
+        INSERT INTO cities (state_id, name) VALUES (v_state_id, 'London'), (v_state_id, 'Manchester'), (v_state_id, 'Liverpool') ON CONFLICT DO NOTHING;
     END IF;
 
 END $$;
