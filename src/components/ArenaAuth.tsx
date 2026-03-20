@@ -343,6 +343,23 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
               }
             } else {
               console.log('[LOG] Vínculo de equipe criado com sucesso');
+              
+              // Se for líder, atualiza o professor da equipe para o nome do usuário
+              if (isTeamLeader) {
+                console.log('[LOG] Atualizando professor da equipe:', finalTeamId);
+                const { error: teamUpdateError } = await supabase
+                  .from('teams')
+                  .update({ 
+                    professor: fullName.toUpperCase() 
+                  })
+                  .eq('id', finalTeamId);
+                
+                if (teamUpdateError) {
+                  console.error('[ERROR] Erro ao atualizar professor da equipe:', teamUpdateError);
+                } else {
+                  console.log('[LOG] Professor da equipe atualizado com sucesso');
+                }
+              }
             }
           }
         }
