@@ -457,6 +457,9 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         titles: editData.titles?.toUpperCase(),
         team: editData.team?.toUpperCase(),
         team_id: editData.team_id,
+        country_id: editData.country_id,
+        state_id: editData.state_id,
+        city_id: editData.city_id,
         updated_at: new Date().toISOString()
       };
 
@@ -1314,8 +1317,16 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                       value={editData.country || ''} 
                       onChange={e => {
                         const countryName = e.target.value;
-                        setEditData({...editData, country: countryName, state: '', city: ''});
                         const country = dbCountries.find(c => c.name === countryName);
+                        setEditData({
+                          ...editData, 
+                          country: countryName, 
+                          country_id: country?.id,
+                          state: '', 
+                          state_id: undefined,
+                          city: '',
+                          city_id: undefined
+                        });
                         if (country) fetchStates(country.id);
                       }}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
@@ -1330,8 +1341,14 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                       value={editData.state || ''} 
                       onChange={e => {
                         const stateName = e.target.value;
-                        setEditData({...editData, state: stateName, city: ''});
                         const state = dbStates.find(s => s.name === stateName);
+                        setEditData({
+                          ...editData, 
+                          state: stateName, 
+                          state_id: state?.id,
+                          city: '',
+                          city_id: undefined
+                        });
                         if (state) fetchCities(state.id);
                       }}
                       disabled={!editData.country}
@@ -1347,7 +1364,15 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Cidade</label>
                     <select 
                       value={editData.city || ''} 
-                      onChange={e => setEditData({...editData, city: e.target.value})}
+                      onChange={e => {
+                        const cityName = e.target.value;
+                        const city = dbCities.find(c => c.name === cityName);
+                        setEditData({
+                          ...editData, 
+                          city: cityName,
+                          city_id: city?.id
+                        });
+                      }}
                       disabled={!editData.state}
                       className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)] disabled:opacity-50"
                     >

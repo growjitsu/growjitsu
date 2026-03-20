@@ -18,8 +18,8 @@ export const ArenaRankings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'athletes' | 'teams'>('athletes');
   const [rankings, setRankings] = useState<ArenaProfile[]>([]);
   const [teamRankings, setTeamRankings] = useState<TeamRanking[]>([]);
-  const [availableLocations, setAvailableLocations] = useState<{city: string, country: string, city_id?: string}[]>([]);
-  const [dbCountries, setDbCountries] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<{city: string, country: string, city_id?: string, country_id?: string}[]>([]);
+  const [dbCountries, setDbCountries] = useState<{id: string, name: string}[]>([]);
   const [dbCities, setDbCities] = useState<{id: string, name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
@@ -43,21 +43,19 @@ export const ArenaRankings: React.FC = () => {
     }
   }, [filter.country]);
 
-  const fetchCitiesByCountry = async (countryName: string) => {
+  const fetchCitiesByCountry = async (countryId: string) => {
     try {
-      // Fetch cities using a join through states to countries
+      // Fetch cities using a join through states
       const { data, error } = await supabase
         .from('cities')
         .select(`
           id,
           name,
           states!inner(
-            countries!inner(
-              name
-            )
+            country_id
           )
         `)
-        .eq('states.countries.name', countryName)
+        .eq('states.country_id', countryId)
         .order('name');
       
       if (error) throw error;
@@ -78,12 +76,12 @@ export const ArenaRankings: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('countries')
-        .select('name')
+        .select('id, name')
         .order('name');
       
       if (error) throw error;
       if (data) {
-        setDbCountries(data.map(c => c.name));
+        setDbCountries(data);
       }
     } catch (error) {
       console.error('Error fetching countries:', error);
@@ -94,7 +92,7 @@ export const ArenaRankings: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('city, country, city_id')
+        .select('city, country, city_id, country_id')
         .not('city', 'is', null)
         .neq('city', '')
         .not('country', 'is', null)
@@ -106,7 +104,8 @@ export const ArenaRankings: React.FC = () => {
         const locations = data.map(d => ({
           city: d.city.toUpperCase(),
           country: d.country.toUpperCase(),
-          city_id: d.city_id
+          city_id: d.city_id,
+          country_id: d.country_id
         }));
         
         // Unique locations
@@ -123,13 +122,24 @@ export const ArenaRankings: React.FC = () => {
 
   const countriesList = dbCountries.length > 0 
     ? dbCountries 
-    : Array.from(new Set(availableLocations.map(l => l.country))).sort();
+    : Array.from(
+        availableLocations
+          .reduce((acc, l) => {
+            if (l.country_id) {
+              if (!acc.has(l.country_id)) {
+                acc.set(l.country_id, { id: l.country_id, name: l.country });
+              }
+            }
+            return acc;
+          }, new Map<string, { id: string, name: string }>())
+          .values()
+      ).sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
 
   const citiesList = dbCities.length > 0
     ? dbCities
     : Array.from(
         availableLocations
-          .filter(l => (filter.country === 'Todas' || l.country === filter.country) && l.city_id)
+          .filter(l => (filter.country === 'Todas' || l.country_id === filter.country) && l.city_id)
           .reduce((acc, l) => {
             const key = l.city_id!;
             if (!acc.has(key)) {
@@ -164,7 +174,8 @@ export const ArenaRankings: React.FC = () => {
       }
       
       if (filter.country !== 'Todas') {
-        query = query.ilike('country', filter.country);
+        // Use country_id for precise filtering as requested
+        query = query.eq('country_id', filter.country);
       }
       
       if (filter.city !== 'Todas') {
@@ -188,7 +199,7 @@ export const ArenaRankings: React.FC = () => {
       // Try to use the RPC first
       const { data, error } = await supabase.rpc('get_team_rankings', {
         p_modality: filter.modality === 'Todas' ? null : filter.modality,
-        p_country: (filter.country !== 'Todas') ? filter.country : null,
+        p_country_id: (filter.country !== 'Todas') ? filter.country : null,
         p_city_id: (filter.city !== 'Todas') ? filter.city : null
       });
       
@@ -216,7 +227,8 @@ export const ArenaRankings: React.FC = () => {
         }
         
         if (filter.country !== 'Todas') {
-          query = query.ilike('country', filter.country);
+          // Use country_id for precise filtering as requested
+          query = query.eq('country_id', filter.country);
         }
         
         if (filter.city !== 'Todas') {
@@ -432,7 +444,7 @@ export const ArenaRankings: React.FC = () => {
             >
               <option value="Todas">Selecionar País</option>
               {countriesList.map(country => (
-                <option key={country} value={country}>{country}</option>
+                <option key={country.id} value={country.id}>{country.name}</option>
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
