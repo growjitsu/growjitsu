@@ -152,17 +152,14 @@ export default function App() {
           userProfile={profile}
           unreadNotifications={unreadNotifications}
           onCreatePost={() => setIsCreatePostModalOpen(true)}
+          onToggleMenu={() => setShowProfileMenu(!showProfileMenu)}
         />
         
         {/* Mobile Header */}
-        <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[var(--bg)]/60 backdrop-blur-2xl border-b border-[var(--border-ui)] flex items-center justify-between px-6 z-40 transition-all duration-500">
+        <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-transparent flex items-center justify-between px-6 z-40 transition-all duration-500">
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
             <div className="w-10 h-10 bg-gradient-to-br from-[var(--primary)] to-blue-700 rounded-xl flex items-center justify-center font-black text-white italic overflow-hidden shadow-lg shadow-blue-500/20 border border-white/10">
-              {profile?.profile_photo || profile?.avatar_url ? (
-                <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                'A'
-              )}
+              A
             </div>
             <span className="text-[11px] font-black uppercase tracking-[0.2em] italic text-[var(--text-main)]">ArenaComp</span>
           </div>
@@ -184,74 +181,74 @@ export default function App() {
                 </span>
               )}
             </button>
-            <div className="relative">
-              <button 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden shadow-lg"
-              >
-                {profile?.profile_photo || profile?.avatar_url ? (
-                  <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
-                    <span className="text-[10px] font-bold">{profile?.full_name?.charAt(0)}</span>
-                  </div>
-                )}
-              </button>
-
-              <AnimatePresence>
-                {showProfileMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl shadow-2xl overflow-hidden z-50 py-2"
-                  >
-                    <button 
-                      onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}
-                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
-                    >
-                      <span>Meu Perfil</span>
-                    </button>
-                    {profile?.role === 'admin' && (
-                      <button 
-                        onClick={() => { navigate('/admin'); setShowProfileMenu(false); }}
-                        className="w-full px-4 py-3 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors flex items-center space-x-2"
-                      >
-                        <span>Painel Admin</span>
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => { navigate('/profile/edit'); setShowProfileMenu(false); }}
-                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
-                    >
-                      <span>Editar Perfil</span>
-                    </button>
-                    <button 
-                      onClick={() => { navigate('/settings'); setShowProfileMenu(false); }}
-                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
-                    >
-                      <span>Configurações</span>
-                    </button>
-                    <button 
-                      onClick={() => { toggleTheme(); setShowProfileMenu(false); }}
-                      className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center justify-between"
-                    >
-                      <span>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
-                      {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
-                    </button>
-                    <div className="h-px bg-[var(--border-ui)] my-1" />
-                    <button 
-                      onClick={() => { supabase.auth.signOut(); navigate('/login'); }}
-                      className="w-full px-4 py-3 text-left text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors flex items-center space-x-2"
-                    >
-                      <span>Logout</span>
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
         </header>
+
+        {/* Mobile Profile Menu Overlay */}
+        <AnimatePresence>
+          {showProfileMenu && (
+            <div className="md:hidden">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowProfileMenu(false)}
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                className="fixed bottom-24 right-6 w-56 bg-[var(--surface)] border border-[var(--border-ui)] rounded-3xl shadow-2xl overflow-hidden z-50 py-3"
+              >
+                <div className="px-4 py-3 border-b border-[var(--border-ui)]/50 mb-2">
+                  <p className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-tight">{profile?.full_name}</p>
+                  <p className="text-[9px] font-black text-[var(--primary)] uppercase tracking-[0.2em]">Level {Math.floor((profile?.arena_score || 0) / 100) + 1}</p>
+                </div>
+                <button 
+                  onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}
+                  className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                >
+                  <span>Meu Perfil</span>
+                </button>
+                {profile?.role === 'admin' && (
+                  <button 
+                    onClick={() => { navigate('/admin'); setShowProfileMenu(false); }}
+                    className="w-full px-4 py-3 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors flex items-center space-x-2"
+                  >
+                    <span>Painel Admin</span>
+                  </button>
+                )}
+                <button 
+                  onClick={() => { navigate('/profile/edit'); setShowProfileMenu(false); }}
+                  className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                >
+                  <span>Editar Perfil</span>
+                </button>
+                <button 
+                  onClick={() => { navigate('/settings'); setShowProfileMenu(false); }}
+                  className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
+                >
+                  <span>Configurações</span>
+                </button>
+                <button 
+                  onClick={() => { toggleTheme(); setShowProfileMenu(false); }}
+                  className="w-full px-4 py-3 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center justify-between"
+                >
+                  <span>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
+                  {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
+                </button>
+                <div className="h-px bg-[var(--border-ui)] my-2" />
+                <button 
+                  onClick={() => { supabase.auth.signOut(); navigate('/login'); }}
+                  className="w-full px-4 py-3 text-left text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors flex items-center space-x-2"
+                >
+                  <span>Logout</span>
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <main className={`${(tabId === 'clips' || tabId === 'feed') ? 'max-w-none pt-16 pb-20 md:pb-0 md:pt-20 h-screen overflow-hidden' : 'max-w-7xl pt-16 md:pt-20'} mx-auto`}>
           <AnimatePresence mode="wait">
@@ -286,7 +283,7 @@ export default function App() {
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--primary)]">/ {tabId}</span>
           </div>
           
-          <div className="flex items-center space-x-8 relative">
+          <div className="flex items-center space-x-6 relative">
             <button 
               onClick={() => navigate('/search')}
               className="p-3 text-[var(--text-muted)] hover:text-[var(--primary)] bg-[var(--surface)]/50 rounded-2xl border border-[var(--border-ui)] transition-all hover:scale-105 active:scale-95"
@@ -294,18 +291,6 @@ export default function App() {
               <Search size={20} />
             </button>
             
-            <div className="flex items-center space-x-4 bg-[var(--surface)]/50 px-6 py-2.5 rounded-2xl border border-[var(--border-ui)] shadow-inner">
-              <div className="text-right">
-                <p className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-tight">{profile?.full_name}</p>
-                <p className="text-[9px] font-black text-[var(--primary)] uppercase tracking-[0.2em]">Level {Math.floor((profile?.arena_score || 0) / 100) + 1}</p>
-              </div>
-              <div className="w-px h-6 bg-[var(--border-ui)]" />
-              <div className="flex flex-col items-center">
-                <span className="text-[12px] font-black text-[var(--text-main)]">{Math.round(profile?.arena_score || 0)}</span>
-                <span className="text-[7px] font-black text-[var(--text-muted)] uppercase tracking-widest">Points</span>
-              </div>
-            </div>
-
             <button 
               onClick={() => navigate('/notifications')}
               className="relative p-3 text-[var(--text-muted)] hover:text-[var(--primary)] bg-[var(--surface)]/50 rounded-2xl border border-[var(--border-ui)] transition-all hover:scale-105 active:scale-95"
@@ -317,72 +302,6 @@ export default function App() {
                 </span>
               )}
             </button>
-
-            <button 
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-12 h-12 rounded-2xl bg-[var(--surface)] border border-[var(--border-ui)] overflow-hidden hover:border-[var(--primary)] transition-all shadow-xl hover:shadow-[var(--primary)]/20 group"
-            >
-              {profile?.profile_photo || profile?.avatar_url ? (
-                <img src={profile.profile_photo || profile.avatar_url} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[var(--primary)]/10 text-[var(--primary)]">
-                  <span className="text-sm font-bold">{profile?.full_name?.charAt(0)}</span>
-                </div>
-              )}
-            </button>
-
-            {/* Profile Dropdown */}
-            <AnimatePresence>
-              {showProfileMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-full right-0 mt-2 w-48 bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl shadow-2xl overflow-hidden z-50 py-2"
-                >
-                  <button 
-                    onClick={() => { navigate('/profile'); setShowProfileMenu(false); }}
-                    className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
-                  >
-                    <span>Meu Perfil</span>
-                  </button>
-                  {profile?.role === 'admin' && (
-                    <button 
-                      onClick={() => { navigate('/admin'); setShowProfileMenu(false); }}
-                      className="w-full px-4 py-2 text-left text-xs font-bold text-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors flex items-center space-x-2"
-                    >
-                      <span>Painel Admin</span>
-                    </button>
-                  )}
-                  <button 
-                    onClick={() => { navigate('/profile/edit'); setShowProfileMenu(false); }}
-                    className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
-                  >
-                    <span>Editar Perfil</span>
-                  </button>
-                  <button 
-                    onClick={() => { navigate('/settings'); setShowProfileMenu(false); }}
-                    className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center space-x-2"
-                  >
-                    <span>Configurações</span>
-                  </button>
-                  <button 
-                    onClick={() => { toggleTheme(); setShowProfileMenu(false); }}
-                    className="w-full px-4 py-2 text-left text-xs font-bold hover:bg-[var(--primary)]/10 hover:text-[var(--primary)] transition-colors flex items-center justify-between"
-                  >
-                    <span>Modo {theme === 'light' ? 'Escuro' : 'Claro'}</span>
-                    {theme === 'light' ? <Moon size={14} /> : <Sun size={14} />}
-                  </button>
-                  <div className="h-px bg-[var(--border-ui)] my-1" />
-                  <button 
-                    onClick={() => { supabase.auth.signOut(); navigate('/login'); }}
-                    className="w-full px-4 py-2 text-left text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors flex items-center space-x-2"
-                  >
-                    <span>Logout</span>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </header>
       </div>

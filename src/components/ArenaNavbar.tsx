@@ -10,9 +10,17 @@ interface ArenaNavbarProps {
   userProfile?: ArenaProfile | null;
   unreadNotifications?: number;
   onCreatePost?: () => void;
+  onToggleMenu?: () => void;
 }
 
-export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTab, userProfile, unreadNotifications = 0, onCreatePost }) => {
+export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ 
+  activeTab, 
+  setActiveTab, 
+  userProfile, 
+  unreadNotifications = 0, 
+  onCreatePost,
+  onToggleMenu
+}) => {
   const { theme, toggleTheme } = useTheme();
   
   const tabs = [
@@ -20,6 +28,7 @@ export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTa
     { id: 'clips', icon: PlaySquare, label: 'Clips' },
     { id: 'post', icon: PlusSquare, label: 'Post' },
     { id: 'rankings', icon: Trophy, label: 'Rankings' },
+    { id: 'menu', icon: Menu, label: 'Menu' },
   ];
 
   return (
@@ -45,6 +54,8 @@ export const ArenaNavbar: React.FC<ArenaNavbarProps> = ({ activeTab, setActiveTa
               onClick={() => {
                 if (tab.id === 'post') {
                   onCreatePost?.();
+                } else if (tab.id === 'menu') {
+                  onToggleMenu?.();
                 } else {
                   setActiveTab(tab.id);
                 }
