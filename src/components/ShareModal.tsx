@@ -22,7 +22,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   followerCount 
 }) => {
   const [copied, setCopied] = useState(false);
-  const canGenerateCard = followerCount >= 100;
 
   const handleCopyLink = async () => {
     try {
@@ -68,34 +67,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               {/* Option 1: Generate Card */}
               <button
                 onClick={() => {
-                  if (canGenerateCard) {
-                    onGenerateCard();
-                    onClose();
-                  }
+                  onGenerateCard();
+                  onClose();
                 }}
-                disabled={!canGenerateCard}
-                className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all group ${
-                  canGenerateCard 
-                    ? 'bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20' 
-                    : 'bg-zinc-800/50 border-zinc-800 opacity-50 cursor-not-allowed'
-                }`}
+                className="w-full p-4 rounded-2xl border bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20 flex items-center justify-between transition-all group"
               >
                 <div className="flex items-center gap-4 text-left">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${canGenerateCard ? 'bg-amber-500 text-black' : 'bg-zinc-700 text-zinc-500'}`}>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500 text-black">
                     <Trophy size={24} />
                   </div>
                   <div>
-                    <h4 className={`text-sm font-black uppercase italic ${canGenerateCard ? 'text-amber-500' : 'text-zinc-500'}`}>Gerar Card</h4>
+                    <h4 className="text-sm font-black uppercase italic text-amber-500">Gerar Card</h4>
                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                      {canGenerateCard ? 'Imagem personalizada para redes' : 'Disponível com 100+ seguidores'}
+                      Imagem personalizada para redes
                     </p>
                   </div>
                 </div>
-                {canGenerateCard && (
-                  <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                    <Award size={16} />
-                  </div>
-                )}
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                  <Award size={16} />
+                </div>
               </button>
 
               {/* Option 2: Copy Link */}
