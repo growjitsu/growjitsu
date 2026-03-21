@@ -103,102 +103,104 @@ const ClipItem: React.FC<{ post: ArenaPost; isActive: boolean }> = ({ post, isAc
   };
 
   return (
-    <div className="relative h-full w-full snap-start bg-black flex items-center justify-center overflow-hidden">
-      <video
-        ref={videoRef}
-        src={post.media_url}
-        className="h-full w-full object-cover"
-        loop
-        muted={isMuted}
-        playsInline
-        onClick={togglePlay}
-      />
+    <div className="relative h-full w-full snap-start bg-black md:bg-zinc-950 flex items-center justify-center overflow-hidden">
+      <div className="relative h-full w-full md:h-[96%] md:aspect-[9/16] bg-black md:rounded-[2rem] md:shadow-2xl md:border md:border-white/5 overflow-hidden">
+        <video
+          ref={videoRef}
+          src={post.media_url}
+          className="h-full w-full object-cover"
+          loop
+          muted={isMuted}
+          playsInline
+          onClick={togglePlay}
+        />
 
-      {/* Overlay Controls */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+        {/* Overlay Controls */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
 
-      {/* Side Actions */}
-      <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-6 z-10">
-        <button onClick={handleLike} className="flex flex-col items-center group">
-          <div className={`p-3 rounded-full backdrop-blur-md transition-all ${isLiked ? 'bg-rose-500 text-white' : 'bg-white/10 text-white group-hover:bg-white/20'}`}>
-            <Heart size={28} className={isLiked ? 'fill-current' : ''} />
-          </div>
-          <span className="text-white text-xs font-black mt-2 shadow-sm">{likesCount}</span>
-        </button>
+        {/* Side Actions */}
+        <div className="absolute right-4 bottom-24 flex flex-col items-center space-y-6 z-10">
+          <button onClick={handleLike} className="flex flex-col items-center group">
+            <div className={`p-3 rounded-full backdrop-blur-md transition-all ${isLiked ? 'bg-rose-500 text-white' : 'bg-white/10 text-white group-hover:bg-white/20'}`}>
+              <Heart size={28} className={isLiked ? 'fill-current' : ''} />
+            </div>
+            <span className="text-white text-xs font-black mt-2 shadow-sm">{likesCount}</span>
+          </button>
 
-        <button className="flex flex-col items-center group">
-          <div className="p-3 rounded-full bg-white/10 backdrop-blur-md text-white group-hover:bg-white/20 transition-all">
-            <MessageCircle size={28} />
-          </div>
-          <span className="text-white text-xs font-black mt-2 shadow-sm">{post.comments_count}</span>
-        </button>
+          <button className="flex flex-col items-center group">
+            <div className="p-3 rounded-full bg-white/10 backdrop-blur-md text-white group-hover:bg-white/20 transition-all">
+              <MessageCircle size={28} />
+            </div>
+            <span className="text-white text-xs font-black mt-2 shadow-sm">{post.comments_count}</span>
+          </button>
 
-        <button className="flex flex-col items-center group">
-          <div className="p-3 rounded-full bg-white/10 backdrop-blur-md text-white group-hover:bg-white/20 transition-all">
-            <Share2 size={28} />
-          </div>
-          <span className="text-white text-xs font-black mt-2 shadow-sm">{post.shares_count || 0}</span>
-        </button>
-      </div>
-
-      {/* Bottom Info */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
-        <div className="flex items-center space-x-3 mb-4">
-          <Link to={`/user/@${post.author?.username}`} className="w-12 h-12 rounded-2xl border-2 border-white overflow-hidden shadow-2xl">
-            {post.author?.profile_photo || post.author?.avatar_url ? (
-              <img src={post.author.profile_photo || post.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-[var(--primary)] text-white">
-                <User size={24} />
-              </div>
-            )}
-          </Link>
-          <div>
-            <Link to={`/user/@${post.author?.username}`} className="text-white font-black text-sm uppercase tracking-wider drop-shadow-lg">
-              {post.author?.full_name}
-            </Link>
-            <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest drop-shadow-lg">@{post.author?.username}</p>
-          </div>
-          <button 
-            onClick={handleFollow}
-            disabled={followLoading}
-            className={`ml-4 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-              isFollowing 
-                ? 'bg-white/20 text-white border border-white/20' 
-                : 'bg-white text-black hover:bg-white/90'
-            }`}
-          >
-            {isFollowing ? '✔ Seguindo' : 'Seguir'}
+          <button className="flex flex-col items-center group">
+            <div className="p-3 rounded-full bg-white/10 backdrop-blur-md text-white group-hover:bg-white/20 transition-all">
+              <Share2 size={28} />
+            </div>
+            <span className="text-white text-xs font-black mt-2 shadow-sm">{post.shares_count || 0}</span>
           </button>
         </div>
-        <p className="text-white text-sm font-medium line-clamp-2 drop-shadow-lg max-w-[80%]">
-          {post.content}
-        </p>
-      </div>
 
-      {/* Mute Toggle */}
-      <button 
-        onClick={() => setIsMuted(!isMuted)}
-        className="absolute top-6 right-6 p-3 bg-black/40 backdrop-blur-md text-white rounded-2xl z-20"
-      >
-        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-      </button>
-
-      {/* Play/Pause Indicator */}
-      <AnimatePresence>
-        {!isPlaying && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          >
-            <div className="p-8 bg-black/40 backdrop-blur-md rounded-full text-white">
-              <Play size={48} fill="currentColor" />
+        {/* Bottom Info */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
+          <div className="flex items-center space-x-3 mb-4">
+            <Link to={`/user/@${post.author?.username}`} className="w-12 h-12 rounded-2xl border-2 border-white overflow-hidden shadow-2xl">
+              {post.author?.profile_photo || post.author?.avatar_url ? (
+                <img src={post.author.profile_photo || post.author.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-[var(--primary)] text-white">
+                  <User size={24} />
+                </div>
+              )}
+            </Link>
+            <div>
+              <Link to={`/user/@${post.author?.username}`} className="text-white font-black text-sm uppercase tracking-wider drop-shadow-lg">
+                {post.author?.full_name}
+              </Link>
+              <p className="text-white/80 text-[10px] font-bold uppercase tracking-widest drop-shadow-lg">@{post.author?.username}</p>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <button 
+              onClick={handleFollow}
+              disabled={followLoading}
+              className={`ml-4 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                isFollowing 
+                  ? 'bg-white/20 text-white border border-white/20' 
+                  : 'bg-white text-black hover:bg-white/90'
+              }`}
+            >
+              {isFollowing ? '✔ Seguindo' : 'Seguir'}
+            </button>
+          </div>
+          <p className="text-white text-sm font-medium line-clamp-2 drop-shadow-lg max-w-[80%]">
+            {post.content}
+          </p>
+        </div>
+
+        {/* Mute Toggle */}
+        <button 
+          onClick={() => setIsMuted(!isMuted)}
+          className="absolute top-6 right-6 p-3 bg-black/40 backdrop-blur-md text-white rounded-2xl z-20"
+        >
+          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+        </button>
+
+        {/* Play/Pause Indicator */}
+        <AnimatePresence>
+          {!isPlaying && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            >
+              <div className="p-8 bg-black/40 backdrop-blur-md rounded-full text-white">
+                <Play size={48} fill="currentColor" />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
@@ -290,7 +292,7 @@ export const ArenaClips: React.FC = () => {
     <div 
       ref={containerRef}
       onScroll={handleScroll}
-      className="h-[calc(100vh-4rem-5rem)] md:h-[calc(100vh-5rem)] w-full bg-black overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
+      className="h-[calc(100vh-4rem-5rem)] md:h-[calc(100vh-5rem)] w-full bg-black md:bg-zinc-950 overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
     >
       {clips.map((clip, index) => (
         <ClipItem 
