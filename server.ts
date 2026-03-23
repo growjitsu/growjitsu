@@ -81,7 +81,17 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // 1. CORS Middleware - MUST BE FIRST
+  // 0. INFRASTRUCTURE LOGGING - MUST BE ABSOLUTELY FIRST
+  app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`[INFRA-LOG] [${timestamp}] ${req.method} ${req.url}`);
+    if (req.method === 'POST') {
+      console.log(`[INFRA-LOG] Headers: ${JSON.stringify(req.headers)}`);
+    }
+    next();
+  });
+
+  // 1. CORS Middleware
   app.use(cors({
     origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -93,15 +103,6 @@ async function startServer() {
   // Handle OPTIONS preflight explicitly for all routes
   app.options("*", (req, res) => {
     res.sendStatus(200);
-  });
-
-  // 2. Request Logging Middleware
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    if (req.method === 'POST') {
-      console.log(`[DEBUG] POST Headers: ${JSON.stringify(req.headers)}`);
-    }
-    next();
   });
 
   // 3. Body Parsing
