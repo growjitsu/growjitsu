@@ -154,8 +154,9 @@ export const getTeams = async () => {
 
 export const generateCard = async (data: any) => {
   const endpoints = [
-    '/api/v1/generate-card',
+    '/generate-card-v3',
     '/api-core/generate',
+    '/api/v1/generate-card',
     '/api/cards/generate-card',
     '/api/cards/generate'
   ];
@@ -168,8 +169,7 @@ export const generateCard = async (data: any) => {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(data),
       });
@@ -186,7 +186,9 @@ export const generateCard = async (data: any) => {
       try {
         errorData = JSON.parse(errorText);
       } catch {
-        errorData = { error: errorText };
+        // Se não for JSON, limpa o HTML e pega o início do texto
+        const cleanText = errorText.replace(/<[^>]*>?/gm, '').trim().substring(0, 100);
+        errorData = { error: cleanText || `Erro de rede (${response.status})` };
       }
       
       console.warn(`[arenaService] Falha no endpoint ${endpoint}:`, response.status, errorData);
@@ -203,7 +205,7 @@ export const generateCard = async (data: any) => {
       console.error(`[arenaService] Erro ao chamar ${endpoint}:`, err);
       lastError = err.message;
       // Continua para o próximo se não for um erro de validação (400)
-      if (err.message.includes('400')) throw err;
+      if (err.message && err.message.includes('400')) throw err;
     }
   }
 
