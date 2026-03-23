@@ -153,8 +153,8 @@ export const getTeams = async () => {
 };
 
 export const generateCard = async (data: any) => {
-  console.log('[arenaService] Chamando /api/cards/generate com dados:', data);
-  const response = await fetch('/api/cards/generate', {
+  console.log('[arenaService] Chamando /api/cards/generate-card com dados:', data);
+  const response = await fetch('/api/cards/generate-card', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

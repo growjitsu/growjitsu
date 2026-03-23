@@ -2,6 +2,7 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
+import cors from "cors";
 import { createClient } from '@supabase/supabase-js';
 import { CardGenerator, CardData } from "./src/services/cardGenerator";
 import dotenv from "dotenv";
@@ -80,40 +81,63 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // 1. Request Logging Middleware
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
+  // 1. CORS Middleware - MUST BE FIRST
+  app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    credentials: true,
+    maxAge: 86400
+  }));
+
+  // Handle OPTIONS preflight explicitly for all routes
+  app.options("*", (req, res) => {
+    res.sendStatus(200);
   });
 
-  // 2. CORS & OPTIONS Middleware
+  // 2. Request Logging Middleware
   app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    if (req.method === 'POST') {
+      console.log(`[DEBUG] POST Headers: ${JSON.stringify(req.headers)}`);
     }
     next();
   });
 
   // 3. Body Parsing
   app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // 4. API Routes - DEFINED BEFORE VITE/STATIC
   
-  // Card Generation Endpoint - Moved to top for priority
-  app.post(["/api/cards/generate", "/api/cards/generate/"], async (req, res) => {
-    console.log("[API] Recebida requisição para gerar card:", JSON.stringify(req.body).substring(0, 100) + "...");
+  // Test Route to verify API is reachable
+  app.get("/api/test-api", (req, res) => {
+    res.json({ success: true, message: "API is reachable", timestamp: new Date().toISOString() });
+  });
+
+  // Card Generation Endpoint - Changed path to avoid potential proxy conflicts
+  app.all(["/api/cards/generate-card", "/api/cards/generate-card/"], async (req, res) => {
+    console.log(`[API] Requisição recebida em ${req.url} | Método: ${req.method}`);
+    
+    if (req.method === 'GET') {
+      return res.json({ message: "Este endpoint aceita apenas POST para geração de cards." });
+    }
+
+    if (req.method !== 'POST') {
+      console.warn(`[API] Método não permitido em ${req.url}: ${req.method}`);
+      return res.status(405).json({ error: `Method ${req.method} not allowed. Use POST.` });
+    }
+
+    console.log("[API] Processando POST para gerar card...");
     try {
       const cardData: CardData = req.body;
       
-      if (!cardData.athleteName || !cardData.achievement) {
-        console.warn("[API] Dados incompletos para geração de card:", cardData);
-        return res.status(400).json({ error: "Missing required card data" });
+      if (!cardData || !cardData.athleteName || !cardData.achievement) {
+        console.warn("[API] Dados inválidos ou incompletos:", req.body);
+        return res.status(400).json({ error: "Missing required card data", received: req.body });
       }
 
-      console.log(`[API] Iniciando geração para ${cardData.athleteName}: ${cardData.achievement}`);
+      console.log(`[API] Gerando card para: ${cardData.athleteName}`);
       
       const buffer = await CardGenerator.generateAchievementCard({
         ...cardData,
@@ -123,17 +147,27 @@ async function startServer() {
         profileUrl: cardData.profileUrl || "https://arenacomp.com.br"
       });
 
-      console.log("[API] Card gerado com sucesso, enviando buffer...");
+      console.log("[API] Card gerado com sucesso!");
       res.set('Content-Type', 'image/png');
+      res.set('Cache-Control', 'no-store');
       res.send(buffer);
     } catch (error: any) {
-      console.error("[API] Erro crítico na geração de card:", error);
+      console.error("[API] Erro na geração de card:", error);
       res.status(500).json({ 
         error: "Failed to generate card", 
         details: error.message,
         stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
+
+  // Legacy route redirect or support
+  app.all(["/api/cards/generate", "/api/cards/generate/"], (req, res) => {
+    console.log(`[API] Redirecionando rota legada ${req.url} para /api/cards/generate-card`);
+    if (req.method === 'POST') {
+      return res.redirect(307, "/api/cards/generate-card");
+    }
+    res.redirect(301, "/api/cards/generate-card");
   });
 
   app.get("/api/health", (req, res) => {
