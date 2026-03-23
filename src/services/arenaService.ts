@@ -168,11 +168,11 @@ export const generateCard = async (data: any) => {
       throw new Error(`Erro ${response.status}: ${text}`);
     }
 
-    const result = await response.json();
-    console.log('[arenaService] Card gerado com sucesso:', result);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    console.log('[arenaService] Card gerado com sucesso:', url);
     
-    // Retorna a URL da imagem (mesmo que seja mock por enquanto)
-    return result.url || result.card?.imageUrl || `https://picsum.photos/seed/${encodeURIComponent(data.athleteName || 'ArenaComp')}/800/1000`;
+    return url;
 
   } catch (error: any) {
     console.error('[arenaService] Erro ao gerar card:', error);
