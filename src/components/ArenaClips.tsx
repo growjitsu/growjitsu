@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { PostModal } from './PostModal';
 import { ShareModal } from './ShareModal';
 import { AchievementCard } from './AchievementCard';
-import { generateCard } from '../services/arenaService';
+import { generateCard, CardData } from '../services/arenaService';
 
 const ClipItem: React.FC<{ 
   post: ArenaPost; 
@@ -237,14 +237,13 @@ export const ArenaClips: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAchievementCardOpen, setIsAchievementCardOpen] = useState(false);
-  const [achievementData, setAchievementData] = useState({
-    type: 'clip',
-    username: '',
-    name: '',
-    score: 0,
-    city: '',
+  const [achievementData, setAchievementData] = useState<CardData>({
     title: '',
-    avatarUrl: ''
+    athleteName: '',
+    achievement: '',
+    modality: '',
+    date: '',
+    profileUrl: ''
   });
   const [shareModalData, setShareModalData] = useState<{
     title: string;
@@ -336,13 +335,12 @@ export const ArenaClips: React.FC = () => {
       url: shareUrl,
       onGenerate: () => {
         setAchievementData({
-          type: 'clip',
-          username: post.author?.username || 'atleta',
-          name: post.author?.full_name || 'Atleta Arena',
-          score: post.author?.arena_score || 0,
-          city: post.author?.city || 'Brasil',
-          title: post.content?.substring(0, 100) || 'Clip Arena',
-          avatarUrl: post.author?.profile_photo || post.author?.avatar_url
+          title: 'Novo Clip',
+          athleteName: post.author?.full_name || 'Atleta Arena',
+          achievement: post.content || 'Publicou um novo clip',
+          modality: 'Clip',
+          date: new Date(post.created_at).toLocaleDateString(),
+          profileUrl: `https://arenacomp.com/${post.author?.username || 'atleta'}`
         });
         setIsAchievementCardOpen(true);
       }

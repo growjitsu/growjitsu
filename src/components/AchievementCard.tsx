@@ -39,7 +39,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
     if (!cardUrl) return;
     const link = document.createElement('a');
     link.href = cardUrl;
-    link.download = `ArenaComp-${data.type}-${data.user.username}.png`;
+    link.download = `ArenaComp-${data.title}-${data.athleteName}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -47,7 +47,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
 
   const handleShare = async () => {
     if (!cardUrl) return;
-    await shareCard(cardUrl, `Minha conquista no ArenaComp: ${data.content.title || data.type}`);
+    await shareCard(cardUrl, `Minha conquista no ArenaComp: ${data.title}`);
   };
 
   const handleWhatsApp = () => {

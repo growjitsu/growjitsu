@@ -7,7 +7,7 @@ import { ArenaPost, ArenaProfile, PostType, ArenaAd } from '../types';
 import { PostModal } from './PostModal';
 import { ShareModal } from './ShareModal';
 import { AchievementCard } from './AchievementCard';
-import { generateCard } from '../services/arenaService';
+import { generateCard, CardData } from '../services/arenaService';
 
 export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
   const [posts, setPosts] = useState<ArenaPost[]>([]);
@@ -26,14 +26,13 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAchievementCardOpen, setIsAchievementCardOpen] = useState(false);
-  const [achievementData, setAchievementData] = useState({
-    type: 'post',
-    username: '',
-    name: '',
-    score: 0,
-    city: '',
+  const [achievementData, setAchievementData] = useState<CardData>({
     title: '',
-    avatarUrl: ''
+    athleteName: '',
+    achievement: '',
+    modality: '',
+    date: '',
+    profileUrl: ''
   });
   const [shareModalData, setShareModalData] = useState<{
     title: string;
@@ -467,13 +466,12 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       url: shareUrl,
       onGenerate: () => {
         setAchievementData({
-          type: 'post',
-          username: post.author?.username || 'atleta',
-          name: post.author?.full_name || 'Atleta Arena',
-          score: post.author?.arena_score || 0,
-          city: post.author?.city || 'Brasil',
-          title: post.content?.substring(0, 100) || 'Postagem Arena',
-          avatarUrl: post.author?.profile_photo || post.author?.avatar_url
+          title: 'Nova Postagem',
+          athleteName: post.author?.full_name || 'Atleta Arena',
+          achievement: post.content || 'Compartilhou um post',
+          modality: 'Feed',
+          date: new Date(post.created_at).toLocaleDateString(),
+          profileUrl: `https://arenacomp.com/${post.author?.username || 'atleta'}`
         });
         setIsAchievementCardOpen(true);
       }

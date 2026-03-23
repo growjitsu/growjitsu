@@ -207,6 +207,12 @@ export class CardGenerator {
   private static template = Handlebars.compile(CARD_TEMPLATE);
 
   static async generateAchievementCard(data: CardData): Promise<Buffer> {
+    console.log('DATA ENVIADA PARA O CARD:', data);
+    
+    if (!data || !data.athleteName) {
+      throw new Error('Dados inválidos para geração do card');
+    }
+
     console.log('[CardGenerator] Iniciando geração de QR Code...');
     try {
       // 1. Generate QR Code

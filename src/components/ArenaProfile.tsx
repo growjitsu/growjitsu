@@ -60,17 +60,12 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
     onGenerate: () => void;
   } | null>(null);
   const [achievementData, setAchievementData] = useState<CardData>({
-    type: 'profile',
-    user: {
-      name: '',
-      username: '',
-      avatar: ''
-    },
-    content: {
-      title: '',
-      score: 0,
-      city: ''
-    }
+    title: '',
+    athleteName: '',
+    achievement: '',
+    modality: '',
+    date: '',
+    profileUrl: ''
   });
 
   useEffect(() => {
@@ -925,19 +920,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
       // Trigger achievement card for new certificate
       setAchievementData({
-        type: 'certificate',
-        user: {
-          name: profile.full_name,
-          username: profile.username || '',
-          avatar: profile.profile_photo || profile.avatar_url || ''
-        },
-        content: {
-          title: '🏆 NOVO CERTIFICADO',
-          description: `Recebeu o certificado: ${file.name.split('.')[0].toUpperCase()}`,
-          image: publicUrl,
-          score: profile.arena_score,
-          city: profile.city || ''
-        }
+        title: '🏆 NOVO CERTIFICADO',
+        athleteName: profile.full_name,
+        achievement: `Recebeu o certificado: ${file.name.split('.')[0].toUpperCase()}`,
+        modality: profile.modality || 'Jiu-Jitsu',
+        date: new Date().toLocaleDateString(),
+        profileUrl: `${window.location.origin}/profile/@${profile.username}`
       });
       setIsAchievementCardOpen(true);
 
@@ -1133,18 +1121,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     url: `${window.location.origin}/profile/@${profile.username}`,
                     onGenerate: () => {
                       setAchievementData({
-                        type: 'profile',
-                        user: {
-                          name: profile.full_name,
-                          username: profile.username || '',
-                          avatar: profile.profile_photo || profile.avatar_url || ''
-                        },
-                        content: {
-                          title: 'PERFIL ARENA',
-                          description: 'Confira meu perfil na ArenaComp!',
-                          score: profile.arena_score,
-                          city: profile.city || ''
-                        }
+                        title: 'PERFIL ARENA',
+                        athleteName: profile.full_name,
+                        achievement: 'Confira meu perfil na ArenaComp!',
+                        modality: profile.modality || 'Jiu-Jitsu',
+                        date: new Date().toLocaleDateString(),
+                        profileUrl: `${window.location.origin}/profile/@${profile.username}`
                       });
                       setIsAchievementCardOpen(true);
                     }
@@ -1256,18 +1238,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     url: `${window.location.origin}/profile/@${profile.username}`,
                     onGenerate: () => {
                       setAchievementData({
-                        type: 'profile',
-                        user: {
-                          name: profile.full_name,
-                          username: profile.username || '',
-                          avatar: profile.profile_photo || profile.avatar_url || ''
-                        },
-                        content: {
-                          title: 'PERFIL ARENA',
-                          description: 'Confira este perfil na ArenaComp!',
-                          score: profile.arena_score,
-                          city: profile.city || ''
-                        }
+                        title: 'PERFIL ARENA',
+                        athleteName: profile.full_name,
+                        achievement: 'Confira este perfil na ArenaComp!',
+                        modality: profile.modality || 'Jiu-Jitsu',
+                        date: new Date().toLocaleDateString(),
+                        profileUrl: `${window.location.origin}/profile/@${profile.username}`
                       });
                       setIsAchievementCardOpen(true);
                     }
@@ -2049,19 +2025,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                     url: `${window.location.origin}/profile/@${profile.username}`,
                                     onGenerate: () => {
                                       setAchievementData({
-                                        type: 'certificate',
-                                        user: {
-                                          name: profile.full_name,
-                                          username: profile.username || '',
-                                          avatar: profile.profile_photo || profile.avatar_url || ''
-                                        },
-                                        content: {
-                                          title: '🏆 CERTIFICADO',
-                                          description: `Certificado: ${cert.name}`,
-                                          image: cert.media_url,
-                                          score: profile.arena_score,
-                                          city: profile.city || ''
-                                        }
+                                        title: '🏆 CERTIFICADO',
+                                        athleteName: profile.full_name,
+                                        achievement: `Certificado: ${cert.name}`,
+                                        modality: profile.modality || 'Jiu-Jitsu',
+                                        date: new Date().toLocaleDateString(),
+                                        profileUrl: `${window.location.origin}/profile/@${profile.username}`
                                       });
                                       setIsAchievementCardOpen(true);
                                     }
@@ -2143,18 +2112,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                               url: `${window.location.origin}/profile/@${profile.username}`,
                               onGenerate: () => {
                                 setAchievementData({
-                                  type: 'post',
-                                  user: {
-                                    name: profile.full_name,
-                                    username: profile.username || '',
-                                    avatar: profile.profile_photo || profile.avatar_url || ''
-                                  },
-                                  content: {
-                                    title: fight.resultado === 'win' ? '🏆 VITÓRIA' : '🥊 LUTA',
-                                    description: `${fight.resultado === 'win' ? 'Venceu' : 'Lutou com'} ${fight.opponent_name} no ${fight.evento}`,
-                                    score: profile.arena_score,
-                                    city: profile.city || ''
-                                  }
+                                  title: fight.resultado === 'win' ? '🏆 VITÓRIA' : '🥊 LUTA',
+                                  athleteName: profile.full_name,
+                                  achievement: `${fight.resultado === 'win' ? 'Venceu' : 'Lutou com'} ${fight.opponent_name} no ${fight.evento}`,
+                                  modality: fight.modalidade || profile.modality || 'Jiu-Jitsu',
+                                  date: new Date(fight.data_luta).toLocaleDateString(),
+                                  profileUrl: `${window.location.origin}/profile/@${profile.username}`
                                 });
                                 setIsAchievementCardOpen(true);
                               }
@@ -2350,19 +2313,12 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                 url: `${window.location.origin}/profile/@${profile.username}`,
                                 onGenerate: () => {
                                   setAchievementData({
-                                    type: 'certificate',
-                                    user: {
-                                      name: profile.full_name,
-                                      username: profile.username || '',
-                                      avatar: profile.profile_photo || profile.avatar_url || ''
-                                    },
-                                    content: {
-                                      title: '🏆 CAMPEONATO',
-                                      description: `${champ.resultado} no ${champ.championship_name}`,
-                                      image: champ.foto_podio_url || '',
-                                      score: profile.arena_score,
-                                      city: profile.city || ''
-                                    }
+                                    title: '🏆 CAMPEONATO',
+                                    athleteName: profile.full_name,
+                                    achievement: `${champ.resultado} no ${champ.championship_name}`,
+                                    modality: champ.modalidade || profile.modality || 'Jiu-Jitsu',
+                                    date: new Date(champ.data_evento).toLocaleDateString(),
+                                    profileUrl: `${window.location.origin}/profile/@${profile.username}`
                                   });
                                   setIsAchievementCardOpen(true);
                                 }

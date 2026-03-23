@@ -153,20 +153,12 @@ export const getTeams = async () => {
 };
 
 export interface CardData {
-  type: 'profile' | 'post' | 'certificate' | 'clip';
-  user: {
-    name: string;
-    username: string;
-    avatar: string;
-  };
-  content: {
-    title?: string;
-    description?: string;
-    image?: string;
-    score?: number;
-    city?: string;
-    date?: string;
-  };
+  title: string;
+  athleteName: string;
+  achievement: string;
+  modality: string;
+  date?: string;
+  profileUrl: string;
 }
 
 export const generateCard = async (data: CardData) => {
