@@ -207,9 +207,10 @@ export class CardGenerator {
   private static template = Handlebars.compile(CARD_TEMPLATE);
 
   static async generateAchievementCard(data: CardData): Promise<Buffer> {
-    console.log('DATA ENVIADA PARA O CARD:', data);
+    console.log('📦 DATA RECEBIDA NO CARD GENERATOR:', data);
     
     if (!data || !data.athleteName) {
+      console.error('❌ DADOS INVÁLIDOS PARA O CARD:', data);
       throw new Error('Dados inválidos para geração do card');
     }
 

@@ -162,6 +162,13 @@ export interface CardData {
 }
 
 export const generateCard = async (data: CardData) => {
+  console.log('🔥 DATA REAL ENVIADA PARA O CARD:', data);
+  
+  if (!data || !data.athleteName) {
+    console.error('❌ DADOS INVÁLIDOS PARA O CARD:', data);
+    throw new Error('Dados inválidos para geração do card');
+  }
+
   try {
     console.log('[arenaService] Chamando Serverless Function em /api/generate-card com payload contextual');
     const response = await fetch('/api/generate-card', {
