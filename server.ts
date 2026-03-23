@@ -132,6 +132,16 @@ async function startServer() {
     }
 
     try {
+      // 5️⃣ TESTE SEM PUPPETEER (ISOLAR PROBLEMA)
+      if (req.query.test === 'true') {
+        console.log('🧪 MODO TESTE ATIVADO: API respondendo sem Puppeteer');
+        return res.status(200).json({
+          success: true,
+          test: 'API funcionando',
+          message: 'O servidor está recebendo requisições corretamente.'
+        });
+      }
+
       const cardData: CardData = req.body;
       if (!cardData || !cardData.athleteName || !cardData.achievement) {
         console.warn("[API-CORE] Dados ausentes:", req.body);
@@ -160,8 +170,15 @@ async function startServer() {
       res.set('Pragma', 'no-cache');
       res.send(buffer);
     } catch (error: any) {
-      console.error("[API-CORE] Erro crítico:", error);
-      res.status(500).json({ error: "Failed to generate card", details: error.message });
+      console.error('🔥 ERRO REAL:', error);
+      
+      // 6️⃣ FALLBACK DE SEGURANÇA
+      return res.status(200).json({
+        success: false,
+        fallback: true,
+        message: 'Falha no render, mas sistema ativo',
+        details: error.message || 'Erro interno'
+      });
     }
   };
 

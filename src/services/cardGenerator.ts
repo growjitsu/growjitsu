@@ -207,6 +207,7 @@ export class CardGenerator {
   private static template = Handlebars.compile(CARD_TEMPLATE);
 
   static async generateAchievementCard(data: CardData): Promise<Buffer> {
+    console.log('🚀 Iniciando geração de card...');
     console.log('📦 DATA RECEBIDA NO CARD GENERATOR:', data);
     
     if (!data || !data.athleteName) {
@@ -231,60 +232,33 @@ export class CardGenerator {
         qrCode: qrCodeDataUrl,
       });
 
-      console.log('[CardGenerator] Preparando lançamento do Puppeteer...');
+      console.log('🧠 Tentando iniciar browser...');
       
-      let browser;
-      
-      // Tentativa 1: chromium-min (Produção)
-      try {
-        const executablePath = await chromium.executablePath();
-        if (executablePath) {
-          console.log('[CardGenerator] Tentando chromium-min em:', executablePath);
-          browser = await puppeteer.launch({
-            args: [...(chromium as any).args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-            defaultViewport: (chromium as any).defaultViewport,
-            executablePath: executablePath,
-            headless: (chromium as any).headless,
-          });
-          console.log('[CardGenerator] Browser iniciado com chromium-min');
-        }
-      } catch (err) {
-        console.warn('[CardGenerator] Falha ao iniciar com chromium-min:', err.message);
+      const executablePath = await chromium.executablePath();
+
+      if (!executablePath) {
+        console.error('❌ Chromium não encontrado');
+        throw new Error('Chromium não encontrado');
       }
 
-      // Tentativa 2: Puppeteer padrão (Desenvolvimento ou Fallback)
-      if (!browser) {
-        try {
-          console.log('[CardGenerator] Tentando puppeteer padrão...');
-          const puppeteerFull = await import('puppeteer');
-          browser = await puppeteerFull.default.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-            headless: true
-          });
-          console.log('[CardGenerator] Browser iniciado com puppeteer padrão');
-        } catch (err) {
-          console.warn('[CardGenerator] Falha ao iniciar com puppeteer padrão:', err.message);
-        }
-      }
+      console.log('[CardGenerator] Usando executablePath:', executablePath);
 
-      // Tentativa 3: Puppeteer-core sem chromium-min (Último recurso)
-      if (!browser) {
-        try {
-          console.log('[CardGenerator] Tentando puppeteer-core sem path específico...');
-          browser = await puppeteer.launch({
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            headless: true
-          });
-          console.log('[CardGenerator] Browser iniciado com puppeteer-core genérico');
-        } catch (err) {
-          console.error('[CardGenerator] Todas as tentativas de iniciar o browser falharam:', err.message);
-          throw new Error('Não foi possível iniciar o motor de renderização de cards.');
-        }
-      }
+      const browser = await puppeteer.launch({
+        args: [
+          ...chromium.args,
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--single-process',
+        ],
+        executablePath,
+        headless: true,
+      });
 
+      console.log('[CardGenerator] Browser iniciado com sucesso');
       return await this.renderCard(browser, html);
-    } catch (error) {
-      console.error('[CardGenerator] Erro crítico na geração:', error);
+    } catch (error: any) {
+      console.error('🔥 ERRO REAL NA GERAÇÃO:', error);
       throw error;
     }
   }
