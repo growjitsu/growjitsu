@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { Share2, Download, Trophy, X, Loader2 } from 'lucide-react';
+import { Share2, Download, Trophy, X, Loader2, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { generateCard } from '../services/arenaService';
+import { generateCard, shareCard, shareWhatsApp } from '../services/arenaService';
 
 interface AchievementCardProps {
   isOpen: boolean;
   onClose: () => void;
   data: {
-    title: string;
-    athleteName: string;
-    achievement: string;
-    modality: string;
-    profileUrl: string;
+    type: string;
+    username: string;
+    name: string;
+    score?: number;
+    city?: string;
+    title?: string;
+    avatarUrl?: string;
   };
 }
 
@@ -45,7 +47,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
     if (!cardUrl) return;
     const link = document.createElement('a');
     link.href = cardUrl;
-    link.download = `ArenaComp-Conquista-${data.athleteName.replace(/\s+/g, '-')}.png`;
+    link.download = `ArenaComp-${data.type}-${data.username}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -53,24 +55,12 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
 
   const handleShare = async () => {
     if (!cardUrl) return;
-    try {
-      const response = await fetch(cardUrl);
-      const blob = await response.blob();
-      const file = new File([blob], 'achievement.png', { type: 'image/png' });
-      
-      if (navigator.share) {
-        await navigator.share({
-          files: [file],
-          title: 'Minha Conquista na ArenaComp',
-          text: `Confira minha nova conquista na ArenaComp: ${data.achievement}!`,
-        });
-      } else {
-        // Fallback: copy to clipboard or just download
-        handleDownload();
-      }
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
+    await shareCard(cardUrl, `Minha conquista no ArenaComp: ${data.title || data.type}`);
+  };
+
+  const handleWhatsApp = () => {
+    if (!cardUrl) return;
+    shareWhatsApp(cardUrl, `Confira minha conquista na ArenaComp 🔥`);
   };
 
   return (
@@ -103,7 +93,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
 
             <div className="p-8 flex flex-col items-center">
               {cardUrl ? (
-                <div className="relative group">
+                <div className="relative group w-full">
                   <img
                     src={cardUrl}
                     alt="Achievement Card"
@@ -118,7 +108,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
                   <Trophy className="w-16 h-16 text-zinc-600 mb-4" />
                   <h4 className="text-zinc-300 font-bold mb-2">Pronto para Gerar!</h4>
                   <p className="text-zinc-500 text-sm mb-8">
-                    Vamos criar um card incrível para sua conquista: "{data.achievement}"
+                    Vamos criar um card incrível para sua conquista na ArenaComp.
                   </p>
                   <button
                     onClick={handleGenerate}
@@ -142,20 +132,29 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
             </div>
 
             {cardUrl && (
-              <div className="p-6 bg-zinc-800/50 border-t border-zinc-800 flex gap-4">
-                <button
-                  onClick={handleDownload}
-                  className="flex-1 py-3 bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <Download className="w-5 h-5" />
-                  Baixar
-                </button>
+              <div className="p-6 bg-zinc-800/50 border-t border-zinc-800 flex flex-col gap-4">
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleDownload}
+                    className="flex-1 py-3 bg-zinc-700 hover:bg-zinc-600 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-5 h-5" />
+                    Baixar
+                  </button>
+                  <button
+                    onClick={handleWhatsApp}
+                    className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    WhatsApp
+                  </button>
+                </div>
                 <button
                   onClick={handleShare}
-                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
                 >
                   <Share2 className="w-5 h-5" />
-                  Compartilhar
+                  Compartilhar em outras redes
                 </button>
               </div>
             )}

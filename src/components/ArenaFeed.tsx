@@ -27,11 +27,13 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAchievementCardOpen, setIsAchievementCardOpen] = useState(false);
   const [achievementData, setAchievementData] = useState({
+    type: 'post',
+    username: '',
+    name: '',
+    score: 0,
+    city: '',
     title: '',
-    athleteName: '',
-    achievement: '',
-    modality: '',
-    profileUrl: ''
+    avatarUrl: ''
   });
   const [shareModalData, setShareModalData] = useState<{
     title: string;
@@ -465,11 +467,13 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       url: shareUrl,
       onGenerate: () => {
         setAchievementData({
-          title: 'POSTAGEM ARENA',
-          athleteName: post.author?.full_name || 'Atleta Arena',
-          achievement: post.content?.substring(0, 60) + (post.content && post.content.length > 60 ? '...' : '') || 'Confira esta postagem na ArenaComp!',
-          modality: 'ARENACOMP FEED',
-          profileUrl: shareUrl
+          type: 'post',
+          username: post.author?.username || 'atleta',
+          name: post.author?.full_name || 'Atleta Arena',
+          score: post.author?.arena_score || 0,
+          city: post.author?.city || 'Brasil',
+          title: post.content?.substring(0, 100) || 'Postagem Arena',
+          avatarUrl: post.author?.profile_photo || post.author?.avatar_url
         });
         setIsAchievementCardOpen(true);
       }

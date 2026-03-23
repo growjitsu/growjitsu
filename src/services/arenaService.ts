@@ -152,7 +152,15 @@ export const getTeams = async () => {
   return data as Team[];
 };
 
-export const generateCard = async (data: any) => {
+export const generateCard = async (data: {
+  type: string;
+  username: string;
+  name: string;
+  score?: number;
+  city?: string;
+  title?: string;
+  avatarUrl?: string;
+}) => {
   try {
     console.log('[arenaService] Chamando Serverless Function em /api/generate-card');
     const response = await fetch('/api/generate-card', {
@@ -178,4 +186,34 @@ export const generateCard = async (data: any) => {
     console.error('[arenaService] Erro ao gerar card:', error);
     throw new Error('Falha ao gerar o card. Por favor, tente novamente.');
   }
+};
+
+export const shareCard = async (url: string, title: string = 'Minha conquista no ArenaComp') => {
+  if (navigator.share) {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const file = new File([blob], 'conquista.png', { type: 'image/png' });
+      
+      await navigator.share({
+        title,
+        text: 'Veja minha conquista na ArenaComp 🔥',
+        files: [file]
+      });
+      return true;
+    } catch (error) {
+      console.error('Erro ao compartilhar:', error);
+      // Fallback para abrir em nova aba se falhar
+      window.open(url, '_blank');
+      return false;
+    }
+  } else {
+    window.open(url, '_blank');
+    return true;
+  }
+};
+
+export const shareWhatsApp = (url: string, text: string = 'Veja minha conquista na ArenaComp 🔥') => {
+  const message = encodeURIComponent(`${text} ${url}`);
+  window.open(`https://wa.me/?text=${message}`, '_blank');
 };

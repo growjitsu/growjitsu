@@ -238,11 +238,13 @@ export const ArenaClips: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAchievementCardOpen, setIsAchievementCardOpen] = useState(false);
   const [achievementData, setAchievementData] = useState({
+    type: 'clip',
+    username: '',
+    name: '',
+    score: 0,
+    city: '',
     title: '',
-    athleteName: '',
-    achievement: '',
-    modality: '',
-    profileUrl: ''
+    avatarUrl: ''
   });
   const [shareModalData, setShareModalData] = useState<{
     title: string;
@@ -334,11 +336,13 @@ export const ArenaClips: React.FC = () => {
       url: shareUrl,
       onGenerate: () => {
         setAchievementData({
-          title: 'CLIP ARENA',
-          athleteName: post.author?.full_name || 'Atleta Arena',
-          achievement: post.content?.substring(0, 60) + (post.content && post.content.length > 60 ? '...' : '') || 'Confira este clip na ArenaComp!',
-          modality: 'ARENACOMP CLIPS',
-          profileUrl: shareUrl
+          type: 'clip',
+          username: post.author?.username || 'atleta',
+          name: post.author?.full_name || 'Atleta Arena',
+          score: post.author?.arena_score || 0,
+          city: post.author?.city || 'Brasil',
+          title: post.content?.substring(0, 100) || 'Clip Arena',
+          avatarUrl: post.author?.profile_photo || post.author?.avatar_url
         });
         setIsAchievementCardOpen(true);
       }
