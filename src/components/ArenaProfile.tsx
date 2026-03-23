@@ -13,7 +13,7 @@ import { countries, modalities } from '../utils/data';
 import { PostModal } from './PostModal';
 import { RegisterFightModal } from './RegisterFightModal';
 import { RegisterChampionshipModal } from './RegisterChampionshipModal';
-import { getAthleteRankings, searchTeams, getTeams } from '../services/arenaService';
+import { getAthleteRankings, searchTeams, getTeams, CardData } from '../services/arenaService';
 import { AchievementCard } from './AchievementCard';
 import { ShareModal } from './ShareModal';
 
@@ -59,12 +59,18 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
     url: string;
     onGenerate: () => void;
   } | null>(null);
-  const [achievementData, setAchievementData] = useState({
-    title: '',
-    athleteName: '',
-    achievement: '',
-    modality: '',
-    profileUrl: ''
+  const [achievementData, setAchievementData] = useState<CardData>({
+    type: 'profile',
+    user: {
+      name: '',
+      username: '',
+      avatar: ''
+    },
+    content: {
+      title: '',
+      score: 0,
+      city: ''
+    }
   });
 
   useEffect(() => {
@@ -919,11 +925,19 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
       // Trigger achievement card for new certificate
       setAchievementData({
-        title: '🏆 NOVO CERTIFICADO',
-        athleteName: profile.full_name,
-        achievement: `Recebeu o certificado: ${file.name.split('.')[0].toUpperCase()}`,
-        modality: profile.modality || 'ATLETA ARENACOMP',
-        profileUrl: `${window.location.origin}/profile/@${profile.username}`
+        type: 'certificate',
+        user: {
+          name: profile.full_name,
+          username: profile.username || '',
+          avatar: profile.profile_photo || profile.avatar_url || ''
+        },
+        content: {
+          title: '🏆 NOVO CERTIFICADO',
+          description: `Recebeu o certificado: ${file.name.split('.')[0].toUpperCase()}`,
+          image: publicUrl,
+          score: profile.arena_score,
+          city: profile.city || ''
+        }
       });
       setIsAchievementCardOpen(true);
 
@@ -1119,11 +1133,18 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     url: `${window.location.origin}/profile/@${profile.username}`,
                     onGenerate: () => {
                       setAchievementData({
-                        title: 'PERFIL ARENA',
-                        athleteName: profile.full_name,
-                        achievement: 'Confira meu perfil na ArenaComp!',
-                        modality: profile.modality || 'ATLETA ARENACOMP',
-                        profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                        type: 'profile',
+                        user: {
+                          name: profile.full_name,
+                          username: profile.username || '',
+                          avatar: profile.profile_photo || profile.avatar_url || ''
+                        },
+                        content: {
+                          title: 'PERFIL ARENA',
+                          description: 'Confira meu perfil na ArenaComp!',
+                          score: profile.arena_score,
+                          city: profile.city || ''
+                        }
                       });
                       setIsAchievementCardOpen(true);
                     }
@@ -1235,11 +1256,18 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                     url: `${window.location.origin}/profile/@${profile.username}`,
                     onGenerate: () => {
                       setAchievementData({
-                        title: 'PERFIL ARENA',
-                        athleteName: profile.full_name,
-                        achievement: 'Confira este perfil na ArenaComp!',
-                        modality: profile.modality || 'ATLETA ARENACOMP',
-                        profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                        type: 'profile',
+                        user: {
+                          name: profile.full_name,
+                          username: profile.username || '',
+                          avatar: profile.profile_photo || profile.avatar_url || ''
+                        },
+                        content: {
+                          title: 'PERFIL ARENA',
+                          description: 'Confira este perfil na ArenaComp!',
+                          score: profile.arena_score,
+                          city: profile.city || ''
+                        }
                       });
                       setIsAchievementCardOpen(true);
                     }
@@ -2021,11 +2049,19 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                     url: `${window.location.origin}/profile/@${profile.username}`,
                                     onGenerate: () => {
                                       setAchievementData({
-                                        title: '🏆 CERTIFICADO',
-                                        athleteName: profile.full_name,
-                                        achievement: `Certificado: ${cert.name}`,
-                                        modality: profile.modality || 'ATLETA ARENACOMP',
-                                        profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                                        type: 'certificate',
+                                        user: {
+                                          name: profile.full_name,
+                                          username: profile.username || '',
+                                          avatar: profile.profile_photo || profile.avatar_url || ''
+                                        },
+                                        content: {
+                                          title: '🏆 CERTIFICADO',
+                                          description: `Certificado: ${cert.name}`,
+                                          image: cert.media_url,
+                                          score: profile.arena_score,
+                                          city: profile.city || ''
+                                        }
                                       });
                                       setIsAchievementCardOpen(true);
                                     }
@@ -2107,11 +2143,18 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                               url: `${window.location.origin}/profile/@${profile.username}`,
                               onGenerate: () => {
                                 setAchievementData({
-                                  title: fight.resultado === 'win' ? '🏆 VITÓRIA' : '🥊 LUTA',
-                                  athleteName: profile.full_name,
-                                  achievement: `${fight.resultado === 'win' ? 'Venceu' : 'Lutou com'} ${fight.opponent_name} no ${fight.evento}`,
-                                  modality: fight.modalidade,
-                                  profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                                  type: 'post',
+                                  user: {
+                                    name: profile.full_name,
+                                    username: profile.username || '',
+                                    avatar: profile.profile_photo || profile.avatar_url || ''
+                                  },
+                                  content: {
+                                    title: fight.resultado === 'win' ? '🏆 VITÓRIA' : '🥊 LUTA',
+                                    description: `${fight.resultado === 'win' ? 'Venceu' : 'Lutou com'} ${fight.opponent_name} no ${fight.evento}`,
+                                    score: profile.arena_score,
+                                    city: profile.city || ''
+                                  }
                                 });
                                 setIsAchievementCardOpen(true);
                               }
@@ -2307,11 +2350,19 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                 url: `${window.location.origin}/profile/@${profile.username}`,
                                 onGenerate: () => {
                                   setAchievementData({
-                                    title: '🏆 CAMPEONATO',
-                                    athleteName: profile.full_name,
-                                    achievement: `${champ.resultado} no ${champ.championship_name}`,
-                                    modality: champ.modalidade,
-                                    profileUrl: `${window.location.origin}/profile/@${profile.username}`
+                                    type: 'certificate',
+                                    user: {
+                                      name: profile.full_name,
+                                      username: profile.username || '',
+                                      avatar: profile.profile_photo || profile.avatar_url || ''
+                                    },
+                                    content: {
+                                      title: '🏆 CAMPEONATO',
+                                      description: `${champ.resultado} no ${champ.championship_name}`,
+                                      image: champ.foto_podio_url || '',
+                                      score: profile.arena_score,
+                                      city: profile.city || ''
+                                    }
                                   });
                                   setIsAchievementCardOpen(true);
                                 }

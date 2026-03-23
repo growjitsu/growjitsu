@@ -1,20 +1,12 @@
 import React, { useState } from 'react';
 import { Share2, Download, Trophy, X, Loader2, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { generateCard, shareCard, shareWhatsApp } from '../services/arenaService';
+import { CardData, generateCard, shareCard, shareWhatsApp } from '../services/arenaService';
 
 interface AchievementCardProps {
   isOpen: boolean;
   onClose: () => void;
-  data: {
-    type: string;
-    username: string;
-    name: string;
-    score?: number;
-    city?: string;
-    title?: string;
-    avatarUrl?: string;
-  };
+  data: CardData;
 }
 
 export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClose, data }) => {
@@ -47,7 +39,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
     if (!cardUrl) return;
     const link = document.createElement('a');
     link.href = cardUrl;
-    link.download = `ArenaComp-${data.type}-${data.username}.png`;
+    link.download = `ArenaComp-${data.type}-${data.user.username}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -55,7 +47,7 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
 
   const handleShare = async () => {
     if (!cardUrl) return;
-    await shareCard(cardUrl, `Minha conquista no ArenaComp: ${data.title || data.type}`);
+    await shareCard(cardUrl, `Minha conquista no ArenaComp: ${data.content.title || data.type}`);
   };
 
   const handleWhatsApp = () => {

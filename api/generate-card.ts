@@ -7,32 +7,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const {
-      type = 'destaque',
-      username = 'atleta',
-      name = 'Arena Fighter',
-      score = 0,
-      city = 'Brasil',
-      title = 'ArenaComp',
-      avatarUrl
-    } = req.body;
+    const { type, user, content } = req.body;
+    const username = user?.username || 'atleta';
+    const name = user?.name || 'Arena Fighter';
+    const avatarUrl = user?.avatar;
+    
+    const title = content?.title || 'ArenaComp';
+    const description = content?.description;
+    const score = content?.score || 0;
+    const city = content?.city || 'Brasil';
+    const date = content?.date;
+    const contentImage = content?.image;
 
     let highlight = '';
     switch (type) {
-      case 'certificado':
-        highlight = '🏆 CAMPEÃO';
-        break;
-      case 'ranking':
-        highlight = '🔥 TOP RANKING';
-        break;
-      case 'clip':
-        highlight = '🎥 NOVO CLIP';
+      case 'profile':
+        highlight = '🔥 Meu Perfil';
         break;
       case 'post':
-        highlight = '📢 NOVA POSTAGEM';
+        highlight = '📢 Nova Postagem';
+        break;
+      case 'certificate':
+        highlight = '🏆 Conquista';
+        break;
+      case 'clip':
+        highlight = '🎥 Novo Clip';
         break;
       default:
-        highlight = '🔥 DESTAQUE';
+        highlight = '🔥 Destaque';
     }
 
     const width = 1080;
@@ -65,25 +67,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ctx.fillText('ARENACOMP', width / 2, 150);
     ctx.shadowBlur = 0;
 
-    // 👤 Avatar Centralizado
-    if (avatarUrl) {
+    // 👤 Imagem de Destaque (Avatar ou Conteúdo)
+    const mainImageUrl = contentImage || avatarUrl;
+    if (mainImageUrl) {
       try {
-        const avatar = await loadImage(avatarUrl);
+        const image = await loadImage(mainImageUrl);
         ctx.save();
-        ctx.beginPath();
-        ctx.arc(width / 2, 550, 220, 0, Math.PI * 2);
-        ctx.closePath();
         
-        // Borda dourada do avatar
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 15;
-        ctx.stroke();
-        
-        ctx.clip();
-        ctx.drawImage(avatar, width / 2 - 220, 330, 440, 440);
+        if (contentImage && (type === 'post' || type === 'clip' || type === 'certificate')) {
+          // Para posts, clips e certificados, usamos um retângulo arredondado
+          const r = 40;
+          const x = 100;
+          const y = 300;
+          const w = 880;
+          const h = 600;
+          
+          ctx.beginPath();
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + w - r, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+          ctx.lineTo(x + w, y + h - r);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+          ctx.lineTo(x + r, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+          ctx.closePath();
+          
+          ctx.strokeStyle = '#FFD700';
+          ctx.lineWidth = 10;
+          ctx.stroke();
+          
+          ctx.clip();
+          // Aspect fill logic
+          const scale = Math.max(w / image.width, h / image.height);
+          const drawW = image.width * scale;
+          const drawH = image.height * scale;
+          const drawX = x + (w - drawW) / 2;
+          const drawY = y + (h - drawH) / 2;
+          ctx.drawImage(image, drawX, drawY, drawW, drawH);
+        } else {
+          // Para perfil, mantemos o círculo
+          ctx.beginPath();
+          ctx.arc(width / 2, 550, 220, 0, Math.PI * 2);
+          ctx.closePath();
+          
+          ctx.strokeStyle = '#FFD700';
+          ctx.lineWidth = 15;
+          ctx.stroke();
+          
+          ctx.clip();
+          ctx.drawImage(image, width / 2 - 220, 330, 440, 440);
+        }
         ctx.restore();
       } catch (err) {
-        console.error('[Serverless] Erro ao carregar avatar:', err);
+        console.error('[Serverless] Erro ao carregar imagem:', err);
         // Fallback: Círculo com inicial
         ctx.fillStyle = '#1E90FF';
         ctx.beginPath();
@@ -98,34 +136,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 🧾 Nome do Atleta
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 85px Arial';
-    ctx.fillText(name, width / 2, 880);
+    ctx.fillText(name, width / 2, 1000);
 
     // @username
     ctx.fillStyle = '#1E90FF';
     ctx.font = '50px Arial';
-    ctx.fillText(`@${username}`, width / 2, 960);
+    ctx.fillText(`@${username}`, width / 2, 1080);
 
     // 🏆 Destaque Dinâmico
     ctx.fillStyle = '#FFD700';
     ctx.font = 'bold 100px Arial';
-    ctx.fillText(highlight, width / 2, 1150);
+    ctx.fillText(highlight, width / 2, 1250);
 
     // 📊 Informações Adicionais (Score e Cidade)
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 60px Arial';
-    ctx.fillText(`SCORE: ${score}`, width / 2, 1300);
+    if (type === 'profile' || score > 0) {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 60px Arial';
+      ctx.fillText(`SCORE: ${score}`, width / 2, 1400);
+    }
 
-    ctx.fillStyle = '#AAAAAA';
-    ctx.font = '45px Arial';
-    ctx.fillText(city, width / 2, 1380);
+    if (city && city !== 'Brasil') {
+      ctx.fillStyle = '#AAAAAA';
+      ctx.font = '45px Arial';
+      ctx.fillText(city, width / 2, 1480);
+    }
 
-    // 🏷️ Título da Conquista (se houver)
-    if (title && title !== 'ArenaComp') {
+    if (date) {
+      ctx.fillStyle = '#AAAAAA';
+      ctx.font = '40px Arial';
+      ctx.fillText(date, width / 2, 1550);
+    }
+
+    // 🏷️ Título da Conquista / Descrição
+    const textToDisplay = description || title;
+    if (textToDisplay && textToDisplay !== 'ArenaComp') {
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'italic 40px Arial';
-      const words = title.split(' ');
+      const words = textToDisplay.split(' ');
       let line = '';
-      let y = 1500;
+      let y = 1650;
       for(let n = 0; n < words.length; n++) {
         let testLine = line + words[n] + ' ';
         if (testLine.length > 40) {

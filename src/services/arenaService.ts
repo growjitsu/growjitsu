@@ -152,17 +152,26 @@ export const getTeams = async () => {
   return data as Team[];
 };
 
-export const generateCard = async (data: {
-  type: string;
-  username: string;
-  name: string;
-  score?: number;
-  city?: string;
-  title?: string;
-  avatarUrl?: string;
-}) => {
+export interface CardData {
+  type: 'profile' | 'post' | 'certificate' | 'clip';
+  user: {
+    name: string;
+    username: string;
+    avatar: string;
+  };
+  content: {
+    title?: string;
+    description?: string;
+    image?: string;
+    score?: number;
+    city?: string;
+    date?: string;
+  };
+}
+
+export const generateCard = async (data: CardData) => {
   try {
-    console.log('[arenaService] Chamando Serverless Function em /api/generate-card');
+    console.log('[arenaService] Chamando Serverless Function em /api/generate-card com payload contextual');
     const response = await fetch('/api/generate-card', {
       method: 'POST',
       headers: {
