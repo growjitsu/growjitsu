@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate, useParams, BrowserRouter } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
 import { ArenaNavbar } from './components/ArenaNavbar';
@@ -314,7 +314,7 @@ export default function App() {
   };
 
   return (
-    <BrowserRouter>
+    <>
       <Toaster position="top-center" theme="dark" />
       <Routes>
       <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <ArenaAuth />} />
@@ -385,6 +385,6 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-    </BrowserRouter>
+    </>
   );
 }
