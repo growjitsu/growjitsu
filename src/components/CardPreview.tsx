@@ -18,7 +18,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({ data, className = "" }
   } = data;
 
   return (
-    <div className={`relative w-full aspect-[4/5] bg-gradient-to-br from-[#001F3F] via-[#003366] to-[#D4AF37] overflow-hidden shadow-2xl ${className}`}>
+    <div className={`relative w-full aspect-[9/16] bg-gradient-to-br from-[#001F3F] via-[#003366] to-[#D4AF37] overflow-hidden shadow-2xl ${className}`}>
       {/* Background Overlay for texture */}
       <div className="absolute inset-0 opacity-30 mix-blend-overlay">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_20%,_rgba(255,255,255,0.2)_0%,_transparent_50%)]" />
@@ -59,16 +59,19 @@ export const CardPreview: React.FC<CardPreviewProps> = ({ data, className = "" }
         <div className="flex-grow flex flex-col justify-center space-y-4 px-6">
           <div className="space-y-1">
             <h1 
-              className="font-black uppercase leading-[0.85] text-white tracking-tighter drop-shadow-2xl text-center"
+              className="font-black uppercase text-white tracking-tighter drop-shadow-2xl text-center"
               style={{ 
-                fontSize: 'clamp(24px, 4vw, 56px)',
-                maxWidth: '85%',
+                fontSize: 'clamp(22px, 5vw, 42px)',
+                fontWeight: 900,
+                maxWidth: '90%',
+                margin: '0 auto',
+                whiteSpace: 'normal',
                 wordBreak: 'break-word',
+                lineHeight: 1.1,
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                margin: '0 auto'
+                overflow: 'hidden'
               }}
             >
               {athleteName}

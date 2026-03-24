@@ -17,7 +17,13 @@ import { getAthleteRankings, searchTeams, getTeams, CardData } from '../services
 import { AchievementCard } from './AchievementCard';
 import { ShareModal } from './ShareModal';
 
-export const ArenaProfileView: React.FC<{ userId?: string; username?: string; forceEdit?: boolean }> = ({ userId, username, forceEdit }) => {
+export const ArenaProfileView: React.FC<{ 
+  userId?: string; 
+  username?: string; 
+  contentId?: string; 
+  contentType?: string; 
+  forceEdit?: boolean 
+}> = ({ userId, username, contentId, contentType, forceEdit }) => {
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
   const [results, setResults] = useState<ArenaResult[]>([]);
   const [championships, setChampionships] = useState<ArenaChampionshipResult[]>([]);
@@ -177,6 +183,33 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
         }
         profileData = byUsername;
         targetId = byUsername.id;
+      } else if (contentId && contentType) {
+        // Handle content ID (certificates, championships)
+        let table = '';
+        if (contentType === 'certificates') {
+          table = 'certificates';
+          setActiveTab('certificates');
+        } else if (contentType === 'fights') {
+          table = 'fights';
+          setActiveTab('fights');
+        } else if (contentType === 'championships') {
+          table = 'championship_results';
+          setActiveTab('championships');
+        } else if (contentType === 'profile') {
+          targetId = contentId;
+        }
+        
+        if (table) {
+          const { data: contentData } = await supabase
+            .from(table)
+            .select('athlete_id')
+            .eq('id', contentId)
+            .maybeSingle();
+          
+          if (contentData) {
+            targetId = contentData.athlete_id;
+          }
+        }
       } else if (!targetId && user) {
         targetId = user.id;
       }
@@ -359,7 +392,23 @@ export const ArenaProfileView: React.FC<{ userId?: string; username?: string; fo
       }
     };
     fetchAllTeams();
-  }, [userId, username, forceEdit]);
+  }, [userId, username, contentId, contentType, forceEdit]);
+
+  // Scroll to content if provided
+  useEffect(() => {
+    if (contentId && !loading) {
+      setTimeout(() => {
+        const element = document.getElementById(`content-${contentId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('ring-2', 'ring-[var(--primary)]', 'ring-offset-4', 'ring-offset-black');
+          setTimeout(() => {
+            element.classList.remove('ring-2', 'ring-[var(--primary)]', 'ring-offset-4', 'ring-offset-black');
+          }, 3000);
+        }
+      }, 500);
+    }
+  }, [contentId, loading, activeTab]);
 
   const handleArchive = async (postId: string, archive: boolean = true) => {
     try {
@@ -1120,7 +1169,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   setShareModalData({
                     title: profile.full_name,
                     subtitle: 'Confira meu perfil na ArenaComp!',
-                    url: `${window.location.origin}/profile/@${profile.username}`,
+                    url: `${window.location.origin}/share/profile/${profile.id}`,
                     onGenerate: () => {
                       setAchievementData({
                         title: 'PERFIL ARENA',
@@ -1128,7 +1177,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                         achievement: 'Confira meu perfil na ArenaComp!',
                         modality: profile.modality || 'Jiu-Jitsu',
                         date: new Date().toLocaleDateString(),
-                        profileUrl: `${window.location.origin}/profile/@${profile.username}`,
+                        profileUrl: `${window.location.origin}/share/profile/${profile.id}`,
                         type: 'profile',
                         realId: profile.id,
                         mainImageUrl: profile.profile_photo || profile.avatar_url
@@ -1240,7 +1289,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                   setShareModalData({
                     title: profile.full_name,
                     subtitle: 'Confira este perfil na ArenaComp!',
-                    url: `${window.location.origin}/profile/@${profile.username}`,
+                    url: `${window.location.origin}/share/profile/${profile.id}`,
                     onGenerate: () => {
                       setAchievementData({
                         title: 'PERFIL ARENA',
@@ -1248,7 +1297,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                         achievement: 'Confira este perfil na ArenaComp!',
                         modality: profile.modality || 'Jiu-Jitsu',
                         date: new Date().toLocaleDateString(),
-                        profileUrl: `${window.location.origin}/profile/@${profile.username}`,
+                        profileUrl: `${window.location.origin}/share/profile/${profile.id}`,
                         type: 'profile',
                         realId: profile.id,
                         mainImageUrl: profile.profile_photo || profile.avatar_url
@@ -1861,6 +1910,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 {posts.length > 0 ? posts.map((post) => (
                     <div 
                       key={post.id} 
+                      id={`content-${post.id}`}
                       onClick={() => {
                         setSelectedPost({ ...post, author: profile || undefined });
                         setModalInitialEditMode(false);
@@ -1981,7 +2031,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                 {certificates.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {certificates.map((cert) => (
-                      <div key={cert.id} className="group relative bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl aspect-[4/3] flex flex-col">
+                      <div key={cert.id} id={`content-${cert.id}`} className="group relative bg-[var(--surface)] border border-[var(--border-ui)] rounded-2xl aspect-[4/3] flex flex-col">
                         <div className="flex-1 relative bg-[var(--bg)] flex items-center justify-center rounded-t-2xl overflow-hidden">
                           {cert.media_type === 'image' ? (
                             <img 
@@ -2030,7 +2080,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                   setShareModalData({
                                     title: '🏆 CERTIFICADO',
                                     subtitle: cert.name,
-                                    url: `${window.location.origin}/profile/@${profile.username}`,
+                                    url: `${window.location.origin}/share/certificate/${cert.id}`,
                                     onGenerate: () => {
                                       setAchievementData({
                                         title: '🏆 CERTIFICADO',
@@ -2038,7 +2088,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                         achievement: `Certificado: ${cert.name}`,
                                         modality: profile.modality || 'Jiu-Jitsu',
                                         date: new Date().toLocaleDateString(),
-                                        profileUrl: `${window.location.origin}/profile/@${profile.username}`,
+                                        profileUrl: `${window.location.origin}/share/certificate/${cert.id}`,
                                         type: 'certificate',
                                         realId: cert.id,
                                         mainImageUrl: cert.media_url
@@ -2096,7 +2146,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
             ) : activeTab === 'fights' ? (
               <div className="space-y-4">
                 {fights.length > 0 ? fights.map((fight) => (
-                  <div key={fight.id} className="bg-[var(--surface)] border border-[var(--border-ui)] p-6 rounded-[2rem] transition-colors duration-300">
+                  <div key={fight.id} id={`content-${fight.id}`} className="bg-[var(--surface)] border border-[var(--border-ui)] p-6 rounded-[2rem] transition-colors duration-300">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -2120,7 +2170,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                             setShareModalData({
                               title: fight.resultado === 'win' ? '🏆 VITÓRIA' : '🥊 LUTA',
                               subtitle: `${fight.opponent_name} no ${fight.evento}`,
-                              url: `${window.location.origin}/profile/@${profile.username}`,
+                              url: `${window.location.origin}/share/fight/${fight.id}`,
                               onGenerate: () => {
                                 setAchievementData({
                                   title: fight.resultado === 'win' ? '🏆 VITÓRIA' : '🥊 LUTA',
@@ -2128,7 +2178,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                   achievement: `${fight.resultado === 'win' ? 'Venceu' : 'Lutou com'} ${fight.opponent_name} no ${fight.evento}`,
                                   modality: fight.modalidade || profile.modality || 'Jiu-Jitsu',
                                   date: new Date(fight.data_luta).toLocaleDateString(),
-                                  profileUrl: `${window.location.origin}/profile/@${profile.username}`,
+                                  profileUrl: `${window.location.origin}/share/fight/${fight.id}`,
                                   type: 'fight',
                                   realId: fight.id
                                 });
@@ -2291,7 +2341,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
             ) : (
               <div className="space-y-6">
                 {championships.length > 0 ? championships.map((champ) => (
-                  <div key={champ.id} className="bg-[var(--surface)] border border-[var(--border-ui)] rounded-[2rem] overflow-hidden transition-colors duration-300">
+                  <div key={champ.id} id={`content-${champ.id}`} className="bg-[var(--surface)] border border-[var(--border-ui)] rounded-[2rem] overflow-hidden transition-colors duration-300">
                     <div className="flex flex-col md:flex-row">
                       {champ.foto_podio_url && (
                         <div className="w-full md:w-48 h-48 md:h-auto overflow-hidden flex-shrink-0 bg-black/10 flex items-center justify-center">
@@ -2323,7 +2373,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                               setShareModalData({
                                 title: '🏆 CAMPEONATO',
                                 subtitle: champ.championship_name,
-                                url: `${window.location.origin}/profile/@${profile.username}`,
+                                url: `${window.location.origin}/share/championship/${champ.id}`,
                                 onGenerate: () => {
                                   setAchievementData({
                                     title: '🏆 CAMPEONATO',
@@ -2331,7 +2381,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                                     achievement: `${champ.resultado} no ${champ.championship_name}`,
                                     modality: champ.modalidade || profile.modality || 'Jiu-Jitsu',
                                     date: new Date(champ.data_evento).toLocaleDateString(),
-                                    profileUrl: `${window.location.origin}/profile/@${profile.username}`,
+                                    profileUrl: `${window.location.origin}/share/championship/${champ.id}`,
                                     type: 'championship',
                                     realId: champ.id,
                                     mainImageUrl: champ.foto_podio_url

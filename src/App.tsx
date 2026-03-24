@@ -27,9 +27,18 @@ import { useTheme } from './context/ThemeContext';
 import { Toaster } from 'sonner';
 
 const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
-  const { userId, username } = useParams();
+  const { userId, username, id } = useParams();
   const location = useLocation();
-  return <ArenaProfileView key={`${userId}-${username}-${location.pathname}`} userId={userId} username={username} forceEdit={forceEdit} />;
+  const contentType = location.pathname.split('/')[1];
+  
+  return <ArenaProfileView 
+    key={`${userId}-${username}-${id}-${location.pathname}`} 
+    userId={userId} 
+    username={username} 
+    contentId={id}
+    contentType={contentType}
+    forceEdit={forceEdit} 
+  />;
 };
 
 export default function App() {
@@ -329,6 +338,13 @@ export default function App() {
       <Route path="/notifications" element={renderLayout(<ArenaNotifications />, 'notifications')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />
+      
+      {/* Redirection Routes */}
+      <Route path="/feed/post/:id" element={renderLayout(<ArenaFeed userProfile={profile} />, 'feed')} />
+      <Route path="/clips/:id" element={renderLayout(<ArenaClips />, 'clips')} />
+      <Route path="/certificates/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/fights/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/championships/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
       
       <Route path="/post/:id" element={<Navigate to="/" replace />} />
       <Route path="/clip/:id" element={<Navigate to="/clips" replace />} />

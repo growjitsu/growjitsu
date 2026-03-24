@@ -156,23 +156,28 @@ export const SharePage = () => {
     const realId = cardData.realId;
 
     if (realId && contentType) {
-      if (contentType === 'post') navigate(`/post/${realId}`);
-      else if (contentType === 'certificate') navigate(`/certificate/${realId}`);
-      else if (contentType === 'clip') navigate(`/clip/${realId}`);
-      else if (contentType === 'profile') navigate(`/profile/${realId}`);
-      else if (contentType === 'championship' || contentType === 'fight') {
-        if (cardData.profileUrl) {
-          const usernameMatch = cardData.profileUrl.match(/@([^/]+)/);
-          if (usernameMatch) {
-            navigate(`/profile/@${usernameMatch[1]}`);
-          } else {
-            navigate('/');
-          }
-        } else {
-          navigate('/');
-        }
+      // Usando window.location.href conforme solicitado para garantir o redirecionamento exato
+      switch (contentType) {
+        case 'post':
+          window.location.href = `/feed/post/${realId}`;
+          break;
+        case 'certificate':
+          window.location.href = `/certificates/${realId}`;
+          break;
+        case 'clip':
+          window.location.href = `/clips/${realId}`;
+          break;
+        case 'championship':
+          window.location.href = `/championships/${realId}`;
+          break;
+        case 'profile':
+          window.location.href = `/profile/${realId}`;
+          break;
+        default:
+          window.location.href = '/feed';
       }
-      else navigate('/');
+    } else {
+      window.location.href = '/feed';
     }
   };
 
@@ -230,14 +235,16 @@ export const SharePage = () => {
         <div className="w-10" /> {/* Spacer */}
       </div>
 
-      {/* Card Preview Container */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[320px] bg-[#111] rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden mb-8"
-      >
-        <CardPreview data={cardData} />
-      </motion.div>
+      {/* Card Preview Container - Virtual Phone Layout */}
+      <div className="flex justify-center items-center w-full mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-[420px] md:max-w-[380px] aspect-[9/16] bg-[#111] rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden"
+        >
+          <CardPreview data={cardData} />
+        </motion.div>
+      </div>
 
       {/* Actions */}
       <div className="w-full max-w-md grid grid-cols-1 gap-4">

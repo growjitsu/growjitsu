@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Heart, MessageCircle, Share2, User, Award, Volume2, VolumeX, Play, Pause, ChevronUp, ChevronDown } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaPost, ArenaProfile } from '../types';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { PostModal } from './PostModal';
 import { ShareModal } from './ShareModal';
 import { AchievementCard } from './AchievementCard';
@@ -252,11 +252,27 @@ export const ArenaClips: React.FC = () => {
     onGenerate?: () => void;
   }>({ title: '', url: '' });
   const containerRef = useRef<HTMLDivElement>(null);
+  const { id: urlClipId } = useParams<{ id?: string }>();
 
   useEffect(() => {
     fetchClips();
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUser(user));
   }, []);
+
+  useEffect(() => {
+    if (clips.length > 0 && urlClipId) {
+      const index = clips.findIndex(c => c.id === urlClipId);
+      if (index !== -1) {
+        setActiveIndex(index);
+        if (containerRef.current) {
+          containerRef.current.scrollTo({
+            top: index * containerRef.current.clientHeight,
+            behavior: 'auto'
+          });
+        }
+      }
+    }
+  }, [clips, urlClipId]);
 
   const fetchClips = async () => {
     setLoading(true);
@@ -327,7 +343,7 @@ export const ArenaClips: React.FC = () => {
   };
 
   const handleShare = async (post: ArenaPost) => {
-    const shareUrl = `${window.location.origin}/?post=${post.id}`;
+    const shareUrl = `${window.location.origin}/share/clip/${post.id}`;
     
     setShareModalData({
       title: 'Compartilhar Clip',

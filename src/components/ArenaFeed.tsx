@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Award, Plus, Image as ImageIcon, User, Video, X, MoreVertical, Trash2, Edit2, Archive, RotateCcw } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ArenaPost, ArenaProfile, PostType, ArenaAd } from '../types';
@@ -53,6 +53,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   const [trendingPosts, setTrendingPosts] = useState<ArenaPost[]>([]);
   const [ads, setAds] = useState<ArenaAd[]>([]);
   const [promotedProfiles, setPromotedProfiles] = useState<ArenaProfile[]>([]);
+  const { id: urlPostId } = useParams<{ id?: string }>();
 
   useEffect(() => {
     fetchPosts(0, true);
@@ -62,13 +63,15 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
     fetchAds();
     fetchPromotedProfiles();
 
-    // Check for single post in URL
+    // Check for single post in URL (query param or route param)
     const params = new URLSearchParams(window.location.search);
-    const postId = params.get('post');
+    const queryPostId = params.get('post');
+    const postId = urlPostId || queryPostId;
+    
     if (postId) {
       fetchSinglePost(postId);
     }
-  }, []);
+  }, [urlPostId]);
 
   const handleArchivePost = async (postId: string, archive: boolean = true) => {
     try {
@@ -458,7 +461,7 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
   };
 
   const handleShare = async (post: ArenaPost) => {
-    const shareUrl = `${window.location.origin}/?post=${post.id}`;
+    const shareUrl = `${window.location.origin}/share/post/${post.id}`;
     
     setShareModalData({
       title: 'Compartilhar Postagem',
