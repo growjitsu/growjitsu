@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Share2, Download, Trophy, X, Loader2, MessageCircle, Link as LinkIcon } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Share2, Download, Trophy, X, Loader2, MessageCircle, Link as LinkIcon, Instagram } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CardData, generateCard, shareCard, shareWhatsApp } from '../services/arenaService';
+import { CardData, generateCard, shareCard, shareWhatsApp, shareToSocial } from '../services/arenaService';
 import { CardPreview } from './CardPreview';
+import { toPng } from 'html-to-image';
 
 import { toast } from 'sonner';
 
@@ -15,11 +16,14 @@ interface AchievementCardProps {
 export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClose, data }) => {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sharingSocial, setSharingSocial] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (isOpen) {
       setShareUrl(null);
       setLoading(false);
+      setSharingSocial(false);
     }
   }, [isOpen]);
 
@@ -34,6 +38,37 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
       toast.error('Falha ao gerar o link de compartilhamento.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleInstagramShare = async () => {
+    if (!cardRef.current) return;
+    
+    setSharingSocial(true);
+    try {
+      // 1. Garantir que a imagem está carregada e gerar o PNG do card
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        quality: 1,
+        pixelRatio: 2,
+      });
+
+      // 2. Compartilhar usando a função universal
+      const result = await shareToSocial(dataUrl, "Minha conquista no ArenaComp 🔥");
+      
+      if (result.method === 'download') {
+        toast.info('Imagem baixada! Agora você pode compartilhar no Instagram.');
+        alert("Baixe a imagem e compartilhe no Instagram");
+      } else {
+        toast.success('Compartilhamento iniciado!');
+      }
+    } catch (error) {
+      console.error('Erro ao compartilhar no Instagram:', error);
+      toast.error('Falha ao preparar imagem para o Instagram.');
+      // Fallback simples se tudo falhar
+      alert("Baixe a imagem e compartilhe no Instagram");
+    } finally {
+      setSharingSocial(false);
     }
   };
 
@@ -83,7 +118,10 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
 
             <div className="p-6 flex flex-col items-center">
               {/* Real-time Preview */}
-              <div className="w-full max-w-[320px] shadow-2xl rounded-3xl overflow-hidden border border-white/10">
+              <div 
+                ref={cardRef}
+                className="w-full max-w-[320px] shadow-2xl rounded-3xl overflow-hidden border border-white/10 bg-black"
+              >
                 <CardPreview data={data} />
               </div>
               
@@ -115,29 +153,44 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
 
             {shareUrl && (
               <div className="p-6 bg-white/5 border-t border-white/5 flex flex-col gap-4">
-                <div className="flex gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={handleCopyLink}
-                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-2"
+                    className="py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-2"
                   >
                     <LinkIcon className="w-4 h-4" />
                     Copiar Link
                   </button>
                   <button
                     onClick={handleWhatsApp}
-                    className="flex-1 py-4 bg-[#25D366] hover:bg-[#128C7E] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-600/20"
+                    className="py-4 bg-[#25D366] hover:bg-[#128C7E] text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-600/20"
                   >
                     <MessageCircle className="w-4 h-4" />
                     WhatsApp
                   </button>
                 </div>
-                <button
-                  onClick={handleShare}
-                  className="w-full py-4 bg-[#0066FF] hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[11px] rounded-2xl transition-all flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20"
-                >
-                  <Share2 className="w-5 h-5" />
-                  Compartilhar Agora
-                </button>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handleInstagramShare}
+                    disabled={sharingSocial}
+                    className="py-4 bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] hover:opacity-90 disabled:opacity-50 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-pink-600/20"
+                  >
+                    {sharingSocial ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Instagram className="w-4 h-4" />
+                    )}
+                    Instagram
+                  </button>
+                  <button
+                    onClick={handleShare}
+                    className="py-4 bg-[#0066FF] hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[10px] rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Outros
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>

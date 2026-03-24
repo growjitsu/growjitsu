@@ -228,3 +228,36 @@ export const shareWhatsApp = (url: string, text: string = 'Veja minha conquista 
   const message = encodeURIComponent(`${text} ${url}`);
   window.open(`https://wa.me/?text=${message}`, '_blank');
 };
+
+export const shareToSocial = async (imageUrl: string, text: string) => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+
+    const file = new File([blob], "arenacomp.png", {
+      type: blob.type,
+    });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        text: text,
+      });
+      return { success: true, method: 'native' };
+    } else {
+      // fallback: download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'arenacomp.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return { success: true, method: 'download' };
+    }
+  } catch (error) {
+    console.error('Erro ao compartilhar:', error);
+    throw error;
+  }
+};
