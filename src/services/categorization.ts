@@ -69,8 +69,23 @@ export const getWeightCategory = (gender: Gender, weight: number, ageCategory: s
 };
 
 export const getAutomaticCategorization = (birthDate: string, gender: string, weight: number) => {
+  // Normalizar peso para garantir que é um número válido
+  const numericWeight = typeof weight === 'string' 
+    ? parseFloat(String(weight).replace(',', '.')) 
+    : weight;
+
   console.log('--- DEBUG CATEGORIZAÇÃO ---');
-  console.log('Input:', { birthDate, gender, weight });
+  console.log('Input:', { birthDate, gender, weight: numericWeight });
+
+  if (!birthDate || !gender || !numericWeight || isNaN(numericWeight)) {
+    console.log('Dados insuficientes para categorização');
+    return {
+      competitiveAge: 0,
+      ageCategory: '-',
+      weightCategory: '-',
+      fullCategory: '-'
+    };
+  }
 
   const age = getCompetitionAge(birthDate);
   const ageCat = getAgeCategory(age);
@@ -85,17 +100,17 @@ export const getAutomaticCategorization = (birthDate: string, gender: string, we
     const isAdultOrMaster = ageCat.includes('ADULTO') || ageCat.includes('MASTER');
     
     if (isAdultOrMaster) {
-      weightCat = getFemaleCategoryAdult(weight);
+      weightCat = getFemaleCategoryAdult(numericWeight);
     } else {
       // Regras para categorias de base feminina (simplificado)
-      if (weight <= 45) weightCat = 'Pena';
-      else if (weight <= 55) weightCat = 'Leve';
+      if (numericWeight <= 45) weightCat = 'Pena';
+      else if (numericWeight <= 55) weightCat = 'Leve';
       else weightCat = 'Pesado';
     }
   } else {
     // Manter lógica masculina intacta
     console.log('Aplicando regra masculina');
-    weightCat = getWeightCategory('Masculino', weight, ageCat);
+    weightCat = getWeightCategory('Masculino', numericWeight, ageCat);
   }
 
   console.log('Resultado:', { age, ageCat, weightCat });

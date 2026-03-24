@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Award, Target, TrendingUp, Grid, History, MapPin, Calendar, 
   Settings, Edit2, Save, X, Instagram, Youtube, Music, 
-  User, Dumbbell, Ruler, Scale, GraduationCap, Trophy,
+  User, Dumbbell, Ruler, Scale, GraduationCap, Trophy, VenusAndMars,
   Database, Plus, Trash2, MoreVertical, Archive, RotateCcw, Heart, MessageCircle, Share2,
   Brain, Zap, Cpu, BarChart3, Shield, Info, Wallet, FileText, Eye
 } from 'lucide-react';
@@ -14,6 +14,7 @@ import { PostModal } from './PostModal';
 import { RegisterFightModal } from './RegisterFightModal';
 import { RegisterChampionshipModal } from './RegisterChampionshipModal';
 import { getAthleteRankings, searchTeams, getTeams, CardData } from '../services/arenaService';
+import { getAutomaticCategorization } from '../services/categorization';
 import { AchievementCard } from './AchievementCard';
 import { ShareModal } from './ShareModal';
 
@@ -409,6 +410,20 @@ export const ArenaProfileView: React.FC<{
       }, 500);
     }
   }, [contentId, loading, activeTab]);
+  
+  // Auto-categorization logic
+  useEffect(() => {
+    const weightNum = Number(String(editData.weight || '').replace(',', '.'));
+    if (isEditing && editData.birth_date && editData.genero && weightNum > 0) {
+      const result = getAutomaticCategorization(editData.birth_date, editData.genero, weightNum);
+      if (result.fullCategory && result.fullCategory !== editData.category) {
+        setEditData(prev => ({
+          ...prev,
+          category: result.fullCategory
+        }));
+      }
+    }
+  }, [isEditing, editData.weight, editData.genero, editData.birth_date]);
 
   const handleArchive = async (postId: string, archive: boolean = true) => {
     try {
@@ -512,6 +527,8 @@ export const ArenaProfileView: React.FC<{
         instagram_url: editData.instagram_url,
         youtube_url: editData.youtube_url,
         tiktok_url: editData.tiktok_url,
+        genero: editData.genero,
+        birth_date: editData.birth_date,
         titles: editData.titles?.toUpperCase(),
         team: editData.team?.toUpperCase(),
         team_id: editData.team_id,
@@ -1502,12 +1519,28 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                       ))}
                     </select>
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-[var(--text-muted)]">Sexo / Gênero</label>
+                    <select 
+                      value={editData.genero || ''} 
+                      onChange={e => setEditData({...editData, genero: e.target.value as any})}
+                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-3 py-2 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                    >
+                      <option value="">Selecionar</option>
+                      <option value="Masculino">Masculino</option>
+                      <option value="Feminino">Feminino</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             ) : (
               <>
                 <p className="text-sm text-[var(--text-muted)] leading-relaxed break-words">{profile.bio || 'Nenhuma biografia disponível.'}</p>
                 <div className="space-y-3 pt-4 border-t border-[var(--border-ui)]">
+                  <div className="flex items-center space-x-3 text-[var(--text-muted)]">
+                    <VenusAndMars size={14} />
+                    <span className="text-xs font-bold">{profile.genero || 'Gênero não informado'}</span>
+                  </div>
                   <div className="flex items-center space-x-3 text-[var(--text-muted)]">
                     <MapPin size={14} />
                     <span className="text-xs font-bold break-words">{profile.city ? `${profile.city} • ` : ''}{profile.state ? `${profile.state}` : ''}{profile.country ? ` • ${profile.country}` : ''}</span>
@@ -1622,6 +1655,8 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
 
               {[
                 { label: 'Equipe / Team', value: profile.team, icon: Award, key: 'team' },
+                { label: 'Sexo / Gênero', value: profile.genero, icon: VenusAndMars, key: 'genero' },
+                { label: 'Nascimento', value: profile.birth_date ? new Date(profile.birth_date + 'T00:00:00').toLocaleDateString('pt-BR') : '-', icon: Calendar, key: 'birth_date' },
                 { label: 'Categoria', value: profile.category, icon: Target, key: 'category' },
                 { label: 'Peso', value: profile.weight ? `${String(profile.weight).replace('.', ',')}kg` : '-', icon: Scale, key: 'weight' },
                 { label: 'Altura', value: profile.height ? `${String(profile.height).replace('.', ',')}m` : '-', icon: Ruler, key: 'height' },
@@ -1682,8 +1717,27 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                           />
                         )}
                       </>
+                    ) : info.key === 'genero' ? (
+                      <select 
+                        value={editData.genero || ''} 
+                        onChange={e => setEditData({...editData, genero: e.target.value as any})}
+                        className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                      >
+                        <option value="">Selecionar</option>
+                        <option value="Masculino">Masculino</option>
+                        <option value="Feminino">Feminino</option>
+                      </select>
+                    ) : info.key === 'birth_date' ? (
+                      <input 
+                        type="date"
+                        value={editData.birth_date || ''} 
+                        onChange={e => setEditData({...editData, birth_date: e.target.value})}
+                        className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                      />
                     ) : (
                       <input 
+                        type={info.key === 'weight' || info.key === 'height' ? 'number' : 'text'}
+                        step="0.01"
                         value={(editData[info.key as keyof ArenaProfile] as string) || ''} 
                         onChange={e => setEditData({...editData, [info.key]: e.target.value})}
                         className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
