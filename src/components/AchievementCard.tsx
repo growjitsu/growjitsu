@@ -47,11 +47,17 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
     setSharingSocial(true);
     try {
       // 1. Garantir que a imagem está carregada e gerar o PNG do card
+      // Usamos cacheBust para evitar problemas de cache com CORS
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
         quality: 1,
         pixelRatio: 2,
+        backgroundColor: '#000', // Garantir fundo se houver transparência
       });
+
+      if (!dataUrl || dataUrl.length < 100) {
+        throw new Error('Imagem gerada é inválida');
+      }
 
       // 2. Compartilhar usando a função universal
       const result = await shareToSocial(dataUrl, "Minha conquista no ArenaComp 🔥");
@@ -62,11 +68,21 @@ export const AchievementCard: React.FC<AchievementCardProps> = ({ isOpen, onClos
       } else {
         toast.success('Compartilhamento iniciado!');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao compartilhar no Instagram:', error);
-      toast.error('Falha ao preparar imagem para o Instagram.');
-      // Fallback simples se tudo falhar
-      alert("Baixe a imagem e compartilhe no Instagram");
+      toast.error(`Falha ao preparar imagem: ${error.message || 'Erro desconhecido'}`);
+      
+      // Fallback: Se o toPng falhar, tentamos baixar a imagem original se houver
+      if (data.mainImageUrl) {
+        try {
+          toast.info('Tentando compartilhar imagem original...');
+          await shareToSocial(data.mainImageUrl, "Minha conquista no ArenaComp 🔥");
+        } catch (fallbackError) {
+          alert("Não foi possível preparar a imagem. Tente baixar manualmente.");
+        }
+      } else {
+        alert("Baixe a imagem e compartilhe no Instagram");
+      }
     } finally {
       setSharingSocial(false);
     }

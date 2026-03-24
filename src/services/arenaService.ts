@@ -231,20 +231,40 @@ export const shareWhatsApp = (url: string, text: string = 'Veja minha conquista 
 
 export const shareToSocial = async (imageUrl: string, text: string) => {
   try {
-    const response = await fetch(imageUrl);
-    const blob = await response.blob();
-
-    const file = new File([blob], "arenacomp.png", {
-      type: blob.type,
+    console.log('[shareToSocial] Iniciando compartilhamento social:', { imageUrl: imageUrl.substring(0, 50) + '...', text });
+    
+    // Solução 2: Corrigir Fetch com CORS e cache: no-cache
+    const response = await fetch(imageUrl, {
+      mode: 'cors',
+      cache: 'no-cache'
     });
 
+    if (!response.ok) {
+      console.error('[shareToSocial] Erro ao baixar imagem:', response.status, response.statusText);
+      throw new Error(`Erro ao baixar imagem: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+
+    if (!blob || blob.size === 0) {
+      console.error('[shareToSocial] Blob inválido ou vazio');
+      throw new Error('Blob inválido ou vazio');
+    }
+
+    const file = new File([blob], "arenacomp.png", {
+      type: blob.type || 'image/png',
+    });
+
+    // Solução 3: Fallback Robusto
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      console.log('[shareToSocial] Usando Web Share API nativa');
       await navigator.share({
         files: [file],
         text: text,
       });
       return { success: true, method: 'native' };
     } else {
+      console.log('[shareToSocial] Web Share API não suportada para arquivos, usando fallback de download');
       // fallback: download
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -253,11 +273,21 @@ export const shareToSocial = async (imageUrl: string, text: string) => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      // Pequeno delay para garantir o download antes de revogar
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      
       return { success: true, method: 'download' };
     }
-  } catch (error) {
-    console.error('Erro ao compartilhar:', error);
+  } catch (error: any) {
+    console.error('[shareToSocial] Erro crítico no compartilhamento:', error);
+    
+    // Fallback final: abrir a imagem em nova aba se possível
+    if (imageUrl && !imageUrl.startsWith('data:')) {
+      console.log('[shareToSocial] Fallback final: abrindo URL em nova aba');
+      window.open(imageUrl, '_blank');
+    }
+    
     throw error;
   }
 };

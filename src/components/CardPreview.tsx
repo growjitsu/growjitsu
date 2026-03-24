@@ -33,6 +33,7 @@ export const CardPreview: React.FC<CardPreviewProps> = ({ data, className = "" }
             alt="Achievement" 
             className="w-full h-full object-cover opacity-40 grayscale-[50%]"
             referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#001F3F] via-transparent to-transparent" />
         </div>
