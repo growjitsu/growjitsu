@@ -546,9 +546,10 @@ export const ArenaProfileView: React.FC<{
       if (error) throw error;
       setProfile({ ...profile, ...editData });
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      alert('Erro ao atualizar perfil. Verifique se as colunas "profile_photo" e "team" foram adicionadas à tabela "profiles" no seu banco de dados Supabase.');
+      const errorMessage = error?.message || 'Erro desconhecido';
+      alert(`Erro ao atualizar perfil: ${errorMessage}\n\nIsso geralmente ocorre quando colunas estão faltando na tabela "profiles" do seu banco de dados Supabase (como "genero", "birth_date", "team", "profile_photo", etc). Verifique o arquivo src/services/arenacomp_schema.sql para as instruções de atualização.`);
     } finally {
       setSaving(false);
     }
@@ -671,9 +672,10 @@ export const ArenaProfileView: React.FC<{
         setProfile({ ...profile, profile_photo: compressedBase64 });
         setEditData({ ...editData, profile_photo: compressedBase64 });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading photo:', error);
-      alert('Erro ao fazer upload da foto.');
+      const errorMessage = error?.message || 'Erro desconhecido';
+      alert(`Erro ao fazer upload da foto: ${errorMessage}\n\nIsso geralmente ocorre quando a coluna "profile_photo" está faltando na tabela "profiles" do seu banco de dados Supabase. Verifique o arquivo src/services/arenacomp_schema.sql para as instruções de atualização.`);
     } finally {
       setUploading(false);
     }

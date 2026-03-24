@@ -49,6 +49,9 @@ CREATE TABLE IF NOT EXISTS profiles (
     avatar_url TEXT,
     profile_photo TEXT,
     team TEXT,
+    team_id UUID, -- References teams(id) later
+    genero TEXT,
+    birth_date DATE,
     bio TEXT,
     instagram_url TEXT,
     youtube_url TEXT,
@@ -61,8 +64,49 @@ CREATE TABLE IF NOT EXISTS profiles (
     wins INTEGER DEFAULT 0,
     losses INTEGER DEFAULT 0,
     draws INTEGER DEFAULT 0,
+    total_fights INTEGER DEFAULT 0,
+    win_rate DECIMAL(5,2) DEFAULT 0,
+    wallet_address TEXT,
+    city_id TEXT,
+    state_id TEXT,
+    country_id TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3.2.1 Teams (Equipes)
+CREATE TABLE IF NOT EXISTS teams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    logo_url TEXT,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3.2.2 Fights (Lutas)
+CREATE TABLE IF NOT EXISTS fights (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    athlete_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    oponente_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    oponente_nome TEXT,
+    evento_nome TEXT,
+    data DATE,
+    resultado TEXT, -- 'win', 'loss', 'draw'
+    tipo_vitoria TEXT, -- 'finalização', 'nocaute', 'decisão', etc
+    pontos_arena INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3.2.3 Championship Results (Resultados de Campeonatos)
+CREATE TABLE IF NOT EXISTS championship_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    athlete_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    campeonato_nome TEXT NOT NULL,
+    data DATE,
+    resultado TEXT, -- 'Campeão', 'Vice-campeão', 'Terceiro lugar', 'Participação'
+    categoria TEXT,
+    peso TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 3.3 Follows
@@ -222,3 +266,51 @@ CREATE POLICY "Users can update/delete their own posts" ON posts FOR ALL USING (
 CREATE POLICY "Follows are viewable by everyone" ON follows FOR SELECT USING (true);
 CREATE POLICY "Users can follow others" ON follows FOR INSERT WITH CHECK (auth.uid() = follower_id);
 CREATE POLICY "Users can unfollow" ON follows FOR DELETE USING (auth.uid() = follower_id);
+
+-- ===============================================================
+-- MIGRATION COMMANDS (Run these if you already have the tables)
+-- ===============================================================
+--
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_photo TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS team TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS team_id UUID;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS genero TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS birth_date DATE;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_fights INTEGER DEFAULT 0;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS win_rate DECIMAL(5,2) DEFAULT 0;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS wallet_address TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS city_id TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS state_id TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS country_id TEXT;
+--
+-- CREATE TABLE IF NOT EXISTS teams (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     name TEXT NOT NULL UNIQUE,
+--     logo_url TEXT,
+--     description TEXT,
+--     created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+--
+-- CREATE TABLE IF NOT EXISTS fights (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     athlete_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+--     oponente_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+--     oponente_nome TEXT,
+--     evento_nome TEXT,
+--     data DATE,
+--     resultado TEXT,
+--     tipo_vitoria TEXT,
+--     pontos_arena INTEGER DEFAULT 0,
+--     created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
+--
+-- CREATE TABLE IF NOT EXISTS championship_results (
+--     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+--     athlete_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+--     campeonato_nome TEXT NOT NULL,
+--     data DATE,
+--     resultado TEXT,
+--     categoria TEXT,
+--     peso TEXT,
+--     created_at TIMESTAMPTZ DEFAULT NOW()
+-- );
