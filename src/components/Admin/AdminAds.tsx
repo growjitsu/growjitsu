@@ -3,7 +3,7 @@ import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, delet
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon, Link as LinkIcon, Clock, Check, AlertCircle, ChevronUp, ChevronDown, Upload, Calendar } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon, Link as LinkIcon, Clock, Check, AlertCircle, ChevronUp, ChevronDown, Upload, Calendar, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../services/supabase';
 
