@@ -8,7 +8,7 @@ import {
   Brain, Zap, Cpu, BarChart3, Shield, Info, Wallet, FileText, Eye
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { ArenaProfile, ArenaResult, ArenaPost, ArenaChampionshipResult, ArenaFight, Team, ArenaCertificate } from '../types';
+import { ArenaProfile, ArenaResult, ArenaPost, ArenaChampionshipResult, ArenaFight, Team, ArenaCertificate, UserModality } from '../types';
 import { countries, modalities } from '../utils/data';
 import { PostModal } from './PostModal';
 import { RegisterFightModal } from './RegisterFightModal';
@@ -57,6 +57,8 @@ export const ArenaProfileView: React.FC<{
   const [editingChampionship, setEditingChampionship] = useState<ArenaChampionshipResult | null>(null);
   const [editingFight, setEditingFight] = useState<ArenaFight | null>(null);
   const [rankings, setRankings] = useState({ world: 0, national: 0, city: 0 });
+  const [userModalities, setUserModalities] = useState<UserModality[]>([]);
+  const [newModality, setNewModality] = useState('');
   
   const [isAchievementCardOpen, setIsAchievementCardOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -139,6 +141,56 @@ export const ArenaProfileView: React.FC<{
       setFollowerCount(count || 0);
     } catch (err) {
       console.error('Error fetching follower count:', err);
+    }
+  }
+
+  async function fetchUserModalities(targetId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('user_modalities')
+        .select('*')
+        .eq('user_id', targetId)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      setUserModalities(data || []);
+    } catch (err) {
+      console.error('Error fetching user modalities:', err);
+    }
+  }
+
+  async function handleAddModality() {
+    if (!newModality.trim() || !profile) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_modalities')
+        .insert({
+          user_id: profile.id,
+          modality: newModality.trim()
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      setUserModalities([...userModalities, data]);
+      setNewModality('');
+    } catch (err) {
+      console.error('Error adding modality:', err);
+    }
+  }
+
+  async function handleRemoveModality(id: string) {
+    try {
+      const { error } = await supabase
+        .from('user_modalities')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      setUserModalities(userModalities.filter(m => m.id !== id));
+    } catch (err) {
+      console.error('Error removing modality:', err);
     }
   }
 
@@ -226,6 +278,7 @@ export const ArenaProfileView: React.FC<{
         checkIfFollowing(user.id, targetId);
       }
       fetchFollowerCount(targetId);
+      fetchUserModalities(targetId);
 
       // If we don't have profileData yet, fetch it
       if (!profileData) {
@@ -1623,35 +1676,80 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
               <div className="space-y-1">
                 <div className="flex items-center space-x-2 text-[var(--text-muted)]">
                   <Trophy size={12} />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Modalidade</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">Modalidades</span>
                 </div>
                 {isEditing ? (
-                  <div className="space-y-2">
-                    <select 
-                      value={modalities.includes(editData.modality || '') ? editData.modality : 'Outros'} 
-                      onChange={e => {
-                        const val = e.target.value;
-                        if (val === 'Outros') {
-                          setEditData({...editData, modality: ''});
-                        } else {
-                          setEditData({...editData, modality: val});
-                        }
-                      }}
-                      className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
-                    >
-                      {modalities.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    {(!modalities.includes(editData.modality || '') || editData.modality === 'Outros') && (
-                      <input 
-                        value={editData.modality === 'Outros' ? '' : editData.modality} 
-                        onChange={e => setEditData({...editData, modality: e.target.value})}
-                        placeholder="Digite sua modalidade"
-                        className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
-                      />
-                    )}
+                  <div className="space-y-3">
+                    {/* List existing modalities */}
+                    <div className="flex flex-wrap gap-2">
+                      {userModalities.map((m) => (
+                        <div key={m.id} className="flex items-center bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-full px-3 py-1">
+                          <span className="text-xs font-bold text-[var(--text-main)] mr-2">{m.modality}</span>
+                          <button 
+                            onClick={() => handleRemoveModality(m.id)}
+                            className="text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      {/* Fallback to old modality if no new ones exist */}
+                      {userModalities.length === 0 && editData.modality && (
+                        <div className="flex items-center bg-[var(--bg-card)] border border-[var(--border-ui)] rounded-full px-3 py-1 opacity-50">
+                          <span className="text-xs font-bold text-[var(--text-main)]">{editData.modality} (Antigo)</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Add new modality */}
+                    <div className="flex space-x-2">
+                      <div className="flex-1 space-y-2">
+                        <select 
+                          value={modalities.includes(newModality) ? newModality : (newModality ? 'Outros' : '')} 
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (val === 'Outros') {
+                              setNewModality('');
+                            } else {
+                              setNewModality(val);
+                            }
+                          }}
+                          className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                        >
+                          <option value="">Selecione...</option>
+                          {modalities.map(m => <option key={m} value={m}>{m}</option>)}
+                          <option value="Outros">Outros</option>
+                        </select>
+                        {(!modalities.includes(newModality) && newModality !== '') && (
+                          <input 
+                            value={newModality} 
+                            onChange={e => setNewModality(e.target.value)}
+                            placeholder="Digite sua modalidade"
+                            className="w-full bg-[var(--bg)] border border-[var(--border-ui)] rounded-lg px-2 py-1 text-xs text-[var(--text-main)] outline-none focus:border-[var(--primary)]"
+                          />
+                        )}
+                      </div>
+                      <button 
+                        onClick={handleAddModality}
+                        disabled={!newModality.trim()}
+                        className="bg-[var(--primary)] text-white rounded-lg px-3 py-1 text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed h-fit"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-sm font-bold text-[var(--text-main)]">{profile.modality || '-'}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {userModalities.length > 0 ? (
+                      userModalities.map((m) => (
+                        <span key={m.id} className="text-sm font-bold text-[var(--text-main)] bg-[var(--bg-card)] px-2 py-0.5 rounded-md border border-[var(--border-ui)]">
+                          {m.modality}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm font-bold text-[var(--text-main)]">{profile?.modality || '-'}</p>
+                    )}
+                  </div>
                 )}
               </div>
 
