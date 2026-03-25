@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Edit2, Save, X, Image as ImageIcon, Link as LinkIcon, Clock, Check, AlertCircle, ChevronUp, ChevronDown, Upload, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
@@ -186,17 +186,26 @@ export const AdminAds: React.FC = () => {
     
     console.log('Iniciando submissão do banner...');
     console.log('Usuário atual:', auth.currentUser?.email);
+    
+    const toastId = toast.loading('Salvando banner...');
     setIsUploading(true);
     
     try {
       let finalImageUrl = formData.image_url;
       let finalMobileImageUrl = formData.mobile_image_url;
 
+      // Validação básica se for novo banner
+      if (!editingBanner && !desktopFile && !formData.image_url) {
+        throw new Error('Por favor, selecione uma imagem para o banner.');
+      }
+
       if (desktopFile) {
+        console.log('Iniciando upload da imagem desktop...');
         finalImageUrl = await uploadImage(desktopFile, 'desktop');
       }
 
       if (mobileFile) {
+        console.log('Iniciando upload da imagem mobile...');
         finalMobileImageUrl = await uploadImage(mobileFile, 'mobile');
       }
 
@@ -217,7 +226,7 @@ export const AdminAds: React.FC = () => {
             ...dataToSave,
             updated_at: serverTimestamp()
           });
-          toast.success('Banner atualizado com sucesso!');
+          toast.success('Banner atualizado com sucesso!', { id: toastId });
         } catch (err) {
           handleFirestoreError(err, OperationType.UPDATE, path);
         }
@@ -229,7 +238,7 @@ export const AdminAds: React.FC = () => {
             ...dataToSave,
             created_at: serverTimestamp()
           });
-          toast.success('Banner criado com sucesso!');
+          toast.success('Banner criado com sucesso!', { id: toastId });
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, path);
         }
@@ -239,8 +248,17 @@ export const AdminAds: React.FC = () => {
       setIsModalOpen(false);
     } catch (error: any) {
       console.error('Erro fatal no handleSubmit:', error);
-      const message = error.message || 'Erro inesperado ao salvar banner.';
-      toast.error(message);
+      let message = 'Erro inesperado ao salvar banner.';
+      
+      try {
+        // Tenta parsear se for um erro do handleFirestoreError (JSON)
+        const parsed = JSON.parse(error.message);
+        message = `Erro de permissão: ${parsed.error}`;
+      } catch {
+        message = error.message || message;
+      }
+      
+      toast.error(message, { id: toastId });
     } finally {
       console.log('Limpando estado de upload.');
       setIsUploading(false);
