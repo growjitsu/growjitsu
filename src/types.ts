@@ -47,15 +47,6 @@ export interface ArenaProfile {
   win_rate: number;
   created_at: string;
   updated_at: string;
-  modalities?: UserModality[];
-}
-
-export interface UserModality {
-  id: string;
-  user_id: string;
-  modality: string;
-  belt?: string;
-  created_at: string;
 }
 
 export interface Team {
