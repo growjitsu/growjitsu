@@ -119,53 +119,74 @@ export const AdminAds: React.FC = () => {
   };
 
   const uploadImage = async (file: File, path: string) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `${path}/${fileName}`;
+    console.log(`Iniciando upload de ${file.name} para ${path}...`);
+    
+    const uploadPromise = (async () => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${path}/${fileName}`;
 
-    // Try to upload
-    const { error: uploadError } = await supabase.storage
-      .from('banners')
-      .upload(filePath, file);
+      // Try to upload
+      const { error: uploadError } = await supabase.storage
+        .from('banners')
+        .upload(filePath, file);
 
-    if (uploadError) {
-      // If bucket not found, try to create it (requires appropriate permissions)
-      if (uploadError.message?.toLowerCase().includes('not found')) {
-        try {
-          const { error: createError } = await supabase.storage.createBucket('banners', {
-            public: true,
-            allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-            fileSizeLimit: 2 * 1024 * 1024
-          });
-          
-          if (!createError || createError.message?.includes('already exists')) {
-            // Retry upload if bucket was created or already exists
-            const { error: retryError } = await supabase.storage
-              .from('banners')
-              .upload(filePath, file);
-            if (retryError) throw retryError;
-          } else {
-            throw createError;
+      if (uploadError) {
+        console.error('Erro no upload inicial:', uploadError);
+        // If bucket not found, try to create it (requires appropriate permissions)
+        if (uploadError.message?.toLowerCase().includes('not found')) {
+          console.log('Bucket "banners" não encontrado, tentando criar...');
+          try {
+            const { error: createError } = await supabase.storage.createBucket('banners', {
+              public: true,
+              allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+              fileSizeLimit: 2 * 1024 * 1024
+            });
+            
+            if (!createError || createError.message?.includes('already exists')) {
+              console.log('Bucket criado ou já existente, tentando upload novamente...');
+              // Retry upload if bucket was created or already exists
+              const { error: retryError } = await supabase.storage
+                .from('banners')
+                .upload(filePath, file);
+              if (retryError) throw retryError;
+            } else {
+              throw createError;
+            }
+          } catch (err: any) {
+            console.error('Falha na criação do bucket:', err);
+            throw new Error(err.message || 'O bucket "banners" não existe no Supabase e não pôde ser criado automaticamente.');
           }
-        } catch (err) {
-          console.error('Bucket creation failed:', err);
-          throw new Error('O bucket "banners" não existe no Supabase e não pôde ser criado automaticamente. Por favor, crie-o manualmente no painel do Supabase Storage e defina-o como público.');
+        } else if (uploadError.message?.toLowerCase().includes('row-level security')) {
+          throw new Error('Erro de permissão (RLS) no Supabase. Certifique-se de que o bucket "banners" tem políticas de acesso público configuradas.');
+        } else {
+          throw uploadError;
         }
-      } else {
-        throw uploadError;
       }
-    }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('banners')
-      .getPublicUrl(filePath);
+      const { data: { publicUrl } } = supabase.storage
+        .from('banners')
+        .getPublicUrl(filePath);
 
-    return publicUrl;
+      console.log('Upload concluído com sucesso:', publicUrl);
+      return publicUrl;
+    })();
+
+    // Timeout de 30 segundos para o upload
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Tempo limite de upload excedido (30s). Verifique sua conexão.')), 30000)
+    );
+
+    return Promise.race([uploadPromise, timeoutPromise]) as Promise<string>;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isUploading) return;
+    
+    console.log('Iniciando submissão do banner...');
     setIsUploading(true);
+    
     try {
       let finalImageUrl = formData.image_url;
       let finalMobileImageUrl = formData.mobile_image_url;
@@ -178,6 +199,7 @@ export const AdminAds: React.FC = () => {
         finalMobileImageUrl = await uploadImage(mobileFile, 'mobile');
       }
 
+      console.log('Preparando dados para o Firestore...');
       const dataToSave = {
         ...formData,
         image_url: finalImageUrl,
@@ -187,24 +209,29 @@ export const AdminAds: React.FC = () => {
       };
 
       if (editingBanner) {
+        console.log('Atualizando documento existente:', editingBanner.id);
         await updateDoc(doc(db, 'featured_banners', editingBanner.id), {
           ...dataToSave,
           updated_at: serverTimestamp()
         });
         toast.success('Banner atualizado com sucesso!');
       } else {
+        console.log('Criando novo documento...');
         await addDoc(collection(db, 'featured_banners'), {
           ...dataToSave,
           created_at: serverTimestamp()
         });
         toast.success('Banner criado com sucesso!');
       }
+      
+      console.log('Processo finalizado com sucesso.');
       setIsModalOpen(false);
     } catch (error: any) {
-      console.error(error);
-      const message = error.message || 'Erro ao salvar banner. Verifique se o bucket "banners" existe no Supabase.';
+      console.error('Erro fatal no handleSubmit:', error);
+      const message = error.message || 'Erro inesperado ao salvar banner.';
       toast.error(message);
     } finally {
+      console.log('Limpando estado de upload.');
       setIsUploading(false);
     }
   };
