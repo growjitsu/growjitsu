@@ -20,9 +20,12 @@ interface Banner {
   order: number;
   start_date?: any;
   end_date?: any;
+  country?: string;
+  state?: string;
+  city?: string;
 }
 
-export const LandingPage: React.FC = () => {
+export const LandingPage: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
   const navigate = useNavigate();
   const [banners, setBanners] = useState<Banner[]>([]);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -40,13 +43,25 @@ export const LandingPage: React.FC = () => {
         ...doc.data()
       })) as Banner[];
 
-      // Filter by date
+      // Filter by date and geographic location
       const filteredBanners = bannersData.filter(banner => {
         const start = banner.start_date ? new Date(banner.start_date.seconds * 1000) : null;
         const end = banner.end_date ? new Date(banner.end_date.seconds * 1000) : null;
 
         if (start && start > now) return false;
         if (end && end < now) return false;
+
+        // Geographic segmentation
+        if (userProfile) {
+          if (banner.country && banner.country !== userProfile.country) return false;
+          if (banner.state && banner.state !== userProfile.state) return false;
+          if (banner.city && banner.city !== userProfile.city) return false;
+        } else {
+          // If not logged in, hide banners that have specific location constraints
+          // (or show them all if that's the desired behavior, but usually targeted ads are hidden)
+          if (banner.country || banner.state || banner.city) return false;
+        }
+
         return true;
       });
 

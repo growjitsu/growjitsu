@@ -19,6 +19,9 @@ interface Banner {
   start_date?: any;
   end_date?: any;
   created_at: any;
+  country?: string;
+  state?: string;
+  city?: string;
 }
 
 export const AdminAds: React.FC = () => {
@@ -35,7 +38,10 @@ export const AdminAds: React.FC = () => {
     is_active: true,
     order: 0,
     start_date: '',
-    end_date: ''
+    end_date: '',
+    country: '',
+    state: '',
+    city: ''
   });
 
   const [desktopFile, setDesktopFile] = useState<File | null>(null);
@@ -104,7 +110,10 @@ export const AdminAds: React.FC = () => {
         is_active: banner.is_active,
         order: banner.order,
         start_date: banner.start_date ? new Date(banner.start_date.seconds * 1000).toISOString().slice(0, 16) : '',
-        end_date: banner.end_date ? new Date(banner.end_date.seconds * 1000).toISOString().slice(0, 16) : ''
+        end_date: banner.end_date ? new Date(banner.end_date.seconds * 1000).toISOString().slice(0, 16) : '',
+        country: banner.country || '',
+        state: banner.state || '',
+        city: banner.city || ''
       });
     } else {
       setEditingBanner(null);
@@ -119,7 +128,10 @@ export const AdminAds: React.FC = () => {
         is_active: true,
         order: banners.length > 0 ? Math.max(...banners.map(b => b.order)) + 1 : 0,
         start_date: '',
-        end_date: ''
+        end_date: '',
+        country: '',
+        state: '',
+        city: ''
       });
     }
     setIsModalOpen(true);
@@ -260,6 +272,18 @@ export const AdminAds: React.FC = () => {
             ...dataToSave,
             updated_at: serverTimestamp()
           });
+          
+          // Log action
+          await addDoc(collection(db, 'admin_logs'), {
+            admin_id: auth.currentUser.uid,
+            admin_email: auth.currentUser.email,
+            action: 'editar_banner',
+            target_type: 'banner',
+            target_id: editingBanner.id,
+            details: { title: dataToSave.title, link: dataToSave.link },
+            created_at: serverTimestamp()
+          });
+
           toast.success('Banner atualizado com sucesso!', { id: toastId });
         } catch (err) {
           handleFirestoreError(err, OperationType.UPDATE, path);
@@ -268,10 +292,22 @@ export const AdminAds: React.FC = () => {
         console.log('Criando novo documento...');
         const path = 'featured_banners';
         try {
-          await addDoc(collection(db, 'featured_banners'), {
+          const docRef = await addDoc(collection(db, 'featured_banners'), {
             ...dataToSave,
             created_at: serverTimestamp()
           });
+
+          // Log action
+          await addDoc(collection(db, 'admin_logs'), {
+            admin_id: auth.currentUser.uid,
+            admin_email: auth.currentUser.email,
+            action: 'criar_banner',
+            target_type: 'banner',
+            target_id: docRef.id,
+            details: { title: dataToSave.title, link: dataToSave.link },
+            created_at: serverTimestamp()
+          });
+
           toast.success('Banner criado com sucesso!', { id: toastId });
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, path);
@@ -303,6 +339,20 @@ export const AdminAds: React.FC = () => {
     if (!confirm('Tem certeza que deseja excluir este banner?')) return;
     try {
       await deleteDoc(doc(db, 'featured_banners', id));
+      
+      // Log action
+      if (auth.currentUser) {
+        await addDoc(collection(db, 'admin_logs'), {
+          admin_id: auth.currentUser.uid,
+          admin_email: auth.currentUser.email,
+          action: 'excluir_banner',
+          target_type: 'banner',
+          target_id: id,
+          details: { id },
+          created_at: serverTimestamp()
+        });
+      }
+
       toast.success('Banner excluído com sucesso!');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'featured_banners');
@@ -629,6 +679,45 @@ export const AdminAds: React.FC = () => {
                         onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
                       />
+                    </div>
+                  </div>
+
+                  {/* Segmentation */}
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 italic">Segmentação Geográfica (Opcional)</h4>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2">País</label>
+                        <input 
+                          type="text"
+                          value={formData.country}
+                          onChange={(e) => setFormData({...formData, country: e.target.value})}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
+                          placeholder="Ex: Brasil"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2">Estado</label>
+                          <input 
+                            type="text"
+                            value={formData.state}
+                            onChange={(e) => setFormData({...formData, state: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
+                            placeholder="Ex: SP"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2">Cidade</label>
+                          <input 
+                            type="text"
+                            value={formData.city}
+                            onChange={(e) => setFormData({...formData, city: e.target.value})}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
+                            placeholder="Ex: São Paulo"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

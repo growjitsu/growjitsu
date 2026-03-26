@@ -15,6 +15,7 @@ import { ArenaAuth } from './components/ArenaAuth';
 import { ArenaNotifications } from './components/ArenaNotifications';
 import { SharePage } from './pages/SharePage';
 import { CreatePostModal } from './components/CreatePostModal';
+import AthleteProfileForm from './components/AthleteProfileForm';
 import { AdminLayout } from './components/Admin/AdminLayout';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AdminAthletes } from './components/Admin/AdminAthletes';
@@ -30,11 +31,39 @@ import { useTheme } from './context/ThemeContext';
 
 import { Toaster } from 'sonner';
 
-const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
+export const isProfileComplete = (profile: ArenaProfile | null) => {
+  if (!profile) return false;
+  // Perfil é completo se tiver: Nome, Gênero, Nascimento, Peso, Equipe, País, Estado, Cidade e Foto
+  return !!(
+    profile.full_name &&
+    profile.genero &&
+    profile.birth_date &&
+    profile.weight &&
+    (profile.team_id || profile.team) &&
+    profile.country_id &&
+    profile.state_id &&
+    profile.city_id &&
+    (profile.profile_photo || profile.avatar_url)
+  );
+};
+
+const ProfileWrapper = ({ forceEdit, profile, onComplete }: { forceEdit?: boolean, profile: ArenaProfile | null, onComplete?: () => void }) => {
   const { userId, username, id } = useParams();
   const location = useLocation();
   const contentType = location.pathname.split('/')[1];
   
+  if (forceEdit && profile && !isProfileComplete(profile)) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-4">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-black uppercase italic text-[var(--text-main)]">Complete seu Perfil</h1>
+          <p className="text-[var(--text-muted)] mt-2">Para continuar usando a ArenaComp, você precisa completar seu cadastro de atleta.</p>
+        </div>
+        <AthleteProfileForm userId={profile.id} onComplete={onComplete || (() => window.location.reload())} />
+      </div>
+    );
+  }
+
   return <ArenaProfileView 
     key={`${userId}-${username}-${id}-${location.pathname}`} 
     userId={userId} 
@@ -71,6 +100,18 @@ export default function App() {
     else if (path === 'profile' && subPath === 'edit') setActiveTab('profile/edit');
     else if (['rankings', 'search', 'profile', 'settings', 'gyms', 'notifications'].includes(path)) setActiveTab(path);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (isLoggedIn && profile && !isInitializing) {
+      const complete = isProfileComplete(profile);
+      const isEditing = location.pathname === '/profile/edit';
+      const isAdmin = profile.role === 'admin';
+      
+      if (!complete && !isEditing && !isAdmin) {
+        navigate('/profile/edit', { replace: true });
+      }
+    }
+  }, [isLoggedIn, profile, isInitializing, location.pathname, navigate]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -365,15 +406,15 @@ export default function App() {
       <Toaster position="top-center" theme="dark" />
       <Routes>
       <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <ArenaAuth />} />
-      <Route path="/" element={isLoggedIn ? renderLayout(<ArenaFeed userProfile={profile} />, 'feed') : <LandingPage />} />
-      <Route path="/home-public" element={<LandingPage />} />
+      <Route path="/" element={isLoggedIn ? renderLayout(<ArenaFeed userProfile={profile} />, 'feed') : <LandingPage userProfile={profile} />} />
+      <Route path="/home-public" element={<LandingPage userProfile={profile} />} />
       <Route path="/clips" element={renderLayout(<ArenaClips />, 'clips')} />
       <Route path="/rankings" element={renderLayout(<ArenaRankings />, 'rankings')} />
       <Route path="/search" element={renderLayout(<ArenaSearch />, 'search')} />
-      <Route path="/profile" element={renderLayout(<ProfileWrapper />, 'profile')} />
-      <Route path="/profile/edit" element={renderLayout(<ProfileWrapper forceEdit />, 'profile/edit')} />
-      <Route path="/profile/:userId" element={renderLayout(<ProfileWrapper />, 'profile')} />
-      <Route path="/user/:username" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/profile" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
+      <Route path="/profile/edit" element={renderLayout(<ProfileWrapper forceEdit profile={profile} onComplete={() => window.location.reload()} />, 'profile/edit')} />
+      <Route path="/profile/:userId" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
+      <Route path="/user/:username" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
       <Route path="/notifications" element={renderLayout(<ArenaNotifications />, 'notifications')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />
@@ -381,9 +422,9 @@ export default function App() {
       {/* Redirection Routes */}
       <Route path="/feed/post/:id" element={renderLayout(<ArenaFeed userProfile={profile} />, 'feed')} />
       <Route path="/clips/:id" element={renderLayout(<ArenaClips />, 'clips')} />
-      <Route path="/certificates/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
-      <Route path="/fights/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
-      <Route path="/championships/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/certificates/:id" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
+      <Route path="/fights/:id" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
+      <Route path="/championships/:id" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
       
       <Route path="/post/:id" element={<Navigate to="/" replace />} />
       <Route path="/clip/:id" element={<Navigate to="/clips" replace />} />

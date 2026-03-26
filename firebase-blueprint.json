@@ -15,15 +15,36 @@
         "order": { "type": "number" },
         "start_date": { "type": "string", "format": "date-time" },
         "end_date": { "type": "string", "format": "date-time" },
+        "country": { "type": "string" },
+        "state": { "type": "string" },
+        "city": { "type": "string" },
         "created_at": { "type": "string", "format": "date-time" }
       },
       "required": ["image_url", "link", "is_active", "order"]
+    },
+    "admin_log": {
+      "title": "Admin Log",
+      "description": "Logs of actions performed by administrators.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "admin_id": { "type": "string" },
+        "admin_name": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["admin_id", "admin_name", "action", "timestamp"]
     }
   },
   "firestore": {
     "/featured_banners/{bannerId}": {
       "schema": "featured_banner",
       "description": "Collection of featured banners for the landing page."
+    },
+    "/admin_logs/{logId}": {
+      "schema": "admin_log",
+      "description": "Collection of administrative action logs."
     }
   }
 }

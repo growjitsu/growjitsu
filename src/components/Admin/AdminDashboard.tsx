@@ -139,7 +139,7 @@ export const AdminDashboard: React.FC = () => {
         { count: eventosCount },
         { count: likesCount },
         { count: commentsCount },
-        { data: profilesData },
+        { data: atletasData },
         { data: teamsList },
         // Trend data (last 30 days)
         { count: athletesRecent },
@@ -152,23 +152,23 @@ export const AdminDashboard: React.FC = () => {
         { count: postsPrevious },
         { count: likesPrevious }
       ] = await Promise.all([
-        supabase.from('profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('atletas').select('*', { count: 'exact', head: true }),
         supabase.from('teams').select('*', { count: 'exact', head: true }),
         supabase.from('posts').select('*', { count: 'exact', head: true }),
         supabase.from('eventos').select('*', { count: 'exact', head: true }),
         supabase.from('likes').select('*', { count: 'exact', head: true }),
         supabase.from('comments').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('created_at, modality, team_id').limit(1000),
+        supabase.from('atletas').select('atualizado_em, graduacao, equipe_id').limit(2000),
         supabase.from('teams').select('id, name').limit(100),
         
         // Recent
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+        supabase.from('atletas').select('*', { count: 'exact', head: true }).gte('atualizado_em', thirtyDaysAgo),
         supabase.from('teams').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
         supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
         supabase.from('likes').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
 
         // Previous
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
+        supabase.from('atletas').select('*', { count: 'exact', head: true }).gte('atualizado_em', sixtyDaysAgo).lt('atualizado_em', thirtyDaysAgo),
         supabase.from('teams').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
         supabase.from('posts').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
         supabase.from('likes').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo)
@@ -200,7 +200,7 @@ export const AdminDashboard: React.FC = () => {
       });
 
       // Process Growth Data (Cumulative)
-      if (profilesData) {
+      if (atletasData) {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const growthMap: Record<string, number> = {};
         
@@ -215,8 +215,8 @@ export const AdminDashboard: React.FC = () => {
         }
 
         // Count new users per month
-        profilesData.forEach(p => {
-          const d = new Date(p.created_at);
+        atletasData.forEach(p => {
+          const d = new Date(p.atualizado_em || now);
           const key = `${months[d.getMonth()]}`;
           if (growthMap[key] !== undefined) {
             growthMap[key]++;
@@ -224,7 +224,7 @@ export const AdminDashboard: React.FC = () => {
         });
 
         // Calculate cumulative
-        let cumulative = (athletesCount || 0) - profilesData.length; // Start with users before the fetched sample
+        let cumulative = (athletesCount || 0) - atletasData.length; // Start with users before the fetched sample
         if (cumulative < 0) cumulative = 0;
 
         const newGrowthData = lastMonths.map(month => {
@@ -235,12 +235,12 @@ export const AdminDashboard: React.FC = () => {
 
         // Process Modality Data
         const modalityMap: Record<string, number> = {};
-        profilesData.forEach(p => {
-          const m = p.modality || 'Outros';
+        atletasData.forEach(p => {
+          const m = p.graduacao || 'Outros';
           modalityMap[m] = (modalityMap[m] || 0) + 1;
         });
         
-        const totalSample = profilesData.length || 1;
+        const totalSample = atletasData.length || 1;
         const newModalityData = Object.entries(modalityMap)
           .map(([name, count]) => ({ name, value: Math.round((count / totalSample) * 100) }))
           .sort((a, b) => b.value - a.value)
@@ -250,9 +250,9 @@ export const AdminDashboard: React.FC = () => {
         // Process Team Data
         if (teamsList) {
           const teamAthletesMap: Record<string, number> = {};
-          profilesData.forEach(p => {
-            if (p.team_id) {
-              teamAthletesMap[p.team_id] = (teamAthletesMap[p.team_id] || 0) + 1;
+          atletasData.forEach(p => {
+            if (p.equipe_id) {
+              teamAthletesMap[p.equipe_id] = (teamAthletesMap[p.equipe_id] || 0) + 1;
             }
           });
 
