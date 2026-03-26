@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
-import { auth, db } from './firebase';
+import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { ArenaNavbar } from './components/ArenaNavbar';
 import { ArenaFeed } from './components/ArenaFeed';
 import { ArenaClips } from './components/ArenaClips';
@@ -16,7 +15,6 @@ import { ArenaAuth } from './components/ArenaAuth';
 import { ArenaNotifications } from './components/ArenaNotifications';
 import { SharePage } from './pages/SharePage';
 import { CreatePostModal } from './components/CreatePostModal';
-import AthleteProfileForm from './components/AthleteProfileForm';
 import { AdminLayout } from './components/Admin/AdminLayout';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { AdminAthletes } from './components/Admin/AdminAthletes';
@@ -32,42 +30,11 @@ import { useTheme } from './context/ThemeContext';
 
 import { Toaster } from 'sonner';
 
-export function isProfileComplete(profile: any) {
-  if (!profile) return false;
-  return (
-    profile.modalidades?.length > 0 &&
-    profile.equipe &&
-    profile.genero &&
-    profile.dataNascimento &&
-    profile.graduacao &&
-    profile.academia &&
-    profile.pais &&
-    profile.estado &&
-    profile.cidade &&
-    profile.foto
-  );
-}
-
-const ProfileWrapper = ({ forceEdit, profile, firestoreProfile, onComplete }: { forceEdit?: boolean, profile: ArenaProfile | null, firestoreProfile?: any, onComplete?: () => void }) => {
+const ProfileWrapper = ({ forceEdit }: { forceEdit?: boolean }) => {
   const { userId, username, id } = useParams();
   const location = useLocation();
   const contentType = location.pathname.split('/')[1];
   
-  // Use firestoreProfile for the mandatory check if provided, otherwise fallback to Supabase profile
-  const checkProfile = firestoreProfile || profile;
-
-  if (forceEdit && checkProfile && !isProfileComplete(checkProfile)) {
-    return (
-      <div className="max-w-2xl mx-auto py-12 px-4">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-black uppercase italic text-[var(--text-main)]">Complete seu Perfil</h1>
-          <p className="text-[var(--text-muted)] mt-2">Para continuar usando a ArenaComp, você precisa completar seu cadastro de atleta.</p>
-        </div>
-        <AthleteProfileForm userId={profile?.id || ''} onComplete={onComplete || (() => window.location.reload())} />
-      </div>
-    );
-  }
-
   return <ArenaProfileView 
     key={`${userId}-${username}-${id}-${location.pathname}`} 
     userId={userId} 
@@ -82,9 +49,6 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('feed');
   const [profile, setProfile] = useState<ArenaProfile | null>(null);
-  const [firestoreProfile, setFirestoreProfile] = useState<any>(null);
-  const [isProfileChecked, setIsProfileChecked] = useState(false);
-  const [firebaseUser, setFirebaseUser] = useState<any>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
@@ -107,10 +71,6 @@ export default function App() {
     else if (path === 'profile' && subPath === 'edit') setActiveTab('profile/edit');
     else if (['rankings', 'search', 'profile', 'settings', 'gyms', 'notifications'].includes(path)) setActiveTab(path);
   }, [location.pathname]);
-
-  useEffect(() => {
-    // Old redirection logic removed in favor of Firebase-based validation
-  }, [isLoggedIn, profile, isInitializing, location.pathname, navigate]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -158,72 +118,38 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Firebase Auth Listener for Profile Validation and Admin Claims
+  // Firebase Auth Listener for Admin Claims
   useEffect(() => {
-    let unsubscribeProfile: (() => void) | null = null;
-    let timeoutId: any = null;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      
-      if (user) {
-        setIsProfileChecked(false); // Reset to wait for profile
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && (user.email === 'admin@arenacomp.com.br' || user.email === 'carlos.atila001@gmail.com')) {
+        console.log('[FIREBASE] Admin detectado, verificando claims...');
         
-        // Timeout fallback to prevent infinite loading (5 seconds)
-        if (timeoutId) clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          console.warn('[FIREBASE] Timeout waiting for profile snapshot');
-          setIsProfileChecked(true);
-        }, 5000);
-
-        // 2. BUSCAR PERFIL NO FIRESTORE (Real-time)
-        unsubscribeProfile = onSnapshot(doc(db, "users", user.uid), (doc) => {
-          if (timeoutId) clearTimeout(timeoutId);
-          if (doc.exists()) {
-            setFirestoreProfile(doc.data());
-          } else {
-            setFirestoreProfile(null);
-          }
-          setIsProfileChecked(true);
-        }, (error) => {
-          if (timeoutId) clearTimeout(timeoutId);
-          console.error("Erro ao monitorar perfil no Firestore:", error);
-          setIsProfileChecked(true);
-        });
-
-        // Admin Claims Logic (Existing)
-        if (user.email === 'admin@arenacomp.com.br' || user.email === 'carlos.atila001@gmail.com') {
-          try {
-            const token = await user.getIdTokenResult();
-            if (!token.claims.admin) {
-              const response = await fetch('/api/admin/set-admin-claim', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: user.email })
-              });
-              if (response.ok) {
-                await user.getIdToken(true);
-              }
+        try {
+          const token = await user.getIdTokenResult();
+          
+          if (!token.claims.admin) {
+            console.log('[FIREBASE] Claim de admin não encontrado. Solicitando ao servidor...');
+            const response = await fetch('/api/admin/set-admin-claim', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: user.email })
+            });
+            
+            if (response.ok) {
+              console.log('[FIREBASE] Claim de admin solicitado com sucesso. Atualizando token...');
+              await user.getIdToken(true);
+              console.log('[FIREBASE] Token atualizado com novos claims.');
             }
-          } catch (error) {
-            console.error('[FIREBASE] Erro ao processar claims de admin:', error);
+          } else {
+            console.log('[FIREBASE] Claim de admin já está ativo.');
           }
-        }
-      } else {
-        setFirestoreProfile(null);
-        setIsProfileChecked(true);
-        if (unsubscribeProfile) {
-          unsubscribeProfile();
-          unsubscribeProfile = null;
+        } catch (error) {
+          console.error('[FIREBASE] Erro ao processar claims de admin:', error);
         }
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeProfile) unsubscribeProfile();
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+    return () => unsubscribe();
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -267,24 +193,6 @@ export default function App() {
 
   const renderLayout = (content: React.ReactNode, tabId: string) => {
     if (!isLoggedIn) return <Navigate to="/login" replace />;
-    
-    // Bloqueio de Perfil Incompleto (Regra de Negócio ArenaComp)
-    // Se estivermos logados no Supabase mas o Firebase ainda não respondeu, mostramos o loading por um tempo
-    if (!isProfileChecked || (isLoggedIn && !firebaseUser)) {
-      return (
-        <div className="h-screen w-full flex items-center justify-center bg-[var(--bg)]">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] animate-pulse">Sincronizando Protocolo...</p>
-          </div>
-        </div>
-      );
-    }
-
-    const complete = isProfileComplete(firestoreProfile);
-    if (!complete && location.pathname !== '/profile/edit') {
-      return <Navigate to="/profile/edit" replace />;
-    }
     
     return (
       <div className="min-h-screen bg-[var(--bg)] text-[var(--text-main)] pb-20 md:pb-0 md:pl-24 transition-all duration-500">
@@ -457,15 +365,15 @@ export default function App() {
       <Toaster position="top-center" theme="dark" />
       <Routes>
       <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <ArenaAuth />} />
-      <Route path="/" element={isLoggedIn ? renderLayout(<ArenaFeed userProfile={profile} />, 'feed') : <LandingPage userProfile={profile} />} />
-      <Route path="/home-public" element={<LandingPage userProfile={profile} />} />
+      <Route path="/" element={isLoggedIn ? renderLayout(<ArenaFeed userProfile={profile} />, 'feed') : <LandingPage />} />
+      <Route path="/home-public" element={<LandingPage />} />
       <Route path="/clips" element={renderLayout(<ArenaClips />, 'clips')} />
       <Route path="/rankings" element={renderLayout(<ArenaRankings />, 'rankings')} />
       <Route path="/search" element={renderLayout(<ArenaSearch />, 'search')} />
-      <Route path="/profile" element={renderLayout(<ProfileWrapper profile={profile} firestoreProfile={firestoreProfile} />, 'profile')} />
-      <Route path="/profile/edit" element={renderLayout(<ProfileWrapper forceEdit profile={profile} firestoreProfile={firestoreProfile} onComplete={() => window.location.reload()} />, 'profile/edit')} />
-      <Route path="/profile/:userId" element={renderLayout(<ProfileWrapper profile={profile} firestoreProfile={firestoreProfile} />, 'profile')} />
-      <Route path="/user/:username" element={renderLayout(<ProfileWrapper profile={profile} firestoreProfile={firestoreProfile} />, 'profile')} />
+      <Route path="/profile" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/profile/edit" element={renderLayout(<ProfileWrapper forceEdit />, 'profile/edit')} />
+      <Route path="/profile/:userId" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/user/:username" element={renderLayout(<ProfileWrapper />, 'profile')} />
       <Route path="/notifications" element={renderLayout(<ArenaNotifications />, 'notifications')} />
       <Route path="/settings" element={renderLayout(<ArenaSettings />, 'settings')} />
       <Route path="/gyms" element={renderLayout(<div className="flex items-center justify-center h-screen text-[var(--text-muted)] uppercase font-black tracking-widest">Módulo de Academias em Breve</div>, 'gyms')} />
@@ -473,9 +381,9 @@ export default function App() {
       {/* Redirection Routes */}
       <Route path="/feed/post/:id" element={renderLayout(<ArenaFeed userProfile={profile} />, 'feed')} />
       <Route path="/clips/:id" element={renderLayout(<ArenaClips />, 'clips')} />
-      <Route path="/certificates/:id" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
-      <Route path="/fights/:id" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
-      <Route path="/championships/:id" element={renderLayout(<ProfileWrapper profile={profile} />, 'profile')} />
+      <Route path="/certificates/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/fights/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
+      <Route path="/championships/:id" element={renderLayout(<ProfileWrapper />, 'profile')} />
       
       <Route path="/post/:id" element={<Navigate to="/" replace />} />
       <Route path="/clip/:id" element={<Navigate to="/clips" replace />} />
