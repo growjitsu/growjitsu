@@ -22,6 +22,9 @@ interface Banner {
   country?: string;
   state?: string;
   city?: string;
+  country_id?: string;
+  state_id?: string;
+  city_id?: string;
 }
 
 export const AdminAds: React.FC = () => {
@@ -41,8 +44,15 @@ export const AdminAds: React.FC = () => {
     end_date: '',
     country: '',
     state: '',
-    city: ''
+    city: '',
+    country_id: '',
+    state_id: '',
+    city_id: ''
   });
+
+  const [countries, setCountries] = useState<any[]>([]);
+  const [states, setStates] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
 
   const [desktopFile, setDesktopFile] = useState<File | null>(null);
   const [mobileFile, setMobileFile] = useState<File | null>(null);
@@ -91,8 +101,26 @@ export const AdminAds: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'featured_banners');
     });
 
+    fetchCountries();
+
     return () => unsubscribe();
   }, []);
+
+  const fetchCountries = async () => {
+    const { data } = await supabase.from('countries').select('*').order('name');
+    if (data) setCountries(data);
+  };
+
+  const fetchStates = async (countryId: string) => {
+    const { data } = await supabase.from('states').select('*').eq('country_id', countryId).order('name');
+    if (data) setStates(data);
+    setCities([]);
+  };
+
+  const fetchCities = async (stateId: string) => {
+    const { data } = await supabase.from('cities').select('*').eq('state_id', stateId).order('name');
+    if (data) setCities(data);
+  };
 
   const handleOpenModal = (banner?: Banner) => {
     setDesktopFile(null);
@@ -113,8 +141,13 @@ export const AdminAds: React.FC = () => {
         end_date: banner.end_date ? new Date(banner.end_date.seconds * 1000).toISOString().slice(0, 16) : '',
         country: banner.country || '',
         state: banner.state || '',
-        city: banner.city || ''
+        city: banner.city || '',
+        country_id: banner.country_id || '',
+        state_id: banner.state_id || '',
+        city_id: banner.city_id || ''
       });
+      if (banner.country_id) fetchStates(banner.country_id);
+      if (banner.state_id) fetchCities(banner.state_id);
     } else {
       setEditingBanner(null);
       setDesktopPreview('');
@@ -131,8 +164,13 @@ export const AdminAds: React.FC = () => {
         end_date: '',
         country: '',
         state: '',
-        city: ''
+        city: '',
+        country_id: '',
+        state_id: '',
+        city_id: ''
       });
+      setStates([]);
+      setCities([]);
     }
     setIsModalOpen(true);
   };
@@ -688,34 +726,79 @@ export const AdminAds: React.FC = () => {
                     <div className="grid grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2">País</label>
-                        <input 
-                          type="text"
-                          value={formData.country}
-                          onChange={(e) => setFormData({...formData, country: e.target.value})}
+                        <select
+                          value={formData.country_id}
+                          onChange={(e) => {
+                            const country = countries.find(c => c.id === e.target.value);
+                            setFormData({ 
+                              ...formData, 
+                              country_id: e.target.value, 
+                              country: country?.name || '',
+                              state_id: '',
+                              state: '',
+                              city_id: '',
+                              city: ''
+                            });
+                            if (e.target.value) fetchStates(e.target.value);
+                            else {
+                              setStates([]);
+                              setCities([]);
+                            }
+                          }}
                           className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
-                          placeholder="Ex: Brasil"
-                        />
+                        >
+                          <option value="">Todos os Países</option>
+                          {countries.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2">Estado</label>
-                          <input 
-                            type="text"
-                            value={formData.state}
-                            onChange={(e) => setFormData({...formData, state: e.target.value})}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
-                            placeholder="Ex: SP"
-                          />
+                          <select
+                            value={formData.state_id}
+                            disabled={!formData.country_id}
+                            onChange={(e) => {
+                              const state = states.find(s => s.id === e.target.value);
+                              setFormData({ 
+                                ...formData, 
+                                state_id: e.target.value, 
+                                state: state?.name || '',
+                                city_id: '',
+                                city: ''
+                              });
+                              if (e.target.value) fetchCities(e.target.value);
+                              else setCities([]);
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Todos os Estados</option>
+                            {states.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase tracking-widest text-gray-500 ml-2">Cidade</label>
-                          <input 
-                            type="text"
-                            value={formData.city}
-                            onChange={(e) => setFormData({...formData, city: e.target.value})}
-                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all"
-                            placeholder="Ex: São Paulo"
-                          />
+                          <select
+                            value={formData.city_id}
+                            disabled={!formData.state_id}
+                            onChange={(e) => {
+                              const city = cities.find(c => c.id === e.target.value);
+                              setFormData({ 
+                                ...formData, 
+                                city_id: e.target.value, 
+                                city: city?.name || ''
+                              });
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Todas as Cidades</option>
+                            {cities.map(c => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     </div>

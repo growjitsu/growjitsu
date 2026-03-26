@@ -23,6 +23,9 @@ interface Banner {
   country?: string;
   state?: string;
   city?: string;
+  country_id?: string;
+  state_id?: string;
+  city_id?: string;
 }
 
 export const LandingPage: React.FC<{ userProfile?: ArenaProfile | null }> = ({ userProfile }) => {
@@ -53,13 +56,29 @@ export const LandingPage: React.FC<{ userProfile?: ArenaProfile | null }> = ({ u
 
         // Geographic segmentation
         if (userProfile) {
-          if (banner.country && banner.country !== userProfile.country) return false;
-          if (banner.state && banner.state !== userProfile.state) return false;
-          if (banner.city && banner.city !== userProfile.city) return false;
+          // Priority 1: Match by ID if both have it
+          // Priority 2: Fallback to name if ID is missing on either side
+          
+          if (banner.country_id && userProfile.country_id) {
+            if (banner.country_id !== userProfile.country_id) return false;
+          } else if (banner.country && banner.country !== userProfile.country) {
+            return false;
+          }
+
+          if (banner.state_id && userProfile.state_id) {
+            if (banner.state_id !== userProfile.state_id) return false;
+          } else if (banner.state && banner.state !== userProfile.state) {
+            return false;
+          }
+
+          if (banner.city_id && userProfile.city_id) {
+            if (banner.city_id !== userProfile.city_id) return false;
+          } else if (banner.city && banner.city !== userProfile.city) {
+            return false;
+          }
         } else {
           // If not logged in, hide banners that have specific location constraints
-          // (or show them all if that's the desired behavior, but usually targeted ads are hidden)
-          if (banner.country || banner.state || banner.city) return false;
+          if (banner.country || banner.state || banner.city || banner.country_id || banner.state_id || banner.city_id) return false;
         }
 
         return true;

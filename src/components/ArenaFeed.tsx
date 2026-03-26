@@ -440,9 +440,29 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
 
         // Geographic segmentation
         if (userProfile) {
-          if (banner.country && banner.country !== userProfile.country) return false;
-          if (banner.state && banner.state !== userProfile.state) return false;
-          if (banner.city && banner.city !== userProfile.city) return false;
+          // Priority 1: Match by ID if both have it
+          // Priority 2: Fallback to name if ID is missing on either side
+          
+          if (banner.country_id && userProfile.country_id) {
+            if (banner.country_id !== userProfile.country_id) return false;
+          } else if (banner.country && banner.country !== userProfile.country) {
+            return false;
+          }
+
+          if (banner.state_id && userProfile.state_id) {
+            if (banner.state_id !== userProfile.state_id) return false;
+          } else if (banner.state && banner.state !== userProfile.state) {
+            return false;
+          }
+
+          if (banner.city_id && userProfile.city_id) {
+            if (banner.city_id !== userProfile.city_id) return false;
+          } else if (banner.city && banner.city !== userProfile.city) {
+            return false;
+          }
+        } else {
+          // If not logged in, hide banners that have specific location constraints
+          if (banner.country || banner.state || banner.city || banner.country_id || banner.state_id || banner.city_id) return false;
         }
 
         return true;
