@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase, isSupabaseConfigured } from './services/supabase';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { ArenaNavbar } from './components/ArenaNavbar';
 import { ArenaFeed } from './components/ArenaFeed';
 import { ArenaClips } from './components/ArenaClips';
@@ -31,21 +32,21 @@ import { useTheme } from './context/ThemeContext';
 
 import { Toaster } from 'sonner';
 
-export const isProfileComplete = (profile: ArenaProfile | null) => {
+export function isProfileComplete(profile: any) {
   if (!profile) return false;
-  // Perfil é completo se tiver: Nome, Gênero, Nascimento, Peso, Equipe, País, Estado, Cidade e Foto
-  return !!(
-    profile.full_name &&
+  return (
+    profile.modalidades?.length > 0 &&
+    profile.equipe &&
     profile.genero &&
-    profile.birth_date &&
-    profile.weight &&
-    (profile.team_id || profile.team) &&
-    profile.country_id &&
-    profile.state_id &&
-    profile.city_id &&
-    (profile.profile_photo || profile.avatar_url)
+    profile.dataNascimento &&
+    profile.graduacao &&
+    profile.academia &&
+    profile.pais &&
+    profile.estado &&
+    profile.cidade &&
+    profile.foto
   );
-};
+}
 
 const ProfileWrapper = ({ forceEdit, profile, onComplete }: { forceEdit?: boolean, profile: ArenaProfile | null, onComplete?: () => void }) => {
   const { userId, username, id } = useParams();
@@ -102,15 +103,7 @@ export default function App() {
   }, [location.pathname]);
 
   useEffect(() => {
-    if (isLoggedIn && profile && !isInitializing) {
-      const complete = isProfileComplete(profile);
-      const isEditing = location.pathname === '/profile/edit';
-      const isAdmin = profile.role === 'admin';
-      
-      if (!complete && !isEditing && !isAdmin) {
-        navigate('/profile/edit', { replace: true });
-      }
-    }
+    // Old redirection logic removed in favor of Firebase-based validation
   }, [isLoggedIn, profile, isInitializing, location.pathname, navigate]);
 
   useEffect(() => {
@@ -159,39 +152,53 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Firebase Auth Listener for Admin Claims
+  // Firebase Auth Listener for Profile Validation and Admin Claims
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && (user.email === 'admin@arenacomp.com.br' || user.email === 'carlos.atila001@gmail.com')) {
-        console.log('[FIREBASE] Admin detectado, verificando claims...');
-        
+      if (user) {
+        // 2. BUSCAR PERFIL NO FIRESTORE
         try {
-          const token = await user.getIdTokenResult();
+          const profileDoc = await getDoc(doc(db, "users", user.uid));
           
-          if (!token.claims.admin) {
-            console.log('[FIREBASE] Claim de admin não encontrado. Solicitando ao servidor...');
-            const response = await fetch('/api/admin/set-admin-claim', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: user.email })
-            });
-            
-            if (response.ok) {
-              console.log('[FIREBASE] Claim de admin solicitado com sucesso. Atualizando token...');
-              await user.getIdToken(true);
-              console.log('[FIREBASE] Token atualizado com novos claims.');
+          // 3. VALIDAR PERFIL E 4. REDIRECIONAMENTO CONDICIONAL
+          if (!profileDoc.exists() || !isProfileComplete(profileDoc.data())) {
+            if (location.pathname !== '/profile/edit') {
+              navigate("/profile/edit", { replace: true });
             }
           } else {
-            console.log('[FIREBASE] Claim de admin já está ativo.');
+            // Se o perfil estiver completo e o usuário estiver na página de login ou perfil/edit, vai para o dashboard
+            if (location.pathname === '/login' || location.pathname === '/profile/edit') {
+              navigate("/", { replace: true });
+            }
           }
         } catch (error) {
-          console.error('[FIREBASE] Erro ao processar claims de admin:', error);
+          console.error("Erro ao validar perfil no Firestore:", error);
+        }
+
+        // Admin Claims Logic (Existing)
+        if (user.email === 'admin@arenacomp.com.br' || user.email === 'carlos.atila001@gmail.com') {
+          console.log('[FIREBASE] Admin detectado, verificando claims...');
+          try {
+            const token = await user.getIdTokenResult();
+            if (!token.claims.admin) {
+              const response = await fetch('/api/admin/set-admin-claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: user.email })
+              });
+              if (response.ok) {
+                await user.getIdToken(true);
+              }
+            }
+          } catch (error) {
+            console.error('[FIREBASE] Erro ao processar claims de admin:', error);
+          }
         }
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [location.pathname, navigate]);
 
   const fetchProfile = async (userId: string) => {
     try {

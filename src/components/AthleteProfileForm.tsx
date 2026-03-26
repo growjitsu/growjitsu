@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { User, Calendar, Weight, Users, ShieldCheck, ExternalLink, AlertCircle, Save, Loader2, VenusAndMars, Award, Camera, Upload } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { AthleteProfile, Belt, Gender, Equipe } from '../types';
 import { getAutomaticCategorization } from '../services/categorization';
 
@@ -235,8 +237,25 @@ export default function AthleteProfileForm({ userId, onComplete }: AthleteProfil
         .eq('id', userId);
 
       if (profileUpdateError) throw profileUpdateError;
+      
+      // 3. Salvar no Firestore para validação de redirecionamento (ArenaComp Requirement)
+      const firestorePayload = {
+        uid: userId,
+        modalidades: ['BJJ'], // Default para BJJ, pode ser expandido
+        equipe: profile.equipe,
+        genero: profile.genero,
+        dataNascimento: profile.data_nascimento,
+        graduacao: profile.graduacao,
+        academia: profile.equipe, // Usando equipe como academia
+        pais: (countries.find(c => c.id === profile.country_id))?.name || '',
+        estado: (states.find(s => s.id === profile.state_id))?.name || '',
+        cidade: (cities.find(c => c.id === profile.city_id))?.name || '',
+        foto: foto_perfil
+      };
+      
+      await setDoc(doc(db, "users", userId), firestorePayload);
 
-      // 3. Pequeno delay para garantir que o banco processou (opcional mas seguro para RLS/Cache)
+      // 4. Pequeno delay para garantir que o banco processou (opcional mas seguro para RLS/Cache)
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // 4. Notificar sucesso e disparar callback de conclusão

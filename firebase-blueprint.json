@@ -38,6 +38,24 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["admin_id", "admin_name", "action", "timestamp"]
+    },
+    "user": {
+      "title": "User Profile",
+      "description": "User profile data for mandatory completion check.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "modalidades": { "type": "array", "items": { "type": "string" } },
+        "equipe": { "type": "string" },
+        "genero": { "type": "string" },
+        "dataNascimento": { "type": "string" },
+        "graduacao": { "type": "string" },
+        "academia": { "type": "string" },
+        "pais": { "type": "string" },
+        "estado": { "type": "string" },
+        "cidade": { "type": "string" },
+        "foto": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -48,6 +66,10 @@
     "/admin_logs/{logId}": {
       "schema": "admin_log",
       "description": "Collection of administrative action logs."
+    },
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Collection of user profiles for mandatory completion check."
     }
   }
 }

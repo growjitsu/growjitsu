@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, User, Trophy, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 
 interface ArenaAuthProps {
   isAdminLogin?: boolean;
@@ -193,8 +195,19 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
       console.log("[LOG] isCreatingTeam:", isCreatingTeam);
 
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error: supabaseError } = await supabase.auth.signInWithPassword({ email, password });
+        if (supabaseError) throw supabaseError;
+
+        // Parallel Firebase Login
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (fbError) {
+          console.error('[FIREBASE] Erro no login paralelo:', fbError);
+          // Se o usuário não existir no Firebase mas existir no Supabase, criamos ele
+          if ((fbError as any).code === 'auth/user-not-found') {
+            await createUserWithEmailAndPassword(auth, email, password);
+          }
+        }
       } else {
         // VALIDATION: If registering as team leader, MUST select or create a team
         if (isTeamLeader && !selectedTeamId && !isCreatingTeam) {
@@ -264,6 +277,14 @@ export const ArenaAuth: React.FC<ArenaAuthProps> = ({ isAdminLogin = false }) =>
         }
         
         if (user) {
+          // Parallel Firebase Signup
+          try {
+            const fbUserCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(fbUserCredential.user, { displayName: fullName });
+          } catch (fbError) {
+            console.error('[FIREBASE] Erro no signup paralelo:', fbError);
+          }
+
           let finalTeamId = selectedTeamId;
 
           // Part 4: Create new team if requested
