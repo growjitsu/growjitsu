@@ -206,8 +206,8 @@ export const ArenaProfileView: React.FC<{
     }
   };
 
-  async function handleAddModality() {
-    if (!newModality.trim() || !profile) return;
+  async function handleAddModalidade() {
+    if (!newModality.trim() || !newModalityBelt.trim() || !profile) return;
     
     try {
       const { data, error } = await supabase
@@ -254,6 +254,7 @@ export const ArenaProfileView: React.FC<{
       }
     } catch (err) {
       console.error('Error adding modality:', err);
+      alert('Erro ao adicionar modalidade. Por favor, tente novamente.');
     }
   }
 
@@ -1933,6 +1934,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                           </div>
                           <div className="flex items-center space-x-2">
                             <button 
+                              type="button"
                               onClick={() => {
                                 setEditingModalityId(m.id);
                                 setNewModality(m.modality);
@@ -1945,6 +1947,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                               <Edit2 size={14} />
                             </button>
                             <button 
+                              type="button"
                               onClick={() => handleRemoveModality(m.id)}
                               className="p-1.5 text-[var(--text-muted)] hover:text-red-500 transition-colors"
                               title="Remover"
@@ -1975,6 +1978,7 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                         </h4>
                         {editingModalityId && (
                           <button 
+                            type="button"
                             onClick={() => {
                               setEditingModalityId(null);
                               setNewModality('');
@@ -2036,8 +2040,9 @@ CREATE INDEX IF NOT EXISTS idx_championship_results_athlete_id ON championship_r
                         </div>
 
                         <button 
-                          onClick={() => editingModalityId ? handleEditModality(editingModalityId) : handleAddModality()}
-                          disabled={!newModality.trim()}
+                          type="button"
+                          onClick={() => editingModalityId ? handleEditModality(editingModalityId) : handleAddModalidade()}
+                          disabled={!newModality.trim() || !newModalityBelt.trim()}
                           className="w-full bg-[var(--primary)] text-white rounded-lg px-4 py-2 text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                         >
                           {editingModalityId ? <Save size={14} /> : <Plus size={14} />}
