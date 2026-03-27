@@ -109,18 +109,23 @@ async function startServer() {
   // API Endpoints using Supabase Admin (Secret Key)
   app.get("/api/getTopAtletas", async (req, res) => {
     try {
-      console.log('[API] Buscando melhores atletas...');
+      console.log('[API] Buscando melhores atletas (Elite Arena)...');
       const { data, error } = await supabaseAdmin
         .from('profiles')
         .select('*')
         .neq('role', 'admin')
-        .order('arena_score', { ascending: false })
+        .order('arena_score', { ascending: false, nullsFirst: false })
         .limit(10);
       
-      if (error) throw error;
+      if (error) {
+        console.error('[API] Erro Supabase em getTopAtletas:', error);
+        throw error;
+      }
+      
+      console.log(`[API] Sucesso: ${data?.length || 0} atletas encontrados.`);
       res.json(data || []);
     } catch (error: any) {
-      console.error('[API] Erro ao buscar melhores atletas:', error);
+      console.error('[API] Erro crítico em getTopAtletas:', error);
       res.status(500).json({ error: error.message });
     }
   });

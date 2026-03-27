@@ -318,21 +318,28 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
       
       if (response.ok) {
         const data = await response.json();
-        setTopAthletes(data || []);
-        console.log('[ArenaFeed] Melhores atletas carregados via API');
-        return;
+        console.log('[ArenaFeed] Melhores atletas carregados via API:', data?.length);
+        if (data && data.length > 0) {
+          setTopAthletes(data);
+          return;
+        }
       }
       
-      console.warn('[ArenaFeed] Falha na API, tentando fallback Supabase direto...');
+      console.warn('[ArenaFeed] Falha na API ou dados vazios, tentando fallback Supabase direto...');
       // Fallback para Supabase direto (caso a API falhe)
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .neq('role', 'admin')
-        .order('arena_score', { ascending: false })
+        .order('arena_score', { ascending: false, nullsFirst: false })
         .limit(10);
       
-      if (error) throw error;
+      if (error) {
+        console.error('[ArenaFeed] Erro no fallback Supabase:', error);
+        throw error;
+      }
+      
+      console.log('[ArenaFeed] Melhores atletas carregados via fallback Supabase:', data?.length);
       setTopAthletes(data || []);
     } catch (error) {
       console.error('Error fetching top athletes:', error);
@@ -811,7 +818,9 @@ export const ArenaFeed: React.FC<{ userProfile?: ArenaProfile | null }> = ({ use
                     </div>
                   </div>
                   <div className="text-center">
-                    <p className="text-[9px] font-black uppercase tracking-tighter text-[var(--text-main)] truncate w-16">{athlete.full_name?.split(' ')[0]}</p>
+                    <p className="text-[9px] font-black uppercase tracking-tighter text-[var(--text-main)] truncate w-16">
+                      { (athlete.full_name?.split(' ')[0] || athlete.username || 'Atleta').substring(0, 10) }
+                    </p>
                   </div>
                 </Link>
               ))
