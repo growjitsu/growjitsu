@@ -12,6 +12,30 @@ import firebaseConfig from './firebase-applet-config.json';
 // Load environment variables
 dotenv.config();
 
+// Supabase configuration
+const rawUrl = process.env.VITE_SUPABASE_URL || 'https://vfefztzaiqhpsfnvpkba.supabase.co';
+const rawKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmZWZ6dHphaXFocHNmbnZwa2JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzM1MzEsImV4cCI6MjA4NzAwOTUzMX0.G2AVN2yvCaGGtR7fK0nim2eRBAow2C57eeIaOEz1LDQ';
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+
+const isValidUrl = (url: string) => {
+  try {
+    const u = new URL(url.trim());
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const supabaseUrl = isValidUrl(rawUrl) ? rawUrl.trim() : 'https://vfefztzaiqhpsfnvpkba.supabase.co';
+const supabaseAnonKey = rawKey.trim();
+
+// Create Supabase clients
+// Use secret key if available for backend operations, otherwise fallback to anon key
+const supabase = createClient(supabaseUrl, supabaseSecretKey || supabaseAnonKey);
+const supabaseAdmin = (supabaseSecretKey && supabaseSecretKey.length > 20) 
+  ? createClient(supabaseUrl, supabaseSecretKey) 
+  : supabase;
+
 // Initialize Firebase Admin SDK
 try {
   admin.initializeApp({
@@ -21,24 +45,6 @@ try {
 } catch (error) {
   console.error('[FIREBASE-ADMIN] Erro ao inicializar SDK:', error);
 }
-
-// ... (Supabase config remains same)
-const rawUrl = process.env.VITE_SUPABASE_URL || 'https://vfefztzaiqhpsfnvpkba.supabase.co';
-const rawKey = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmZWZ6dHphaXFocHNmbnZwa2JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzM1MzEsImV4cCI6MjA4NzAwOTUzMX0.G2AVN2yvCaGGtR7fK0nim2eRBAow2C57eeIaOEz1LDQ';
-
-const isValidUrl = (url: string) => {
-  try {
-    const u = new URL(url);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
-
-const supabaseUrl = isValidUrl(rawUrl) ? rawUrl : 'https://vfefztzaiqhpsfnvpkba.supabase.co';
-const supabaseKey = rawKey.length > 20 ? rawKey : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmZWZ6dHphaXFocHNmbnZwa2JhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MzM1MzEsImV4cCI6MjA4NzAwOTUzMX0.G2AVN2yvCaGGtR7fK0nim2eRBAow2C57eeIaOEz1LDQ';
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const db = new Database("arenacomp.db");
 
@@ -97,10 +103,43 @@ async function startServer() {
   app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
     console.log(`[INFRA-LOG] [${timestamp}] ${req.method} ${req.url}`);
-    if (req.method === 'POST') {
-      console.log(`[INFRA-LOG] Headers: ${JSON.stringify(req.headers)}`);
-    }
     next();
+  });
+
+  // API Endpoints using Supabase Admin (Secret Key)
+  app.get("/api/getTopAtletas", async (req, res) => {
+    try {
+      console.log('[API] Buscando melhores atletas...');
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .neq('role', 'admin')
+        .order('arena_score', { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      res.json(data || []);
+    } catch (error: any) {
+      console.error('[API] Erro ao buscar melhores atletas:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/getPerfisDestaque", async (req, res) => {
+    try {
+      console.log('[API] Buscando perfis em destaque...');
+      const { data, error } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('is_promoted', true)
+        .limit(5);
+      
+      if (error) throw error;
+      res.json(data || []);
+    } catch (error: any) {
+      console.error('[API] Erro ao buscar perfis em destaque:', error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   // 1. CORS Middleware
